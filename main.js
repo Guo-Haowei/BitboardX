@@ -1,13 +1,11 @@
-import init, { add } from './engine/pkg/engine.js';
+import init, { Engine } from './engine/pkg/engine.js';
 
 async function run() {
   await init();
-  const a = 6;
-  const b = 7;
-  const result = add(a, b);
+  const div = document.getElementById('result');
 
-  const resultDiv = document.getElementById('result');
-  resultDiv.textContent = `${a} + ${b} = ${result}`;
+  const board = new Engine();
+  div.textContent = board.to_string();
 }
 
 run();
