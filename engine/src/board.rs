@@ -8,16 +8,50 @@ pub struct Board {
 
 impl Board {
     pub fn new() -> Self {
-        let mut ret = Self {
+        Self {
             bitboards: [0; Piece::Count as usize],
             // occupancies: [0; 3],
             // side_to_move: Color::White,
-        };
-        ret.bitboards[Piece::WhitePawn as usize] = 0x000000000000FF00;
-        ret.bitboards[Piece::BlackPawn as usize] = 0x00FF000000000000;
-        ret.bitboards[Piece::WhiteKing as usize] = 0x0000000000000010;
-        ret.bitboards[Piece::BlackKing as usize] = 0x1000000000000000;
-        ret
+        }
+    }
+
+    pub fn parse_fen(&mut self, fen: &str) -> Result<(), String> {
+        let parts: Vec<&str> = fen.trim().split_whitespace().collect();
+        if parts.len() != 6 {
+            return Err("Invalid FEN: must have 6 fields".to_string());
+        }
+
+        for (rank, rank_str) in parts[0].split('/').enumerate() {
+            let mut file = 0;
+            for c in rank_str.chars() {
+                let sq = ((rank as u8) << 3) + file as u8;
+                let mut inc = 1;
+                match c {
+                    'p' => self.bitboards[Piece::BlackPawn as usize] |= 1 << sq,
+                    'r' => self.bitboards[Piece::BlackRook as usize] |= 1 << sq,
+                    'n' => self.bitboards[Piece::BlackKnight as usize] |= 1 << sq,
+                    'b' => self.bitboards[Piece::BlackBishop as usize] |= 1 << sq,
+                    'q' => self.bitboards[Piece::BlackQueen as usize] |= 1 << sq,
+                    'k' => self.bitboards[Piece::BlackKing as usize] |= 1 << sq,
+                    'P' => self.bitboards[Piece::WhitePawn as usize] |= 1 << sq,
+                    'R' => self.bitboards[Piece::WhiteRook as usize] |= 1 << sq,
+                    'N' => self.bitboards[Piece::WhiteKnight as usize] |= 1 << sq,
+                    'B' => self.bitboards[Piece::WhiteBishop as usize] |= 1 << sq,
+                    'Q' => self.bitboards[Piece::WhiteQueen as usize] |= 1 << sq,
+                    'K' => self.bitboards[Piece::WhiteKing as usize] |= 1 << sq,
+                    '1'..='8' => inc = c.to_digit(10).unwrap(),
+                    _ => return Err(format!("Invalid character '{}' in board layout", c))
+                }
+
+                file += inc as usize;
+            }
+            if file != 8 {
+                return Err("Invalid board layout in FEN".to_string());
+            }
+        }
+        println!();
+
+        Ok(())
     }
 
     pub fn to_string(&self) -> String {

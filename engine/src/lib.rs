@@ -27,4 +27,11 @@ impl Engine {
     pub fn to_string(&self) -> String {
         self.board.to_string()
     }
+
+    pub fn parse_fen(&mut self, fen: &str) -> String {
+        match self.board.parse_fen(fen) {
+            Ok(()) => "".to_string(),
+            Err(err) => err,
+        }
+    }
 }
