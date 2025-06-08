@@ -26,7 +26,7 @@ export class Game {
     const boardString = this.engine.to_string();
     const square = col + row * BOARD_SIZE;
 
-    // if selected square is the same as clicked square, do nothing
+    // If selected square is the same as clicked square, do nothing
     if (square === this.selectedSquare) {
       return;
     }
@@ -39,9 +39,14 @@ export class Game {
 
     console.log(`Selected piece: ${selectedPiece} at ${String.fromCharCode(file + 97)}${rank}`);
 
+    const moves = this.engine.gen_moves(col, row);
+    console.log(`Moves type: ${typeof(moves)}`);
+    console.log(`Generated moves: ${moves}`);
+
     renderer.draw({
       boardString: this.boardString,
       selectedSqaure: square,
+      moves,
     });
   }
 }

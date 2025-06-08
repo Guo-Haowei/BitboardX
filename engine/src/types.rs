@@ -1,8 +1,11 @@
+use bitflags::bitflags;
+
 #[repr(u8)]
+#[derive(PartialEq, Eq)]
 pub enum Color {
     White,
     Black,
-    Count,
+    Both,
 }
 
 #[derive(Debug, PartialEq)]
@@ -18,14 +21,15 @@ pub enum Square {
     A8, B8, C8, D8, E8, F8, G8, H8,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum File { A, B, C, D, E, F, G, H, Count }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Rank { R1, R2, R3, R4, R5, R6, R7, R8, Count }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Piece {
     WhitePawn,
@@ -46,6 +50,16 @@ pub enum Piece {
 pub fn make_square(f : File, r: Rank) -> Square {
     let raw = ((r as u8) << 3) + f as u8;
     return unsafe { std::mem::transmute(raw) };
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct Direction: u8 {
+        const N = 1 << 0;
+        const S = 1 << 1;
+        const W = 1 << 2;
+        const E = 1 << 3;
+    }
 }
 
 #[cfg(test)]

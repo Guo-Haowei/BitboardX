@@ -14,15 +14,23 @@ class Renderer {
     this.ctx.textBaseline = 'middle';
   }
 
-  drawBoard(selectedSqaure) {
+  drawBoard(selectedSqaure, moves) {
     selectedSqaure = selectedSqaure || -1;
+    moves = moves || 0n;
 
+    console.log(`Drawing board with selected square: ${selectedSqaure}, moves: ${moves}`);
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
         const square = col + row * BOARD_SIZE;
 
-        const isLight = (row + col) % 2 === 0;
-        const color = (square === selectedSqaure) ? COLORS.green : (isLight ? COLORS.light : COLORS.dark);
+        let color = null;
+        if (square === selectedSqaure) {
+          color = COLORS.green;
+        } else if (moves & BigInt(1n << BigInt(col + (7 - row) * BOARD_SIZE))) {
+          color = COLORS.red;
+        } else {
+          color = ((row + col) % 2 === 0 ? COLORS.light : COLORS.dark);
+        }
         this.ctx.fillStyle = color;
         this.ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
@@ -61,8 +69,8 @@ class Renderer {
   }
 
   draw(context) {
-    const { boardString, selectedSqaure } = context;
-    this.drawBoard(selectedSqaure);
+    const { boardString, moves, selectedSqaure } = context;
+    this.drawBoard(selectedSqaure, moves);
     this.drawPieces(boardString);
   }
 }

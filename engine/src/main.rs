@@ -1,5 +1,6 @@
-pub mod types;
 pub mod board;
+pub mod moves;
+pub mod types;
 
 fn main() {
     let mut board = board::Board::new();

@@ -1,17 +1,17 @@
 use crate::types::*;
 
 pub struct Board {
-    bitboards: [u64; Piece::Count as usize],
-    // occupancies: [u64; 3],
-    // side_to_move: Color,
+    pub bitboards: [u64; Piece::Count as usize],
+    pub occupancies: [u64; 3],
+    pub side_to_move: Color,
 }
 
 impl Board {
     pub fn new() -> Self {
         Self {
             bitboards: [0; Piece::Count as usize],
-            // occupancies: [0; 3],
-            // side_to_move: Color::White,
+            occupancies: [0; 3],
+            side_to_move: Color::White,
         }
     }
 
@@ -23,6 +23,7 @@ impl Board {
             return Err("Invalid FEN: must have 6 fields".to_string());
         }
 
+        // Parse the board layout
         for (row, rank_str) in parts[0].split('/').enumerate() {
             let mut file = 0;
             for c in rank_str.chars() {
@@ -53,6 +54,30 @@ impl Board {
             }
         }
         println!();
+
+        // Parse the side to move
+        if parts[1] == "w" {
+            self.side_to_move = Color::White;
+        } else if parts[1] == "b" {
+            self.side_to_move = Color::Black;
+        } else {
+            return Err("Invalid side to move in FEN".to_string());
+        }
+
+        // Init occupancies
+        self.occupancies[Color::White as usize] = self.bitboards[Piece::WhitePawn as usize] | self.bitboards[Piece::WhiteKnight as usize]
+                                                                                            | self.bitboards[Piece::WhiteBishop as usize]
+                                                                                            | self.bitboards[Piece::WhiteRook as usize]
+                                                                                            | self.bitboards[Piece::WhiteQueen as usize]
+                                                                                            | self.bitboards[Piece::WhiteKing as usize];
+
+        self.occupancies[Color::Black as usize] = self.bitboards[Piece::BlackPawn as usize] | self.bitboards[Piece::BlackKnight as usize]
+                                                                                            | self.bitboards[Piece::BlackBishop as usize]
+                                                                                            | self.bitboards[Piece::BlackRook as usize]
+                                                                                            | self.bitboards[Piece::BlackQueen as usize]
+                                                                                            | self.bitboards[Piece::BlackKing as usize];
+
+        self.occupancies[Color::Both as usize] = self.occupancies[Color::White as usize] | self.occupancies[Color::Black as usize];
 
         Ok(())
     }

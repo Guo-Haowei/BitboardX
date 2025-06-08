@@ -1,5 +1,6 @@
 // Build: wasm-pack build --target web
 pub mod board;
+pub mod moves;
 pub mod types;
 
 use wasm_bindgen::prelude::*;
@@ -37,5 +38,11 @@ impl Engine {
             Ok(()) => Ok(()),
             Err(err) => Err(JsValue::from_str(&err)),
         }
+    }
+
+    pub fn gen_moves(&self, col: u8, row: u8) -> u64 {
+        let file = unsafe { std::mem::transmute(col) };
+        let rank = unsafe { std::mem::transmute(7 - row) };
+        moves::gen_moves(&self.board, file, rank)
     }
 }
