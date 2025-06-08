@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <title>WASM Add Example</title>
-</head>
-<body>
-    <input type="text" id="fenInput" style="width: 500px;" placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" />
-    <button id="fenButton">Update</button>
+    <head>
+        <link rel="stylesheet" href="styles.css">
+        <meta charset="UTF-8" />
+        <title>Chess Engine</title>
+    </head>
+    <body>
+        <h1>Chess Engine</h1>
+        <canvas id="chessboard" width="540" height="540"></canvas>
+        <p></p>
 
-    <div id="result" style="font-family: monospace;white-space: pre-wrap;"></div>
-    <script type="module" src="./main.js"></script>
-</body>
+        <input type="text" id="fenInput" style="width: 500px;" placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" />
+        <button id="fenButton">Go!</button>
+
+        <div id="result" style="font-family: monospace;white-space: pre-wrap;"></div>
+
+        <script type="module" src="./src/main.js"></script>
+    </body>
 </html>

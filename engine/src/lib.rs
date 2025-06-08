@@ -28,10 +28,14 @@ impl Engine {
         self.board.to_string()
     }
 
-    pub fn parse_fen(&mut self, fen: &str) -> String {
+    pub fn pretty_string(&self) -> String {
+        self.board.pretty_string()
+    }
+
+    pub fn parse_fen(&mut self, fen: &str) -> Result<(), JsValue> {
         match self.board.parse_fen(fen) {
-            Ok(()) => "".to_string(),
-            Err(err) => err,
+            Ok(()) => Ok(()),
+            Err(err) => Err(JsValue::from_str(&err)),
         }
     }
 }

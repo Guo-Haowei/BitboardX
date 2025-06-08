@@ -53,7 +53,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_make_square() {
+    fn make_square_test() {
         assert_eq!(make_square(File::A, Rank::R8), Square::A8);
         assert_eq!(make_square(File::B, Rank::R7), Square::B7);
         assert_eq!(make_square(File::C, Rank::R6), Square::C6);

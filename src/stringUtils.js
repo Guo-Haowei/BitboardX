@@ -1,0 +1,1 @@
+export const isLowerCase = (char) => char === char.toLowerCase() && char !== char.toUpperCase();
