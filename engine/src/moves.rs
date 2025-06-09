@@ -35,7 +35,7 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
     } else {
         bitboard >> 8
     };
-    if new_pos_1 & board.occupancies[Color::Both as usize] == 0 {
+    if new_pos_1 & board.occupancies[SIDE_BOTH as usize] == 0 {
         moves |= new_pos_1;
     }
 
@@ -45,7 +45,7 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
         } else {
             bitboard >> 16
         };
-        if new_pos_2 & board.occupancies[Color::Both as usize] == 0 {
+        if new_pos_2 & board.occupancies[SIDE_BOTH as usize] == 0 {
             moves |= new_pos_2;
         }
     }
@@ -53,8 +53,8 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
     moves
 }
 
-pub fn gen_moves(board: &Board, file: u8, rank: u8) -> u64 {
-    let square = make_square(file, rank);
+pub fn gen_moves(board: &Board, square: u8) -> u64 {
+    let (file, rank) = get_file_rank(square);
     let mask = 1u64 << square;
 
     for i in 0..board.bitboards.len() {
@@ -64,9 +64,9 @@ pub fn gen_moves(board: &Board, file: u8, rank: u8) -> u64 {
 
         let piece: Piece = unsafe { std::mem::transmute(i as u8) };
         let color = if piece <= Piece::WhiteKing {
-            Color::White
+            SIDE_WHITE
         } else {
-            Color::Black
+            SIDE_BLACK
         };
         if color != board.side_to_move {
             return 0;
@@ -104,7 +104,7 @@ mod tests {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         assert!(board.parse_fen(fen).is_ok());
 
-        let moves = gen_moves(&board, FILE_E, RANK_2);
+        let moves = gen_moves(&board, SQ_E2);
         assert_eq!(moves, (1u64 << SQ_E3) | (1u64 << SQ_E4));
     }
 
@@ -114,7 +114,7 @@ mod tests {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1";
         assert!(board.parse_fen(fen).is_ok());
 
-        let moves = gen_moves(&board, FILE_D, RANK_7);
+        let moves = gen_moves(&board, SQ_D7);
         assert_eq!(moves, (1u64 << SQ_D6) | (1u64 << SQ_D5));
     }
 }

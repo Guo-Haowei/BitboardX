@@ -40,9 +40,7 @@ impl Engine {
         }
     }
 
-    pub fn gen_moves(&self, col: u8, row: u8) -> u64 {
-        let file = unsafe { std::mem::transmute(col) };
-        let rank = unsafe { std::mem::transmute(7 - row) };
-        moves::gen_moves(&self.board, file, rank)
+    pub fn gen_moves(&self, square: u8) -> u64 {
+        moves::gen_moves(&self.board, square)
     }
 }

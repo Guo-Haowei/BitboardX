@@ -32,7 +32,11 @@ fn main() {
 
         match moves::parse_move(input) {
             Some((from, to)) => {
-                println!("Moving from {} to {}", from, to);
+                if board.apply_move(from, to) {
+                    println!("Move applied: {} to {}", from, to);
+                } else {
+                    println!("Invalid move: {} to {}", from, to);
+                }
             }
             None => println!("Invalid input '{}'.", input),
         }

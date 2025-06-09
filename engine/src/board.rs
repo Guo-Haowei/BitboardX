@@ -1,4 +1,4 @@
-use crate::types::*;
+use crate::{board, moves::*, types::*};
 use std::collections::HashMap;
 
 use lazy_static::lazy_static;
@@ -25,7 +25,7 @@ lazy_static! {
 pub struct Board {
     pub bitboards: [u64; Piece::Count as usize],
     pub occupancies: [u64; 3],
-    pub side_to_move: Color,
+    pub side_to_move: u8,
 }
 
 impl Board {
@@ -33,8 +33,59 @@ impl Board {
         Self {
             bitboards: [0; Piece::Count as usize],
             occupancies: [0; 3],
-            side_to_move: Color::White,
+            side_to_move: SIDE_WHITE,
         }
+    }
+
+    pub fn apply_move(&mut self, from: u8, to: u8) -> bool {
+        let from_mask = 1u64 << from;
+        let to_mask = 1u64 << to;
+        if self.occupancies[self.side_to_move as usize] & from_mask == 0 {
+            return false;
+        }
+
+        let moves = board::gen_moves(self, from);
+        if moves & to_mask == 0 {
+            return false;
+        }
+
+        let mut index: i8 = -1;
+        // let mut index: usize = self.bitboards.len();
+        for i in 0..self.bitboards.len() {
+            if (self.bitboards[i] & from_mask) != 0 {
+                index = i as i8;
+            }
+            self.bitboards[i] &= !to_mask; // Clear the 'to' square for all pieces
+        }
+
+        if index != -1 {
+            self.bitboards[index as usize] &= !from_mask; // Remove piece from 'from' square
+            self.bitboards[index as usize] |= to_mask; // Place piece on 'to' square
+        }
+
+        self.update_occupancies();
+        self.side_to_move = get_opposite_side(self.side_to_move);
+
+        true
+    }
+
+    fn update_occupancies(&mut self) {
+        self.occupancies[SIDE_WHITE as usize] = self.bitboards[Piece::WhitePawn as usize]
+            | self.bitboards[Piece::WhiteKnight as usize]
+            | self.bitboards[Piece::WhiteBishop as usize]
+            | self.bitboards[Piece::WhiteRook as usize]
+            | self.bitboards[Piece::WhiteQueen as usize]
+            | self.bitboards[Piece::WhiteKing as usize];
+
+        self.occupancies[SIDE_BLACK as usize] = self.bitboards[Piece::BlackPawn as usize]
+            | self.bitboards[Piece::BlackKnight as usize]
+            | self.bitboards[Piece::BlackBishop as usize]
+            | self.bitboards[Piece::BlackRook as usize]
+            | self.bitboards[Piece::BlackQueen as usize]
+            | self.bitboards[Piece::BlackKing as usize];
+
+        self.occupancies[SIDE_BOTH as usize] =
+            self.occupancies[SIDE_WHITE as usize] | self.occupancies[SIDE_BLACK as usize];
     }
 
     pub fn parse_fen(&mut self, fen: &str) -> Result<(), String> {
@@ -75,34 +126,17 @@ impl Board {
                 return Err("Invalid board layout in FEN".to_string());
             }
         }
-        println!();
+
+        self.update_occupancies();
 
         // Parse the side to move
         if parts[1] == "w" {
-            self.side_to_move = Color::White;
+            self.side_to_move = SIDE_WHITE;
         } else if parts[1] == "b" {
-            self.side_to_move = Color::Black;
+            self.side_to_move = SIDE_BLACK;
         } else {
             return Err("Invalid side to move in FEN".to_string());
         }
-
-        // Init occupancies
-        self.occupancies[Color::White as usize] = self.bitboards[Piece::WhitePawn as usize]
-            | self.bitboards[Piece::WhiteKnight as usize]
-            | self.bitboards[Piece::WhiteBishop as usize]
-            | self.bitboards[Piece::WhiteRook as usize]
-            | self.bitboards[Piece::WhiteQueen as usize]
-            | self.bitboards[Piece::WhiteKing as usize];
-
-        self.occupancies[Color::Black as usize] = self.bitboards[Piece::BlackPawn as usize]
-            | self.bitboards[Piece::BlackKnight as usize]
-            | self.bitboards[Piece::BlackBishop as usize]
-            | self.bitboards[Piece::BlackRook as usize]
-            | self.bitboards[Piece::BlackQueen as usize]
-            | self.bitboards[Piece::BlackKing as usize];
-
-        self.occupancies[Color::Both as usize] =
-            self.occupancies[Color::White as usize] | self.occupancies[Color::Black as usize];
 
         Ok(())
     }
@@ -165,7 +199,7 @@ impl Board {
         }
         result.push_str("  ａｂｃｄｅｆｇｈ\n\n");
         result.push_str("Side: ");
-        result.push_str(if self.side_to_move == Color::White {
+        result.push_str(if self.side_to_move == SIDE_WHITE {
             "White"
         } else {
             "Black"

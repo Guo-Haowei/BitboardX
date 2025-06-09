@@ -1,12 +1,8 @@
-#[repr(u8)]
-#[derive(PartialEq, Eq)]
-pub enum Color {
-    White,
-    Black,
-    Both,
-}
+pub const SIDE_WHITE: u8 = 0;
+pub const SIDE_BLACK: u8 = 1;
+pub const SIDE_BOTH: u8 = 2;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Piece {
     WhitePawn,
@@ -117,8 +113,23 @@ pub const SQ_F8: u8 = 61u8;
 pub const SQ_G8: u8 = 62u8;
 pub const SQ_H8: u8 = 63u8;
 
+pub fn get_opposite_side(side: u8) -> u8 {
+    assert!(
+        side == SIDE_WHITE || side == SIDE_BLACK,
+        "Invalid side: {}",
+        side
+    );
+    return 1u8 - side;
+}
+
 pub fn make_square(file: u8, rank: u8) -> u8 {
     (rank << 3) + file
+}
+
+pub fn get_file_rank(square: u8) -> (u8, u8) {
+    let file = square & 0b111;
+    let rank = square >> 3;
+    (file, rank)
 }
 
 #[cfg(test)]
@@ -135,5 +146,17 @@ mod tests {
         assert_eq!(make_square(FILE_F, RANK_3), SQ_F3);
         assert_eq!(make_square(FILE_G, RANK_2), SQ_G2);
         assert_eq!(make_square(FILE_H, RANK_1), SQ_H1);
+    }
+
+    #[test]
+    fn get_file_rank_test() {
+        assert_eq!(get_file_rank(SQ_A8), (FILE_A, RANK_8));
+        assert_eq!(get_file_rank(SQ_B7), (FILE_B, RANK_7));
+        assert_eq!(get_file_rank(SQ_C6), (FILE_C, RANK_6));
+        assert_eq!(get_file_rank(SQ_D5), (FILE_D, RANK_5));
+        assert_eq!(get_file_rank(SQ_E4), (FILE_E, RANK_4));
+        assert_eq!(get_file_rank(SQ_F3), (FILE_F, RANK_3));
+        assert_eq!(get_file_rank(SQ_G2), (FILE_G, RANK_2));
+        assert_eq!(get_file_rank(SQ_H1), (FILE_H, RANK_1));
     }
 }
