@@ -43,4 +43,8 @@ impl Engine {
     pub fn gen_moves(&self, square: u8) -> u64 {
         moves::gen_moves(&self.board, square)
     }
+
+    pub fn apply_move(&mut self, from: u8, to: u8) -> bool {
+        self.board.apply_move(from, to)
+    }
 }

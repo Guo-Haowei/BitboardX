@@ -6,7 +6,9 @@ pub mod types;
 
 fn main() {
     let mut board = board::Board::new();
-    let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    // let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    let fen = "r1bqkb1r/8/8/8/8/8/8/R1BQKB1R w KQkq - 0 1";
 
     match board.parse_fen(fen) {
         Ok(()) => {}

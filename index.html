@@ -1,18 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <link rel="stylesheet" href="styles.css">
-        <meta charset="UTF-8" />
-        <title>Chess Engine</title>
-    </head>
-    <body>
-        <h1>Chess Engine</h1>
-        <canvas id="chessboard" width="540" height="540"></canvas>
-        <p></p>
 
-        <input type="text" id="fenInput" style="width: 500px;" placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" />
-        <button id="fenButton">Go!</button>
+<head>
+    <meta charset="UTF-8" />
+    <title>Chess Engine</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+        }
 
-        <script type="module" src="./src/main.js"></script>
-    </body>
+        header {
+            padding: 1em;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Chess Engine</h1>
+    <p></p>
+
+    <input type="text" id="fenInput" style="width: 500px;"
+        placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" />
+    <button id="fenButton">Go!</button>
+
+    <script type="module" src="./src/main.js"></script>
+</body>
+
 </html>
