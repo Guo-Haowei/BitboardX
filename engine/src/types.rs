@@ -23,19 +23,6 @@ pub enum Piece {
     Count,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[repr(i8)]
-pub enum Dir {
-    N = 8,
-    S = -8,
-    E = 1,
-    W = -1,
-    NE = 9,
-    NW = 7,
-    SE = -7,
-    SW = -9,
-}
-
 // Constants for files
 pub const FILE_A: u8 = 0;
 pub const FILE_B: u8 = 1;

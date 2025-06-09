@@ -77,9 +77,9 @@ export class Game {
     const to = `${String.fromCharCode(97 + file)}${rank + 1}`;
     const square = file + rank * BOARD_SIZE;
 
-    console.log(`${from}${to}`);
     if (this.engine.apply_move(this.selected, square)) {
       // Update the board status here
+      console.log(`${from}${to}`);
       this.boardString = this.engine.to_string();
       printBoard(this.boardString);
     }
