@@ -11,5 +11,6 @@ name = "engine-cli"
 path = "src/main.rs"
 
 [dependencies]
-wasm-bindgen = "0.2"
+bitflags = "1.3"
 lazy_static = "1.4"
+wasm-bindgen = "0.2"

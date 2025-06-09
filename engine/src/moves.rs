@@ -105,7 +105,7 @@ fn move_sliding<const START: u8, const END: u8>(board: &Board, file: u8, rank: u
     moves
 }
 
-fn move_king(board: &Board, file: u8, rank: u8, color: Color) -> u64 {
+fn move_king<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8, color: Color) -> u64 {
     let bb = 1u64 << make_square(file, rank);
     let mut moves = 0u64;
     let occupancy = !board.occupancies[color as usize];
@@ -118,6 +118,23 @@ fn move_king(board: &Board, file: u8, rank: u8, color: Color) -> u64 {
     moves |= shift_se(bb) & occupancy;
     moves |= shift_sw(bb) & occupancy;
 
+    // Castling
+    if IS_WHITE {
+        if (board.castling & Castling::WK.bits()) != 0 {
+            moves |= (1u64 << SQ_G1) & occupancy;
+        }
+        if (board.castling & Castling::WQ.bits()) != 0 {
+            moves |= (1u64 << SQ_C1) & occupancy;
+        }
+    } else {
+        if (board.castling & Castling::BK.bits()) != 0 {
+            moves |= (1u64 << SQ_G8) & occupancy;
+        }
+        if (board.castling & Castling::BQ.bits()) != 0 {
+            moves |= (1u64 << SQ_C8) & occupancy;
+        }
+    }
+
     moves
 }
 
@@ -126,23 +143,15 @@ fn move_knight(board: &Board, file: u8, rank: u8, color: Color) -> u64 {
     let bb = 1u64 << make_square(file, rank);
     let occupancy = !board.occupancies[color as usize];
 
-    let next = shift(bb & !(BOUND_AB | BOUND_1), SW + WEST);
-    moves |= next & occupancy;
-    let next = shift(bb & !(BOUND_AB | BOUND_8), NW + WEST);
-    moves |= next & occupancy;
-    let next = shift(bb & !(BOUND_GH | BOUND_1), SE + EAST);
-    moves |= next & occupancy;
-    let next = shift(bb & !(BOUND_GH | BOUND_8), NE + EAST);
-    moves |= next & occupancy;
+    moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & occupancy;
+    moves |= shift(bb & !(BOUND_AB | BOUND_8), NW + WEST) & occupancy;
+    moves |= shift(bb & !(BOUND_GH | BOUND_1), SE + EAST) & occupancy;
+    moves |= shift(bb & !(BOUND_GH | BOUND_8), NE + EAST) & occupancy;
 
-    let next = shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH);
-    moves |= next & occupancy;
-    let next = shift(bb & !(BOUND_A | BOUND_78), NW + NORTH);
-    moves |= next & occupancy;
-    let next = shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH);
-    moves |= next & occupancy;
-    let next = shift(bb & !(BOUND_H | BOUND_78), NE + NORTH);
-    moves |= next & occupancy;
+    moves |= shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH) & occupancy;
+    moves |= shift(bb & !(BOUND_A | BOUND_78), NW + NORTH) & occupancy;
+    moves |= shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH) & occupancy;
+    moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & occupancy;
 
     moves
 }
@@ -206,7 +215,8 @@ pub fn gen_moves(board: &Board, square: u8) -> u64 {
             Piece::WhiteBishop | Piece::BlackBishop => move_sliding::<4, 8>(board, file, rank, color),
             Piece::WhiteQueen | Piece::BlackQueen => move_sliding::<0, 8>(board, file, rank, color),
             Piece::WhiteKnight | Piece::BlackKnight => move_knight(board, file, rank, color),
-            Piece::WhiteKing | Piece::BlackKing => move_king(board, file, rank, color),
+            Piece::WhiteKing => move_king::<true>(board, file, rank, color),
+            Piece::BlackKing => move_king::<false>(board, file, rank, color),
             _ => 0,
         };
     }

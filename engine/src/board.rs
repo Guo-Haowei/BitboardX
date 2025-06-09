@@ -26,15 +26,12 @@ pub struct Board {
     pub bitboards: [u64; Piece::Count as usize],
     pub occupancies: [u64; 3],
     pub side_to_move: Color,
+    pub castling: u8,
 }
 
 impl Board {
     pub fn new() -> Self {
-        Self {
-            bitboards: [0; Piece::Count as usize],
-            occupancies: [0; 3],
-            side_to_move: Color::White,
-        }
+        Self { bitboards: [0; Piece::Count as usize], occupancies: [0; 3], side_to_move: Color::White, castling: 0 }
     }
 
     pub fn apply_move(&mut self, from: u8, to: u8) -> bool {
@@ -84,8 +81,7 @@ impl Board {
             | self.bitboards[Piece::BlackQueen as usize]
             | self.bitboards[Piece::BlackKing as usize];
 
-        self.occupancies[2] =
-            self.occupancies[Color::White as usize] | self.occupancies[Color::Black as usize];
+        self.occupancies[2] = self.occupancies[Color::White as usize] | self.occupancies[Color::Black as usize];
     }
 
     pub fn parse_fen(&mut self, fen: &str) -> Result<(), String> {
@@ -136,6 +132,23 @@ impl Board {
             self.side_to_move = Color::Black;
         } else {
             return Err("Invalid side to move in FEN".to_string());
+        }
+
+        // Parse castling rights
+        if parts[2] == "-" {
+            // do nothing
+        } else if parts[2].len() > 4 {
+            return Err("Invalid castling rights in FEN".to_string());
+        } else {
+            for c in parts[2].chars() {
+                match c {
+                    'K' => self.castling |= Castling::WK.bits(),
+                    'Q' => self.castling |= Castling::WQ.bits(),
+                    'k' => self.castling |= Castling::BK.bits(),
+                    'q' => self.castling |= Castling::BQ.bits(),
+                    _ => return Err("Invalid castling rights in FEN".to_string()),
+                }
+            }
         }
 
         Ok(())
@@ -198,13 +211,18 @@ impl Board {
             result.push('\n');
         }
         result.push_str("  ａｂｃｄｅｆｇｈ\n\n");
-        result.push_str("Side: ");
-        result.push_str(if self.side_to_move == Color::White {
-            "White"
-        } else {
-            "Black"
-        });
-        result.push('\n');
+        result.push_str(
+            format!("Side: {}\n", if self.side_to_move == Color::White { "White" } else { "Black" }).as_str(),
+        );
+
+        let mut castling = "".to_string();
+        for (i, c) in ['K', 'Q', 'k', 'q'].iter().enumerate() {
+            if self.castling & (1 << i) != 0 {
+                castling.push(*c);
+            }
+        }
+
+        result.push_str(format!("Castling: {}\n", if castling.is_empty() { "-" } else { &castling }).as_str());
 
         result
     }
@@ -221,10 +239,7 @@ mod tests {
 
         assert!(board.parse_fen(fen).is_ok());
         let board_string = board.to_string();
-        assert_eq!(
-            board_string,
-            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
-        );
+        assert_eq!(board_string, "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
     }
 
     #[test]
@@ -234,10 +249,7 @@ mod tests {
 
         assert!(board.parse_fen(fen).is_ok());
         let board_string = board.to_string();
-        assert_eq!(
-            board_string,
-            "r..q.rk.pp..bppp..n.pn....bp........P.....NP.N..PPQ..PPPR.B..RK."
-        );
+        assert_eq!(board_string, "r..q.rk.pp..bppp..n.pn....bp........P.....NP.N..PPQ..PPPR.B..RK.");
     }
 
     #[test]
@@ -247,9 +259,6 @@ mod tests {
 
         assert!(board.parse_fen(fen).is_ok());
         let board_string = board.to_string();
-        assert_eq!(
-            board_string,
-            "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R"
-        );
+        assert_eq!(board_string, "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R");
     }
 }

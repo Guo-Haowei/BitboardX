@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(i8)]
 pub enum Color {
@@ -21,6 +23,16 @@ pub enum Piece {
     BlackQueen,
     BlackKing,
     Count,
+}
+
+// castling rights
+bitflags! {
+    pub struct Castling: u8 {
+        const WK = 0b0001;
+        const WQ = 0b0010;
+        const BK = 0b0100;
+        const BQ = 0b1000;
+    }
 }
 
 // Constants for files
