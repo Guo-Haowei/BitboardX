@@ -10,49 +10,53 @@ const NW: i32 = NORTH + WEST;
 const SE: i32 = SOUTH + EAST;
 const SW: i32 = SOUTH + WEST;
 
-const FILE_A_BOUND: u64 = 0x0101010101010101;
-const FILE_B_BOUND: u64 = 0x0202020202020202;
-const FILE_G_BOUND: u64 = 0x4040404040404040;
-const FILE_H_BOUND: u64 = 0x8080808080808080;
-const RANK_1_BOUND: u64 = 0x00000000000000FF;
-const RANK_2_BOUND: u64 = 0x000000000000FF00;
-const RANK_7_BOUND: u64 = 0x00FF000000000000;
-const RANK_8_BOUND: u64 = 0xFF00000000000000;
+const BOUND_A: u64 = 0x0101010101010101;
+const BOUND_B: u64 = 0x0202020202020202;
+const BOUND_G: u64 = 0x4040404040404040;
+const BOUND_H: u64 = 0x8080808080808080;
+const BOUND_1: u64 = 0x00000000000000FF;
+const BOUND_2: u64 = 0x000000000000FF00;
+const BOUND_7: u64 = 0x00FF000000000000;
+const BOUND_8: u64 = 0xFF00000000000000;
+const BOUND_AB: u64 = BOUND_A | BOUND_B;
+const BOUND_GH: u64 = BOUND_G | BOUND_H;
+const BOUND_12: u64 = BOUND_1 | BOUND_2;
+const BOUND_78: u64 = BOUND_7 | BOUND_8;
 
 fn shift(bb: u64, dir: i32) -> u64 {
     if dir > 0 { bb << dir } else { bb >> -dir }
 }
 
 fn shift_east(bb: u64) -> u64 {
-    shift(bb & !FILE_H_BOUND, EAST)
+    shift(bb & !BOUND_H, EAST)
 }
 
 fn shift_west(bb: u64) -> u64 {
-    shift(bb & !FILE_A_BOUND, WEST)
+    shift(bb & !BOUND_A, WEST)
 }
 
 fn shift_north(bb: u64) -> u64 {
-    shift(bb & !RANK_8_BOUND, NORTH)
+    shift(bb & !BOUND_8, NORTH)
 }
 
 fn shift_south(bb: u64) -> u64 {
-    shift(bb & !RANK_1_BOUND, SOUTH)
+    shift(bb & !BOUND_1, SOUTH)
 }
 
 fn shift_north_east(bb: u64) -> u64 {
-    shift(bb & !(FILE_H_BOUND | RANK_8_BOUND), NE)
+    shift(bb & !(BOUND_H | BOUND_8), NE)
 }
 
 fn shift_north_west(bb: u64) -> u64 {
-    shift(bb & !(FILE_A_BOUND | RANK_8_BOUND), NW)
+    shift(bb & !(BOUND_A | BOUND_8), NW)
 }
 
 fn shift_south_east(bb: u64) -> u64 {
-    shift(bb & !(FILE_H_BOUND | RANK_1_BOUND), SE)
+    shift(bb & !(BOUND_H | BOUND_1), SE)
 }
 
 fn shift_south_west(bb: u64) -> u64 {
-    shift(bb & !(FILE_A_BOUND | RANK_1_BOUND), SW)
+    shift(bb & !(BOUND_A | BOUND_1), SW)
 }
 
 const SHIFT_FUNCS: [fn(u64) -> u64; 8] = [
@@ -85,11 +89,11 @@ pub fn parse_move(input: &str) -> Option<(u8, u8)> {
 
 fn move_sliding<const START: u8, const END: u8>(board: &Board, file: u8, rank: u8, color: Color) -> u64 {
     let mut moves = 0u64;
-    let bitboard = 1u64 << make_square(file, rank);
+    let bb = 1u64 << make_square(file, rank);
     let opposite_color = get_opposite_color(color);
 
     for i in START..END {
-        let mut new_pos = SHIFT_FUNCS[i as usize](bitboard);
+        let mut new_pos = SHIFT_FUNCS[i as usize](bb);
 
         while new_pos != 0 {
             if new_pos & board.occupancies[color as usize] != 0 {
@@ -111,31 +115,31 @@ fn move_sliding<const START: u8, const END: u8>(board: &Board, file: u8, rank: u
 
 fn move_knight(board: &Board, file: u8, rank: u8, color: Color) -> u64 {
     let mut moves = 0u64;
-    let bitboard = 1u64 << make_square(file, rank);
+    let bb = 1u64 << make_square(file, rank);
 
-    let next = shift(bitboard & !(FILE_A_BOUND | FILE_B_BOUND | RANK_1_BOUND), SW + WEST);
+    let next = shift(bb & !(BOUND_AB | BOUND_1), SW + WEST);
     moves |= next & !board.occupancies[color as usize];
-    let next = shift(bitboard & !(FILE_A_BOUND | FILE_B_BOUND | RANK_8_BOUND), NW + WEST);
+    let next = shift(bb & !(BOUND_AB | BOUND_8), NW + WEST);
     moves |= next & !board.occupancies[color as usize];
-    let next = shift(bitboard & !(FILE_G_BOUND | FILE_H_BOUND | RANK_1_BOUND), SE + EAST);
+    let next = shift(bb & !(BOUND_GH | BOUND_1), SE + EAST);
     moves |= next & !board.occupancies[color as usize];
-    let next = shift(bitboard & !(FILE_G_BOUND | FILE_H_BOUND | RANK_8_BOUND), NE + EAST);
+    let next = shift(bb & !(BOUND_GH | BOUND_8), NE + EAST);
     moves |= next & !board.occupancies[color as usize];
 
-    let next = shift(bitboard & !(FILE_A_BOUND | RANK_1_BOUND | RANK_2_BOUND), SW + SOUTH);
+    let next = shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH);
     moves |= next & !board.occupancies[color as usize];
-    let next = shift(bitboard & !(FILE_A_BOUND | RANK_7_BOUND | RANK_8_BOUND), NW + NORTH);
+    let next = shift(bb & !(BOUND_A | BOUND_78), NW + NORTH);
     moves |= next & !board.occupancies[color as usize];
-    let next = shift(bitboard & !(FILE_H_BOUND | RANK_1_BOUND | RANK_2_BOUND), SE + SOUTH);
+    let next = shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH);
     moves |= next & !board.occupancies[color as usize];
-    let next = shift(bitboard & !(FILE_H_BOUND | RANK_7_BOUND | RANK_8_BOUND), NE + NORTH);
+    let next = shift(bb & !(BOUND_H | BOUND_78), NE + NORTH);
     moves |= next & !board.occupancies[color as usize];
 
     moves
 }
 
 fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
-    let bitboard = 1u64 << make_square(file, rank);
+    let bb = 1u64 << make_square(file, rank);
     let mut moves = 0u64;
     let opposite_color = if IS_WHITE { Color::Black } else { Color::White };
 
@@ -145,7 +149,7 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
     }
 
     // Move forward
-    let new_pos_1 = if IS_WHITE { shift_north(bitboard) } else { shift_south(bitboard) };
+    let new_pos_1 = if IS_WHITE { shift_north(bb) } else { shift_south(bb) };
 
     if new_pos_1 & board.occupancies[2] == 0 {
         moves |= new_pos_1;
@@ -159,11 +163,11 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
     }
 
     // Attack
-    let attack_left = if IS_WHITE { shift_north_west(bitboard) } else { shift_south_west(bitboard) };
+    let attack_left = if IS_WHITE { shift_north_west(bb) } else { shift_south_west(bb) };
     if attack_left & board.occupancies[opposite_color as usize] != 0 {
         moves |= attack_left;
     }
-    let attack_right = if IS_WHITE { shift_north_east(bitboard) } else { shift_south_east(bitboard) };
+    let attack_right = if IS_WHITE { shift_north_east(bb) } else { shift_south_east(bb) };
     if attack_right & board.occupancies[opposite_color as usize] != 0 {
         moves |= attack_right;
     }
