@@ -1,41 +1,58 @@
 use crate::board::Board;
 use crate::types::*;
 
+const NORTH: i32 = 8;
+const SOUTH: i32 = -8;
+const EAST: i32 = 1;
+const WEST: i32 = -1;
+const NE: i32 = NORTH + EAST;
+const NW: i32 = NORTH + WEST;
+const SE: i32 = SOUTH + EAST;
+const SW: i32 = SOUTH + WEST;
+
 const FILE_A_BOUND: u64 = 0x0101010101010101;
+const FILE_B_BOUND: u64 = 0x0202020202020202;
+const FILE_G_BOUND: u64 = 0x4040404040404040;
 const FILE_H_BOUND: u64 = 0x8080808080808080;
 const RANK_1_BOUND: u64 = 0x00000000000000FF;
+const RANK_2_BOUND: u64 = 0x000000000000FF00;
+const RANK_7_BOUND: u64 = 0x00FF000000000000;
 const RANK_8_BOUND: u64 = 0xFF00000000000000;
 
+fn shift(bb: u64, dir: i32) -> u64 {
+    if dir > 0 { bb << dir } else { bb >> -dir }
+}
+
 fn shift_east(bb: u64) -> u64 {
-    (bb & !FILE_H_BOUND) << 1
+    shift(bb & !FILE_H_BOUND, EAST)
 }
 
 fn shift_west(bb: u64) -> u64 {
-    (bb & !FILE_A_BOUND) >> 1
+    shift(bb & !FILE_A_BOUND, WEST)
 }
 
 fn shift_north(bb: u64) -> u64 {
-    (bb & !RANK_8_BOUND) << 8
+    shift(bb & !RANK_8_BOUND, NORTH)
 }
 
 fn shift_south(bb: u64) -> u64 {
-    (bb & !RANK_1_BOUND) >> 8
+    shift(bb & !RANK_1_BOUND, SOUTH)
 }
 
 fn shift_north_east(bb: u64) -> u64 {
-    (bb & !FILE_H_BOUND & !RANK_8_BOUND) << 9
+    shift(bb & !(FILE_H_BOUND | RANK_8_BOUND), NE)
 }
 
 fn shift_north_west(bb: u64) -> u64 {
-    (bb & !FILE_A_BOUND & !RANK_8_BOUND) << 7
+    shift(bb & !(FILE_A_BOUND | RANK_8_BOUND), NW)
 }
 
 fn shift_south_east(bb: u64) -> u64 {
-    (bb & !FILE_H_BOUND & !RANK_1_BOUND) >> 7
+    shift(bb & !(FILE_H_BOUND | RANK_1_BOUND), SE)
 }
 
 fn shift_south_west(bb: u64) -> u64 {
-    (bb & !FILE_A_BOUND & !RANK_1_BOUND) >> 9
+    shift(bb & !(FILE_A_BOUND | RANK_1_BOUND), SW)
 }
 
 const SHIFT_FUNCS: [fn(u64) -> u64; 8] = [
@@ -92,6 +109,31 @@ fn move_sliding<const START: u8, const END: u8>(board: &Board, file: u8, rank: u
     moves
 }
 
+fn move_knight(board: &Board, file: u8, rank: u8, color: Color) -> u64 {
+    let mut moves = 0u64;
+    let bitboard = 1u64 << make_square(file, rank);
+
+    let next = shift(bitboard & !(FILE_A_BOUND | FILE_B_BOUND | RANK_1_BOUND), SW + WEST);
+    moves |= next & !board.occupancies[color as usize];
+    let next = shift(bitboard & !(FILE_A_BOUND | FILE_B_BOUND | RANK_8_BOUND), NW + WEST);
+    moves |= next & !board.occupancies[color as usize];
+    let next = shift(bitboard & !(FILE_G_BOUND | FILE_H_BOUND | RANK_1_BOUND), SE + EAST);
+    moves |= next & !board.occupancies[color as usize];
+    let next = shift(bitboard & !(FILE_G_BOUND | FILE_H_BOUND | RANK_8_BOUND), NE + EAST);
+    moves |= next & !board.occupancies[color as usize];
+
+    let next = shift(bitboard & !(FILE_A_BOUND | RANK_1_BOUND | RANK_2_BOUND), SW + SOUTH);
+    moves |= next & !board.occupancies[color as usize];
+    let next = shift(bitboard & !(FILE_A_BOUND | RANK_7_BOUND | RANK_8_BOUND), NW + NORTH);
+    moves |= next & !board.occupancies[color as usize];
+    let next = shift(bitboard & !(FILE_H_BOUND | RANK_1_BOUND | RANK_2_BOUND), SE + SOUTH);
+    moves |= next & !board.occupancies[color as usize];
+    let next = shift(bitboard & !(FILE_H_BOUND | RANK_7_BOUND | RANK_8_BOUND), NE + NORTH);
+    moves |= next & !board.occupancies[color as usize];
+
+    moves
+}
+
 fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
     let bitboard = 1u64 << make_square(file, rank);
     let mut moves = 0u64;
@@ -99,7 +141,7 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
 
     // Promotion
     if IS_WHITE && rank == RANK_7 || !IS_WHITE && rank == RANK_2 {
-        panic!("TODO: Handle promotion");
+        println!("TODO: Handle promotion");
     }
 
     // Move forward
@@ -150,6 +192,7 @@ pub fn gen_moves(board: &Board, square: u8) -> u64 {
             Piece::WhiteRook | Piece::BlackRook => move_sliding::<0, 4>(board, file, rank, color),
             Piece::WhiteBishop | Piece::BlackBishop => move_sliding::<4, 8>(board, file, rank, color),
             Piece::WhiteQueen | Piece::BlackQueen => move_sliding::<0, 8>(board, file, rank, color),
+            Piece::WhiteKnight | Piece::BlackKnight => move_knight(board, file, rank, color),
             _ => 0,
         };
     }
@@ -162,7 +205,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn move_unmoved_white_pawn() {
+    fn move_white_pawn() {
         let mut board = Board::new();
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         assert!(board.parse_fen(fen).is_ok());
@@ -172,12 +215,72 @@ mod tests {
     }
 
     #[test]
-    fn move_unmoved_black_pawn() {
+    fn move_black_pawn() {
         let mut board = Board::new();
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1";
         assert!(board.parse_fen(fen).is_ok());
 
         let moves = gen_moves(&board, SQ_D7);
         assert_eq!(moves, (1u64 << SQ_D6) | (1u64 << SQ_D5));
+    }
+
+    #[test]
+    fn white_pawn_attack() {
+        let mut board = Board::new();
+        let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 w - - 0 10";
+        assert!(board.parse_fen(fen).is_ok());
+
+        let moves = gen_moves(&board, SQ_E4);
+        assert_eq!(moves, (1u64 << SQ_D5) | (1u64 << SQ_E5));
+    }
+
+    #[test]
+    fn black_pawn_attack() {
+        let mut board = Board::new();
+        let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 b - - 0 10";
+        assert!(board.parse_fen(fen).is_ok());
+
+        let moves = gen_moves(&board, SQ_D5);
+        assert_eq!(moves, (1u64 << SQ_D4) | (1u64 << SQ_E4));
+    }
+
+    #[test]
+    fn move_biship() {
+        let mut board = Board::new();
+        let fen = "rn1qkbnr/ppp1pppp/4b3/3p4/3PP3/8/PPP2PPP/RNBQKBNR b KQkq e3 0 1";
+        assert!(board.parse_fen(fen).is_ok());
+
+        let moves = gen_moves(&board, SQ_E6);
+        assert_eq!(moves, (1u64 << SQ_C8) | (1u64 << SQ_D7) | (1u64 << SQ_F5) | (1u64 << SQ_G4) | (1u64 << SQ_H3));
+    }
+
+    #[test]
+    fn move_rook() {
+        let mut board = Board::new();
+        let fen = "rnbqkbn1/ppp1pp1r/7p/3p2p1/7P/3P1PPR/PPP1P3/RNBQKBN1 b - - 0 1";
+        assert!(board.parse_fen(fen).is_ok());
+
+        let moves = gen_moves(&board, SQ_H7);
+        assert_eq!(moves, (1u64 << SQ_H8) | (1u64 << SQ_G7));
+    }
+
+    #[test]
+    fn move_knight() {
+        let mut board = Board::new();
+        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        assert!(board.parse_fen(fen).is_ok());
+
+        let moves = gen_moves(&board, SQ_B1);
+        assert_eq!(moves, (1u64 << SQ_A3) | (1u64 << SQ_C3));
+    }
+
+    #[test]
+    fn knight_attack() {
+        let mut board = Board::new();
+        let fen = "rn2kb1r/pppqppp1/5n2/3p3p/4P1b1/BPN5/P1PP1PPP/R2QKBNR b KQkq - 0 1";
+        assert!(board.parse_fen(fen).is_ok());
+
+        let moves = gen_moves(&board, SQ_F6);
+        assert_eq!(moves, (1u64 << SQ_E4) | (1u64 << SQ_G8) | (1u64 << SQ_H7));
     }
 }
