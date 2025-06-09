@@ -1,12 +1,12 @@
 use crate::board::Board;
 use crate::types::*;
 
-fn move_pawn<const IS_WHITE: bool>(board: &Board, file: File, rank: Rank) -> u64 {
-    if IS_WHITE && rank == Rank::R7 || !IS_WHITE && rank == Rank::R2 {
+fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
+    if IS_WHITE && rank == RANK_7 || !IS_WHITE && rank == RANK_2 {
         panic!("TODO: Handle promotion");
     }
 
-    let bitboard = 1u64 << ((rank as u8) * 8 + file as u8);
+    let bitboard = 1u64 << make_square(file, rank);
 
     let mut moves = 0u64;
 
@@ -19,7 +19,7 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: File, rank: Rank) -> u64
         moves |= new_pos_1;
     }
 
-    if (IS_WHITE && rank == Rank::R2 || !IS_WHITE && rank == Rank::R7) && moves != 0 {
+    if (IS_WHITE && rank == RANK_2 || !IS_WHITE && rank == RANK_7) && moves != 0 {
         let new_pos_2 = if IS_WHITE {
             bitboard << 16
         } else {
@@ -33,8 +33,8 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: File, rank: Rank) -> u64
     moves
 }
 
-pub fn gen_moves(board: &Board, file: File, rank: Rank) -> u64 {
-    let square = (rank as u8) * 8 + file as u8;
+pub fn gen_moves(board: &Board, file: u8, rank: u8) -> u64 {
+    let square = make_square(file, rank);
     let mask = 1u64 << square;
 
     for i in 0..board.bitboards.len() {
@@ -84,11 +84,8 @@ mod tests {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         assert!(board.parse_fen(fen).is_ok());
 
-        let moves = gen_moves(&board, File::E, Rank::R2);
-        assert_eq!(
-            moves,
-            1u64 << (Square::E3 as u8) | 1u64 << (Square::E4 as u8)
-        );
+        let moves = gen_moves(&board, FILE_E, RANK_2);
+        assert_eq!(moves, (1u64 << SQ_E3) | (1u64 << SQ_E4));
     }
 
     #[test]
@@ -97,10 +94,7 @@ mod tests {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1";
         assert!(board.parse_fen(fen).is_ok());
 
-        let moves = gen_moves(&board, File::D, Rank::R7);
-        assert_eq!(
-            moves,
-            1u64 << (Square::D6 as u8) | 1u64 << (Square::D5 as u8)
-        );
+        let moves = gen_moves(&board, FILE_D, RANK_7);
+        assert_eq!(moves, (1u64 << SQ_D6) | (1u64 << SQ_D5));
     }
 }
