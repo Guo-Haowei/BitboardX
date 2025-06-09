@@ -43,32 +43,24 @@ fn shift_south(bb: u64) -> u64 {
     shift(bb & !BOUND_1, SOUTH)
 }
 
-fn shift_north_east(bb: u64) -> u64 {
+fn shift_ne(bb: u64) -> u64 {
     shift(bb & !(BOUND_H | BOUND_8), NE)
 }
 
-fn shift_north_west(bb: u64) -> u64 {
+fn shift_nw(bb: u64) -> u64 {
     shift(bb & !(BOUND_A | BOUND_8), NW)
 }
 
-fn shift_south_east(bb: u64) -> u64 {
+fn shift_se(bb: u64) -> u64 {
     shift(bb & !(BOUND_H | BOUND_1), SE)
 }
 
-fn shift_south_west(bb: u64) -> u64 {
+fn shift_sw(bb: u64) -> u64 {
     shift(bb & !(BOUND_A | BOUND_1), SW)
 }
 
-const SHIFT_FUNCS: [fn(u64) -> u64; 8] = [
-    shift_north,
-    shift_south,
-    shift_east,
-    shift_west,
-    shift_north_east,
-    shift_north_west,
-    shift_south_east,
-    shift_south_west,
-];
+const SHIFT_FUNCS: [fn(u64) -> u64; 8] =
+    [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
 
 pub fn parse_move(input: &str) -> Option<(u8, u8)> {
     if input.len() != 4 {
@@ -113,27 +105,44 @@ fn move_sliding<const START: u8, const END: u8>(board: &Board, file: u8, rank: u
     moves
 }
 
+fn move_king(board: &Board, file: u8, rank: u8, color: Color) -> u64 {
+    let bb = 1u64 << make_square(file, rank);
+    let mut moves = 0u64;
+    let occupancy = !board.occupancies[color as usize];
+    moves |= shift_north(bb) & occupancy;
+    moves |= shift_south(bb) & occupancy;
+    moves |= shift_east(bb) & occupancy;
+    moves |= shift_west(bb) & occupancy;
+    moves |= shift_ne(bb) & occupancy;
+    moves |= shift_nw(bb) & occupancy;
+    moves |= shift_se(bb) & occupancy;
+    moves |= shift_sw(bb) & occupancy;
+
+    moves
+}
+
 fn move_knight(board: &Board, file: u8, rank: u8, color: Color) -> u64 {
     let mut moves = 0u64;
     let bb = 1u64 << make_square(file, rank);
+    let occupancy = !board.occupancies[color as usize];
 
     let next = shift(bb & !(BOUND_AB | BOUND_1), SW + WEST);
-    moves |= next & !board.occupancies[color as usize];
+    moves |= next & occupancy;
     let next = shift(bb & !(BOUND_AB | BOUND_8), NW + WEST);
-    moves |= next & !board.occupancies[color as usize];
+    moves |= next & occupancy;
     let next = shift(bb & !(BOUND_GH | BOUND_1), SE + EAST);
-    moves |= next & !board.occupancies[color as usize];
+    moves |= next & occupancy;
     let next = shift(bb & !(BOUND_GH | BOUND_8), NE + EAST);
-    moves |= next & !board.occupancies[color as usize];
+    moves |= next & occupancy;
 
     let next = shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH);
-    moves |= next & !board.occupancies[color as usize];
+    moves |= next & occupancy;
     let next = shift(bb & !(BOUND_A | BOUND_78), NW + NORTH);
-    moves |= next & !board.occupancies[color as usize];
+    moves |= next & occupancy;
     let next = shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH);
-    moves |= next & !board.occupancies[color as usize];
+    moves |= next & occupancy;
     let next = shift(bb & !(BOUND_H | BOUND_78), NE + NORTH);
-    moves |= next & !board.occupancies[color as usize];
+    moves |= next & occupancy;
 
     moves
 }
@@ -163,11 +172,11 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
     }
 
     // Attack
-    let attack_left = if IS_WHITE { shift_north_west(bb) } else { shift_south_west(bb) };
+    let attack_left = if IS_WHITE { shift_nw(bb) } else { shift_sw(bb) };
     if attack_left & board.occupancies[opposite_color as usize] != 0 {
         moves |= attack_left;
     }
-    let attack_right = if IS_WHITE { shift_north_east(bb) } else { shift_south_east(bb) };
+    let attack_right = if IS_WHITE { shift_ne(bb) } else { shift_se(bb) };
     if attack_right & board.occupancies[opposite_color as usize] != 0 {
         moves |= attack_right;
     }
@@ -197,6 +206,7 @@ pub fn gen_moves(board: &Board, square: u8) -> u64 {
             Piece::WhiteBishop | Piece::BlackBishop => move_sliding::<4, 8>(board, file, rank, color),
             Piece::WhiteQueen | Piece::BlackQueen => move_sliding::<0, 8>(board, file, rank, color),
             Piece::WhiteKnight | Piece::BlackKnight => move_knight(board, file, rank, color),
+            Piece::WhiteKing | Piece::BlackKing => move_king(board, file, rank, color),
             _ => 0,
         };
     }
