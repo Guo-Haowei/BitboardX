@@ -1,5 +1,6 @@
 // Build: wasm-pack build --target web
 pub mod board;
+pub mod moves;
 pub mod types;
 
 use wasm_bindgen::prelude::*;
@@ -37,5 +38,13 @@ impl Engine {
             Ok(()) => Ok(()),
             Err(err) => Err(JsValue::from_str(&err)),
         }
+    }
+
+    pub fn gen_moves(&self, square: u8) -> u64 {
+        moves::gen_moves(&self.board, square)
+    }
+
+    pub fn apply_move(&mut self, from: u8, to: u8) -> bool {
+        self.board.apply_move(from, to)
     }
 }
