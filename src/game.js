@@ -1,6 +1,7 @@
 import { BOARD_SIZE, CANVAS_ID, DEFAULT_FEN, TILE_SIZE } from './constants.js';
 import { Engine } from '../engine/pkg/engine.js';
 import { renderer } from './renderer.js';
+import { printBoard } from './utility.js';
 
 export class Game {
   constructor() {
@@ -78,7 +79,9 @@ export class Game {
 
     console.log(`${from}${to}`);
     if (this.engine.apply_move(this.selected, square)) {
+      // Update the board status here
       this.boardString = this.engine.to_string();
+      printBoard(this.boardString);
     }
 
     this.selected = null;

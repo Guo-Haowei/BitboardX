@@ -1,5 +1,5 @@
 import { BOARD_SIZE, COLORS, PIECE_SYMBOLS, TILE_SIZE } from './constants.js';
-import { isLowerCase } from './stringUtils.js';
+import { isLowerCase } from './utility.js';
 
 class Renderer {
   constructor() {

@@ -1,6 +1,9 @@
-pub const SIDE_WHITE: u8 = 0;
-pub const SIDE_BLACK: u8 = 1;
-pub const SIDE_BOTH: u8 = 2;
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(i8)]
+pub enum Color {
+    White = 0,
+    Black,
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
@@ -18,6 +21,19 @@ pub enum Piece {
     BlackQueen,
     BlackKing,
     Count,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(i8)]
+pub enum Dir {
+    N = 8,
+    S = -8,
+    E = 1,
+    W = -1,
+    NE = 9,
+    NW = 7,
+    SE = -7,
+    SW = -9,
 }
 
 // Constants for files
@@ -113,13 +129,11 @@ pub const SQ_F8: u8 = 61u8;
 pub const SQ_G8: u8 = 62u8;
 pub const SQ_H8: u8 = 63u8;
 
-pub fn get_opposite_side(side: u8) -> u8 {
-    assert!(
-        side == SIDE_WHITE || side == SIDE_BLACK,
-        "Invalid side: {}",
-        side
-    );
-    return 1u8 - side;
+pub fn get_opposite_color(color: Color) -> Color {
+    match color {
+        Color::White => Color::Black,
+        Color::Black => Color::White,
+    }
 }
 
 pub fn make_square(file: u8, rank: u8) -> u8 {

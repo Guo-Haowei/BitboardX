@@ -1,6 +1,7 @@
-import { BOARD_SIZE, CANVAS_ID, DEFAULT_FEN, PIECE_SYMBOLS, TILE_SIZE } from './constants.js';
+import { BOARD_SIZE, CANVAS_ID, DEFAULT_FEN, TILE_SIZE } from './constants.js';
 import { Game } from './game.js';
 import { renderer } from './renderer.js'
+import { printBoard } from './utility.js';
 import init from '../engine/pkg/engine.js';
 
 let game = null;
@@ -8,36 +9,17 @@ let canvas = null;
 
 const eventQueue = [];
 
-function prettyPrint(boardString) {
-  let result = '';
-  for (let y = 0; y < BOARD_SIZE; ++y) {
-    let line = `${8 - y} `;
-    for (let x = 0; x < BOARD_SIZE; ++x) {
-      const intex = x + y * BOARD_SIZE;
-      const c = boardString[intex];
-      if (c === '.') {
-        line += '・ ';
-        continue;
-      }
-      line += PIECE_SYMBOLS[c] + ' ';
-    }
-    result += `${line}\n`;
-  }
-  result += "  ａ ｂ ｃ ｄ ｅ ｆ ｇ ｈ\n\n";
-  console.log(result);
-}
-
+// @TODO: get rid of this function
 function updateBoard(fen) {
   game = new Game();
   if (!game.init(fen)) {
     return;
   }
 
-  prettyPrint(game.engine.to_string());
+  printBoard(game.engine.to_string());
 }
 
 function setupListeners() {
-
   document.getElementById('fenButton').addEventListener('click', () => {
     const fen = document.getElementById('fenInput').value;
     updateBoard(fen);
@@ -95,7 +77,7 @@ function initCanvas() {
   canvas.width = TILE_SIZE * (BOARD_SIZE + 1);
   canvas.height = TILE_SIZE * (BOARD_SIZE + 1);
   canvas.tabindex = 0;
-  canvas.style = 'position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; margin: auto; border:2px solid blue';
+  canvas.style = 'position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; margin: auto;';
   document.body.appendChild(canvas);
   return canvas;
 }

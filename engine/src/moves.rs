@@ -1,6 +1,15 @@
 use crate::board::Board;
 use crate::types::*;
 
+pub fn slide(board: u64, dir: Dir) -> u64 {
+    let shift = dir as i8;
+    if shift > 0 {
+        board << shift
+    } else {
+        board >> -shift
+    }
+}
+
 pub fn parse_move(input: &str) -> Option<(u8, u8)> {
     if input.len() != 4 {
         return None;
@@ -22,31 +31,40 @@ pub fn parse_move(input: &str) -> Option<(u8, u8)> {
 }
 
 fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
+    let bitboard = 1u64 << make_square(file, rank);
+    let mut moves = 0u64;
+    let opposite_color = if IS_WHITE { Color::Black } else { Color::White };
+
+    // Promotion
     if IS_WHITE && rank == RANK_7 || !IS_WHITE && rank == RANK_2 {
         panic!("TODO: Handle promotion");
     }
 
-    let bitboard = 1u64 << make_square(file, rank);
+    // Move forward
+    let new_pos_1 = slide(bitboard, if IS_WHITE { Dir::N } else { Dir::S });
 
-    let mut moves = 0u64;
-
-    let new_pos_1 = if IS_WHITE {
-        bitboard << 8
-    } else {
-        bitboard >> 8
-    };
-    if new_pos_1 & board.occupancies[SIDE_BOTH as usize] == 0 {
+    if new_pos_1 & board.occupancies[2] == 0 {
         moves |= new_pos_1;
     }
 
     if (IS_WHITE && rank == RANK_2 || !IS_WHITE && rank == RANK_7) && moves != 0 {
-        let new_pos_2 = if IS_WHITE {
-            bitboard << 16
-        } else {
-            bitboard >> 16
-        };
-        if new_pos_2 & board.occupancies[SIDE_BOTH as usize] == 0 {
+        let new_pos_2 = slide(new_pos_1, if IS_WHITE { Dir::N } else { Dir::S });
+        if new_pos_2 & board.occupancies[2] == 0 {
             moves |= new_pos_2;
+        }
+    }
+
+    // Attack
+    if file > FILE_A {
+        let attack_left = slide(bitboard, if IS_WHITE { Dir::NW } else { Dir::SW });
+        if attack_left & board.occupancies[opposite_color as usize] != 0 {
+            moves |= attack_left;
+        }
+    }
+    if file < FILE_H {
+        let attack_right = slide(bitboard, if IS_WHITE { Dir::NE } else { Dir::SE });
+        if attack_right & board.occupancies[opposite_color as usize] != 0 {
+            moves |= attack_right;
         }
     }
 
@@ -64,9 +82,9 @@ pub fn gen_moves(board: &Board, square: u8) -> u64 {
 
         let piece: Piece = unsafe { std::mem::transmute(i as u8) };
         let color = if piece <= Piece::WhiteKing {
-            SIDE_WHITE
+            Color::White
         } else {
-            SIDE_BLACK
+            Color::Black
         };
         if color != board.side_to_move {
             return 0;

@@ -25,7 +25,7 @@ lazy_static! {
 pub struct Board {
     pub bitboards: [u64; Piece::Count as usize],
     pub occupancies: [u64; 3],
-    pub side_to_move: u8,
+    pub side_to_move: Color,
 }
 
 impl Board {
@@ -33,7 +33,7 @@ impl Board {
         Self {
             bitboards: [0; Piece::Count as usize],
             occupancies: [0; 3],
-            side_to_move: SIDE_WHITE,
+            side_to_move: Color::White,
         }
     }
 
@@ -64,28 +64,28 @@ impl Board {
         }
 
         self.update_occupancies();
-        self.side_to_move = get_opposite_side(self.side_to_move);
+        self.side_to_move = get_opposite_color(self.side_to_move);
 
         true
     }
 
     fn update_occupancies(&mut self) {
-        self.occupancies[SIDE_WHITE as usize] = self.bitboards[Piece::WhitePawn as usize]
+        self.occupancies[Color::White as usize] = self.bitboards[Piece::WhitePawn as usize]
             | self.bitboards[Piece::WhiteKnight as usize]
             | self.bitboards[Piece::WhiteBishop as usize]
             | self.bitboards[Piece::WhiteRook as usize]
             | self.bitboards[Piece::WhiteQueen as usize]
             | self.bitboards[Piece::WhiteKing as usize];
 
-        self.occupancies[SIDE_BLACK as usize] = self.bitboards[Piece::BlackPawn as usize]
+        self.occupancies[Color::Black as usize] = self.bitboards[Piece::BlackPawn as usize]
             | self.bitboards[Piece::BlackKnight as usize]
             | self.bitboards[Piece::BlackBishop as usize]
             | self.bitboards[Piece::BlackRook as usize]
             | self.bitboards[Piece::BlackQueen as usize]
             | self.bitboards[Piece::BlackKing as usize];
 
-        self.occupancies[SIDE_BOTH as usize] =
-            self.occupancies[SIDE_WHITE as usize] | self.occupancies[SIDE_BLACK as usize];
+        self.occupancies[2] =
+            self.occupancies[Color::White as usize] | self.occupancies[Color::Black as usize];
     }
 
     pub fn parse_fen(&mut self, fen: &str) -> Result<(), String> {
@@ -131,9 +131,9 @@ impl Board {
 
         // Parse the side to move
         if parts[1] == "w" {
-            self.side_to_move = SIDE_WHITE;
+            self.side_to_move = Color::White;
         } else if parts[1] == "b" {
-            self.side_to_move = SIDE_BLACK;
+            self.side_to_move = Color::Black;
         } else {
             return Err("Invalid side to move in FEN".to_string());
         }
@@ -199,7 +199,7 @@ impl Board {
         }
         result.push_str("  ａｂｃｄｅｆｇｈ\n\n");
         result.push_str("Side: ");
-        result.push_str(if self.side_to_move == SIDE_WHITE {
+        result.push_str(if self.side_to_move == Color::White {
             "White"
         } else {
             "Black"
