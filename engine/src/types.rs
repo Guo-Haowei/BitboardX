@@ -1,5 +1,3 @@
-use bitflags::bitflags;
-
 #[repr(u8)]
 #[derive(PartialEq, Eq)]
 pub enum Color {
@@ -7,23 +5,6 @@ pub enum Color {
     Black,
     Both,
 }
-pub const FILE_A: u8 = 0;
-pub const FILE_B: u8 = 1;
-pub const FILE_C: u8 = 2;
-pub const FILE_D: u8 = 3;
-pub const FILE_E: u8 = 4;
-pub const FILE_F: u8 = 5;
-pub const FILE_G: u8 = 6;
-pub const FILE_H: u8 = 7;
-
-pub const RANK_1: u8 = 0;
-pub const RANK_2: u8 = 1;
-pub const RANK_3: u8 = 2;
-pub const RANK_4: u8 = 3;
-pub const RANK_5: u8 = 4;
-pub const RANK_6: u8 = 5;
-pub const RANK_7: u8 = 6;
-pub const RANK_8: u8 = 7;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
@@ -43,20 +24,27 @@ pub enum Piece {
     Count,
 }
 
-pub fn make_square(file: u8, rank: u8) -> u8 {
-    (rank << 3) + file
-}
+// Constants for files
+pub const FILE_A: u8 = 0;
+pub const FILE_B: u8 = 1;
+pub const FILE_C: u8 = 2;
+pub const FILE_D: u8 = 3;
+pub const FILE_E: u8 = 4;
+pub const FILE_F: u8 = 5;
+pub const FILE_G: u8 = 6;
+pub const FILE_H: u8 = 7;
 
-bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct Direction: u8 {
-        const N = 1 << 0;
-        const S = 1 << 1;
-        const W = 1 << 2;
-        const E = 1 << 3;
-    }
-}
+// Constants for ranks
+pub const RANK_1: u8 = 0;
+pub const RANK_2: u8 = 1;
+pub const RANK_3: u8 = 2;
+pub const RANK_4: u8 = 3;
+pub const RANK_5: u8 = 4;
+pub const RANK_6: u8 = 5;
+pub const RANK_7: u8 = 6;
+pub const RANK_8: u8 = 7;
 
+// Constants for squares
 pub const SQ_A1: u8 = 0u8;
 pub const SQ_B1: u8 = 1u8;
 pub const SQ_C1: u8 = 2u8;
@@ -128,6 +116,10 @@ pub const SQ_E8: u8 = 60u8;
 pub const SQ_F8: u8 = 61u8;
 pub const SQ_G8: u8 = 62u8;
 pub const SQ_H8: u8 = 63u8;
+
+pub fn make_square(file: u8, rank: u8) -> u8 {
+    (rank << 3) + file
+}
 
 #[cfg(test)]
 mod tests {

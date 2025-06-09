@@ -18,7 +18,6 @@ class Renderer {
     selectedSqaure = selectedSqaure || -1;
     moves = moves || 0n;
 
-    console.log(`Drawing board with selected square: ${selectedSqaure}, moves: ${moves}`);
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
         const square = col + row * BOARD_SIZE;

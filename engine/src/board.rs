@@ -1,4 +1,26 @@
 use crate::types::*;
+use std::collections::HashMap;
+
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref PIECE_MAP: HashMap<char, char> = {
+        let mut map: HashMap<char, char> = HashMap::new();
+        map.insert('r', '♜');
+        map.insert('n', '♞');
+        map.insert('b', '♝');
+        map.insert('q', '♛');
+        map.insert('k', '♚');
+        map.insert('p', '♟');
+        map.insert('R', '♖');
+        map.insert('N', '♘');
+        map.insert('B', '♗');
+        map.insert('Q', '♕');
+        map.insert('K', '♔');
+        map.insert('P', '♙');
+        map
+    };
+}
 
 pub struct Board {
     pub bitboards: [u64; Piece::Count as usize],
@@ -129,13 +151,26 @@ impl Board {
         for row in 0..8 {
             let rank = 8 - row;
             result.push((rank as u8 + b'0') as char);
+            result.push(' ');
             for _col in 0..8 {
-                result.push(' ');
-                result.push(chars.next().unwrap());
+                let piece_char = chars.next().unwrap();
+                if let Some(&mapped_char) = PIECE_MAP.get(&piece_char) {
+                    result.push(mapped_char);
+                    result.push(' ');
+                } else {
+                    result.push('・');
+                }
             }
             result.push('\n');
         }
-        result.push_str("  a b c d e f g h");
+        result.push_str("  ａｂｃｄｅｆｇｈ\n\n");
+        result.push_str("Side: ");
+        result.push_str(if self.side_to_move == Color::White {
+            "White"
+        } else {
+            "Black"
+        });
+        result.push('\n');
 
         result
     }

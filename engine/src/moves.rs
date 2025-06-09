@@ -1,6 +1,26 @@
 use crate::board::Board;
 use crate::types::*;
 
+pub fn parse_move(input: &str) -> Option<(u8, u8)> {
+    if input.len() != 4 {
+        return None;
+    }
+
+    let from_file = input.chars().nth(0)? as u8 - b'a';
+    let from_rank = input.chars().nth(1)? as u8 - b'1';
+    let to_file = input.chars().nth(2)? as u8 - b'a';
+    let to_rank = input.chars().nth(3)? as u8 - b'1';
+
+    if from_file > 7 || from_rank > 7 || to_file > 7 || to_rank > 7 {
+        return None;
+    }
+
+    Some((
+        make_square(from_file, from_rank),
+        make_square(to_file, to_rank),
+    ))
+}
+
 fn move_pawn<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8) -> u64 {
     if IS_WHITE && rank == RANK_7 || !IS_WHITE && rank == RANK_2 {
         panic!("TODO: Handle promotion");
