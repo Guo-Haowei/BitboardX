@@ -44,7 +44,7 @@ impl Board {
                     'Q' => self.bitboards[Piece::WhiteQueen as usize] |= 1 << sq,
                     'K' => self.bitboards[Piece::WhiteKing as usize] |= 1 << sq,
                     '1'..='8' => inc = c.to_digit(10).unwrap(),
-                    _ => return Err(format!("Invalid character '{}' in board layout", c))
+                    _ => return Err(format!("Invalid character '{}' in board layout", c)),
                 }
 
                 file += inc as usize;
@@ -65,19 +65,22 @@ impl Board {
         }
 
         // Init occupancies
-        self.occupancies[Color::White as usize] = self.bitboards[Piece::WhitePawn as usize] | self.bitboards[Piece::WhiteKnight as usize]
-                                                                                            | self.bitboards[Piece::WhiteBishop as usize]
-                                                                                            | self.bitboards[Piece::WhiteRook as usize]
-                                                                                            | self.bitboards[Piece::WhiteQueen as usize]
-                                                                                            | self.bitboards[Piece::WhiteKing as usize];
+        self.occupancies[Color::White as usize] = self.bitboards[Piece::WhitePawn as usize]
+            | self.bitboards[Piece::WhiteKnight as usize]
+            | self.bitboards[Piece::WhiteBishop as usize]
+            | self.bitboards[Piece::WhiteRook as usize]
+            | self.bitboards[Piece::WhiteQueen as usize]
+            | self.bitboards[Piece::WhiteKing as usize];
 
-        self.occupancies[Color::Black as usize] = self.bitboards[Piece::BlackPawn as usize] | self.bitboards[Piece::BlackKnight as usize]
-                                                                                            | self.bitboards[Piece::BlackBishop as usize]
-                                                                                            | self.bitboards[Piece::BlackRook as usize]
-                                                                                            | self.bitboards[Piece::BlackQueen as usize]
-                                                                                            | self.bitboards[Piece::BlackKing as usize];
+        self.occupancies[Color::Black as usize] = self.bitboards[Piece::BlackPawn as usize]
+            | self.bitboards[Piece::BlackKnight as usize]
+            | self.bitboards[Piece::BlackBishop as usize]
+            | self.bitboards[Piece::BlackRook as usize]
+            | self.bitboards[Piece::BlackQueen as usize]
+            | self.bitboards[Piece::BlackKing as usize];
 
-        self.occupancies[Color::Both as usize] = self.occupancies[Color::White as usize] | self.occupancies[Color::Black as usize];
+        self.occupancies[Color::Both as usize] =
+            self.occupancies[Color::White as usize] | self.occupancies[Color::Black as usize];
 
         Ok(())
     }
@@ -92,7 +95,7 @@ impl Board {
                 let mut piece_char = '.';
                 for i in 0..self.bitboards.len() {
                     if (self.bitboards[i] & mask) != 0 {
-                        let piece : Piece = unsafe { std::mem::transmute(i as u8) };
+                        let piece: Piece = unsafe { std::mem::transmute(i as u8) };
                         piece_char = match piece {
                             Piece::WhitePawn => 'P',
                             Piece::WhiteKnight => 'N',
@@ -118,7 +121,7 @@ impl Board {
         result
     }
 
-    pub fn pretty_string(&self) -> String{
+    pub fn pretty_string(&self) -> String {
         let mut result = String::new();
 
         let board = self.to_string();
@@ -149,7 +152,10 @@ mod tests {
 
         assert!(board.parse_fen(fen).is_ok());
         let board_string = board.to_string();
-        assert_eq!(board_string, "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
+        assert_eq!(
+            board_string,
+            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
+        );
     }
 
     #[test]
@@ -159,7 +165,10 @@ mod tests {
 
         assert!(board.parse_fen(fen).is_ok());
         let board_string = board.to_string();
-        assert_eq!(board_string, "r..q.rk.pp..bppp..n.pn....bp........P.....NP.N..PPQ..PPPR.B..RK.");
+        assert_eq!(
+            board_string,
+            "r..q.rk.pp..bppp..n.pn....bp........P.....NP.N..PPQ..PPPR.B..RK."
+        );
     }
 
     #[test]
@@ -169,6 +178,9 @@ mod tests {
 
         assert!(board.parse_fen(fen).is_ok());
         let board_string = board.to_string();
-        assert_eq!(board_string, "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R");
+        assert_eq!(
+            board_string,
+            "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R"
+        );
     }
 }

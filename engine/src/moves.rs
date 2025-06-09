@@ -1,5 +1,5 @@
-use crate::types::*;
 use crate::board::Board;
+use crate::types::*;
 
 fn move_pawn<const IS_WHITE: bool>(board: &Board, file: File, rank: Rank) -> u64 {
     if IS_WHITE && rank == Rank::R7 || !IS_WHITE && rank == Rank::R2 {
@@ -10,13 +10,21 @@ fn move_pawn<const IS_WHITE: bool>(board: &Board, file: File, rank: Rank) -> u64
 
     let mut moves = 0u64;
 
-    let new_pos_1 = if IS_WHITE { bitboard << 8 } else { bitboard >> 8 };
+    let new_pos_1 = if IS_WHITE {
+        bitboard << 8
+    } else {
+        bitboard >> 8
+    };
     if new_pos_1 & board.occupancies[Color::Both as usize] == 0 {
         moves |= new_pos_1;
     }
 
     if (IS_WHITE && rank == Rank::R2 || !IS_WHITE && rank == Rank::R7) && moves != 0 {
-        let new_pos_2 = if IS_WHITE { bitboard << 16 } else { bitboard >> 16 };
+        let new_pos_2 = if IS_WHITE {
+            bitboard << 16
+        } else {
+            bitboard >> 16
+        };
         if new_pos_2 & board.occupancies[Color::Both as usize] == 0 {
             moves |= new_pos_2;
         }
@@ -34,8 +42,12 @@ pub fn gen_moves(board: &Board, file: File, rank: Rank) -> u64 {
             continue;
         }
 
-        let piece : Piece = unsafe { std::mem::transmute(i as u8) };
-        let color = if piece <= Piece::WhiteKing { Color::White } else { Color::Black };
+        let piece: Piece = unsafe { std::mem::transmute(i as u8) };
+        let color = if piece <= Piece::WhiteKing {
+            Color::White
+        } else {
+            Color::Black
+        };
         if color != board.side_to_move {
             return 0;
         }
@@ -56,8 +68,8 @@ pub fn gen_moves(board: &Board, file: File, rank: Rank) -> u64 {
             // Piece::BlackQueen => 'q',
             // Piece::BlackKing => 'k',
             // Piece::Count => '.',
-            };
-        }
+        };
+    }
 
     0
 }
@@ -73,7 +85,10 @@ mod tests {
         assert!(board.parse_fen(fen).is_ok());
 
         let moves = gen_moves(&board, File::E, Rank::R2);
-        assert_eq!(moves, 1u64 << (Square::E3 as u8) | 1u64 << (Square::E4 as u8));
+        assert_eq!(
+            moves,
+            1u64 << (Square::E3 as u8) | 1u64 << (Square::E4 as u8)
+        );
     }
 
     #[test]
@@ -83,6 +98,9 @@ mod tests {
         assert!(board.parse_fen(fen).is_ok());
 
         let moves = gen_moves(&board, File::D, Rank::R7);
-        assert_eq!(moves, 1u64 << (Square::D6 as u8) | 1u64 << (Square::D5 as u8));
+        assert_eq!(
+            moves,
+            1u64 << (Square::D6 as u8) | 1u64 << (Square::D5 as u8)
+        );
     }
 }

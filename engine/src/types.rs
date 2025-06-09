@@ -8,6 +8,7 @@ pub enum Color {
     Both,
 }
 
+#[rustfmt::skip]
 #[derive(Debug, PartialEq)]
 #[repr(u8)]
 pub enum Square {
@@ -23,11 +24,31 @@ pub enum Square {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
-pub enum File { A, B, C, D, E, F, G, H, Count }
+pub enum File {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    Count,
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
-pub enum Rank { R1, R2, R3, R4, R5, R6, R7, R8, Count }
+pub enum Rank {
+    R1,
+    R2,
+    R3,
+    R4,
+    R5,
+    R6,
+    R7,
+    R8,
+    Count,
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
@@ -47,7 +68,7 @@ pub enum Piece {
     Count,
 }
 
-pub fn make_square(f : File, r: Rank) -> Square {
+pub fn make_square(f: File, r: Rank) -> Square {
     let raw = ((r as u8) << 3) + f as u8;
     return unsafe { std::mem::transmute(raw) };
 }

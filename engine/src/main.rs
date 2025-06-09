@@ -10,9 +10,7 @@ fn main() {
         Ok(()) => {
             let board_string = board.pretty_string();
             println!("{}", board_string);
-        },
-        Err(err) => {
-            println!("Error parsing fen '{}', {}", fen, err);
         }
+        Err(err) => println!("Error parsing fen '{}', {}", fen, err),
     }
 }
