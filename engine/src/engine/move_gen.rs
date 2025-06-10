@@ -1,5 +1,5 @@
-use crate::core::board::*;
-use crate::core::types::*;
+use crate::board::position::*;
+use crate::board::types::*;
 
 const NORTH: i32 = 8;
 const SOUTH: i32 = -NORTH;
@@ -71,11 +71,11 @@ fn move_sliding<const START: u8, const END: u8>(pos: &Position, file: u8, rank: 
         let mut new_pos = SHIFT_FUNCS[i as usize](bb);
 
         while new_pos != 0 {
-            if new_pos & pos.occupancies[color as usize] != 0 {
+            if new_pos & pos.occupancies[color as usize].get() != 0 {
                 break;
             }
 
-            if new_pos & pos.occupancies[opposite_color as usize] != 0 {
+            if new_pos & pos.occupancies[opposite_color as usize].get() != 0 {
                 moves |= new_pos;
                 break;
             }
@@ -92,31 +92,33 @@ fn move_king<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8, color: Co
     let bb = 1u64 << make_square(file, rank);
     let mut moves = 0u64;
     let occupancy = !pos.occupancies[color as usize];
-    moves |= shift_north(bb) & occupancy;
-    moves |= shift_south(bb) & occupancy;
-    moves |= shift_east(bb) & occupancy;
-    moves |= shift_west(bb) & occupancy;
-    moves |= shift_ne(bb) & occupancy;
-    moves |= shift_nw(bb) & occupancy;
-    moves |= shift_se(bb) & occupancy;
-    moves |= shift_sw(bb) & occupancy;
+    moves |= shift_north(bb) & occupancy.get();
+    moves |= shift_south(bb) & occupancy.get();
+    moves |= shift_east(bb) & occupancy.get();
+    moves |= shift_west(bb) & occupancy.get();
+    moves |= shift_ne(bb) & occupancy.get();
+    moves |= shift_nw(bb) & occupancy.get();
+    moves |= shift_se(bb) & occupancy.get();
+    moves |= shift_sw(bb) & occupancy.get();
 
     // Castling
-    if false {
-        if IS_WHITE {
-            if (pos.state.castling & Castling::WK.bits()) != 0 {
-                moves |= (1u64 << SQ_G1) & occupancy;
-            }
-            if (pos.state.castling & Castling::WQ.bits()) != 0 {
-                moves |= (1u64 << SQ_C1) & occupancy;
-            }
-        } else {
-            if (pos.state.castling & Castling::BK.bits()) != 0 {
-                moves |= (1u64 << SQ_G8) & occupancy;
-            }
-            if (pos.state.castling & Castling::BQ.bits()) != 0 {
-                moves |= (1u64 << SQ_C8) & occupancy;
-            }
+    if IS_WHITE {
+        // King side castling, G1, F1 must be empty, G1, F1, H1 must not be attacked
+        if (pos.state.castling & Castling::WK.bits()) != 0 {
+            moves |= (1u64 << SQ_G1) & occupancy.get();
+        }
+        // Queen side castling, B1, C1, D1 must be empty, B1, C1, D1, E1 must not be attacked
+        if (pos.state.castling & Castling::WQ.bits()) != 0 {
+            moves |= (1u64 << SQ_C1) & occupancy.get();
+        }
+    } else {
+        // King side castling
+        if (pos.state.castling & Castling::BK.bits()) != 0 {
+            moves |= (1u64 << SQ_G8) & occupancy.get();
+        }
+        // Queen side castling
+        if (pos.state.castling & Castling::BQ.bits()) != 0 {
+            moves |= (1u64 << SQ_C8) & occupancy.get();
         }
     }
 
@@ -128,15 +130,15 @@ fn move_knight(pos: &Position, file: u8, rank: u8, color: Color) -> u64 {
     let bb = 1u64 << make_square(file, rank);
     let occupancy = !pos.occupancies[color as usize];
 
-    moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & occupancy;
-    moves |= shift(bb & !(BOUND_AB | BOUND_8), NW + WEST) & occupancy;
-    moves |= shift(bb & !(BOUND_GH | BOUND_1), SE + EAST) & occupancy;
-    moves |= shift(bb & !(BOUND_GH | BOUND_8), NE + EAST) & occupancy;
+    moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & occupancy.get();
+    moves |= shift(bb & !(BOUND_AB | BOUND_8), NW + WEST) & occupancy.get();
+    moves |= shift(bb & !(BOUND_GH | BOUND_1), SE + EAST) & occupancy.get();
+    moves |= shift(bb & !(BOUND_GH | BOUND_8), NE + EAST) & occupancy.get();
 
-    moves |= shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH) & occupancy;
-    moves |= shift(bb & !(BOUND_A | BOUND_78), NW + NORTH) & occupancy;
-    moves |= shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH) & occupancy;
-    moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & occupancy;
+    moves |= shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH) & occupancy.get();
+    moves |= shift(bb & !(BOUND_A | BOUND_78), NW + NORTH) & occupancy.get();
+    moves |= shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH) & occupancy.get();
+    moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & occupancy.get();
 
     moves
 }
@@ -154,24 +156,24 @@ fn move_pawn<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8) -> u64 {
     // Move forward
     let new_pos_1 = if IS_WHITE { shift_north(bb) } else { shift_south(bb) };
 
-    if new_pos_1 & pos.occupancies[2] == 0 {
+    if new_pos_1 & pos.occupancies[2].get() == 0 {
         moves |= new_pos_1;
     }
 
     if (IS_WHITE && rank == RANK_2 || !IS_WHITE && rank == RANK_7) && moves != 0 {
         let new_pos_2 = if IS_WHITE { shift_north(new_pos_1) } else { shift_south(new_pos_1) };
-        if new_pos_2 & pos.occupancies[2] == 0 {
+        if new_pos_2 & pos.occupancies[2].get() == 0 {
             moves |= new_pos_2;
         }
     }
 
     // Attack
     let attack_left = if IS_WHITE { shift_nw(bb) } else { shift_sw(bb) };
-    if attack_left & pos.occupancies[opposite_color as usize] != 0 {
+    if attack_left & pos.occupancies[opposite_color as usize].get() != 0 {
         moves |= attack_left;
     }
     let attack_right = if IS_WHITE { shift_ne(bb) } else { shift_se(bb) };
-    if attack_right & pos.occupancies[opposite_color as usize] != 0 {
+    if attack_right & pos.occupancies[opposite_color as usize].get() != 0 {
         moves |= attack_right;
     }
 
@@ -180,10 +182,9 @@ fn move_pawn<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8) -> u64 {
 
 pub fn gen_moves(pos: &Position, square: u8) -> u64 {
     let (file, rank) = get_file_rank(square);
-    let mask = 1u64 << square;
 
     for i in 0..pos.state.bitboards.len() {
-        if (pos.state.bitboards[i] & mask) == 0 {
+        if !pos.state.bitboards[i].has_bit(square) {
             continue;
         }
 
@@ -217,6 +218,7 @@ mod tests {
     fn move_white_pawn() {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         let pos = Position::from_fen(fen).unwrap();
+        assert_eq!(pos.state.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
 
         let moves = gen_moves(&pos, SQ_E2);
         assert_eq!(moves, (1u64 << SQ_E3) | (1u64 << SQ_E4));

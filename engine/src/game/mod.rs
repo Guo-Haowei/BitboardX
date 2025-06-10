@@ -1,5 +1,5 @@
-use crate::core::board::{Move, Position};
-use crate::core::types::*;
+use crate::board::position::{Move, Position};
+use crate::board::types::*;
 use crate::engine::move_gen;
 use wasm_bindgen::prelude::*;
 

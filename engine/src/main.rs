@@ -1,4 +1,4 @@
-pub mod core;
+pub mod board;
 pub mod engine;
 pub mod game;
 
