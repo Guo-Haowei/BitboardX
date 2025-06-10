@@ -13,21 +13,20 @@ pub struct FenState {
 }
 
 impl FenState {
-    #[rustfmt::skip]
     pub fn new() -> Self {
         let bitboards = [
-            0x000000000000FF00,
-            0x0000000000000042,
-             0x0000000000000024,
-               0x0000000000000081,
-              0x0000000000000008,
-               0x0000000000000010,
-               0x00FF000000000000,
-             0x4200000000000000,
-             0x2400000000000000,
-               0x8100000000000000,
-              0x0800000000000000,
-               0x1000000000000000,
+            0x000000000000FF00, // White Pawns
+            0x0000000000000042, // White Knights
+            0x0000000000000024, // White Bishops
+            0x0000000000000081, // White Rooks
+            0x0000000000000008, // White Queens
+            0x0000000000000010, // White King
+            0x00FF000000000000, // Black Pawns
+            0x4200000000000000, // Black Knights
+            0x2400000000000000, // Black Bishops
+            0x8100000000000000, // Black Rooks
+            0x0800000000000000, // Black Queens
+            0x1000000000000000, // Black King
         ];
 
         Self {
