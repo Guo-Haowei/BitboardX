@@ -1,3 +1,4 @@
+use crate::board::bitboard::BitBoard;
 use crate::board::position::{Move, Position};
 use crate::board::types::*;
 use crate::engine::move_gen;
@@ -32,7 +33,7 @@ impl Game {
     }
 
     pub fn apply_move(&mut self, from: u8, to: u8) -> bool {
-        if move_gen::gen_moves(&self.pos, from) & (1u64 << to) == 0 {
+        if (move_gen::gen_moves(&self.pos, from) & BitBoard::from_bit(to)).is_empty() {
             return false;
         }
 
@@ -61,7 +62,7 @@ impl Game {
     }
 
     pub fn gen_moves(&self, square: u8) -> u64 {
-        move_gen::gen_moves(&self.pos, square)
+        move_gen::gen_moves(&self.pos, square).get()
     }
 }
 

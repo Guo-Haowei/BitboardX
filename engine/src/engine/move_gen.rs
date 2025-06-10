@@ -64,7 +64,7 @@ fn shift_sw(bb: BitBoard) -> BitBoard {
 const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
     [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
 
-fn move_sliding<const START: u8, const END: u8>(pos: &Position, file: u8, rank: u8, color: Color) -> u64 {
+fn move_sliding<const START: u8, const END: u8>(pos: &Position, file: u8, rank: u8, color: Color) -> BitBoard {
     let mut moves = BitBoard::new();
     let bb = BitBoard::from_bit(make_square(file, rank));
     let opposite_color = get_opposite_color(color);
@@ -87,10 +87,12 @@ fn move_sliding<const START: u8, const END: u8>(pos: &Position, file: u8, rank: 
         }
     }
 
-    moves.get()
+    moves
 }
 
-fn move_king<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8, color: Color) -> u64 {
+fn move_king<const IS_WHITE: bool, const ATTACK_ONLY: bool>(pos: &Position, file: u8, rank: u8) -> BitBoard {
+    let color = if IS_WHITE { Color::White } else { Color::Black };
+    let opposite_color = if !IS_WHITE { Color::White } else { Color::Black };
     let bb = BitBoard::from_bit(make_square(file, rank));
     let mut moves = BitBoard::new();
     let occupancy = !pos.occupancies[color as usize];
@@ -102,32 +104,38 @@ fn move_king<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8, color: Co
     moves |= shift_nw(bb) & occupancy;
     moves |= shift_se(bb) & occupancy;
     moves |= shift_sw(bb) & occupancy;
+    // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
+    if !ATTACK_ONLY {
+        moves &= !pos.attack_map[opposite_color as usize];
+    }
 
     // Castling
-    if IS_WHITE {
-        // King side castling, G1, F1 must be empty, G1, F1, H1 must not be attacked
-        if (pos.state.castling & Castling::WK.bits()) != 0 {
-            moves |= BitBoard::from_bit(SQ_G1) & occupancy;
-        }
-        // Queen side castling, B1, C1, D1 must be empty, B1, C1, D1, E1 must not be attacked
-        if (pos.state.castling & Castling::WQ.bits()) != 0 {
-            moves |= BitBoard::from_bit(SQ_C1) & occupancy;
-        }
-    } else {
-        // King side castling
-        if (pos.state.castling & Castling::BK.bits()) != 0 {
-            moves |= BitBoard::from_bit(SQ_G8) & occupancy;
-        }
-        // Queen side castling
-        if (pos.state.castling & Castling::BQ.bits()) != 0 {
-            moves |= BitBoard::from_bit(SQ_C8) & occupancy;
+    if false {
+        if IS_WHITE {
+            // King side castling, G1, F1 must be empty, G1, F1, H1 must not be attacked
+            if (pos.state.castling & Castling::WK.bits()) != 0 {
+                moves |= BitBoard::from_bit(SQ_G1) & occupancy;
+            }
+            // Queen side castling, B1, C1, D1 must be empty, B1, C1, D1, E1 must not be attacked
+            if (pos.state.castling & Castling::WQ.bits()) != 0 {
+                moves |= BitBoard::from_bit(SQ_C1) & occupancy;
+            }
+        } else {
+            // King side castling
+            if (pos.state.castling & Castling::BK.bits()) != 0 {
+                moves |= BitBoard::from_bit(SQ_G8) & occupancy;
+            }
+            // Queen side castling
+            if (pos.state.castling & Castling::BQ.bits()) != 0 {
+                moves |= BitBoard::from_bit(SQ_C8) & occupancy;
+            }
         }
     }
 
-    moves.get()
+    moves
 }
 
-fn move_knight(pos: &Position, file: u8, rank: u8, color: Color) -> u64 {
+fn move_knight(pos: &Position, file: u8, rank: u8, color: Color) -> BitBoard {
     let mut moves = BitBoard::new();
     let bb = BitBoard::from_bit(make_square(file, rank));
     let occupancy = !pos.occupancies[color as usize];
@@ -142,74 +150,82 @@ fn move_knight(pos: &Position, file: u8, rank: u8, color: Color) -> u64 {
     moves |= shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH) & occupancy;
     moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & occupancy;
 
-    moves.get()
+    moves
 }
 
-fn move_pawn<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8) -> u64 {
+fn move_pawn<const IS_WHITE: bool, const ATTACK_ONLY: bool>(pos: &Position, file: u8, rank: u8) -> BitBoard {
     let bb = BitBoard::from_bit(make_square(file, rank));
     let mut moves = BitBoard::new();
     let opposite_color = if IS_WHITE { Color::Black } else { Color::White };
 
     // Promotion
-    if IS_WHITE && rank == RANK_7 || !IS_WHITE && rank == RANK_2 {
-        println!("TODO: Handle promotion");
+    if (IS_WHITE && rank == RANK_7) || (!IS_WHITE && rank == RANK_2) {
+        eprintln!("TODO: Handle promotion");
     }
 
     // Move forward
-    let new_pos_1 = if IS_WHITE { shift_north(bb) } else { shift_south(bb) };
+    if !ATTACK_ONLY {
+        let new_pos_1 = if IS_WHITE { shift_north(bb) } else { shift_south(bb) };
 
-    if (new_pos_1 & pos.occupancies[Color::Both as usize]).is_empty() {
-        moves |= new_pos_1;
-    }
+        if (new_pos_1 & pos.occupancies[Color::Both as usize]).is_empty() {
+            moves |= new_pos_1;
+        }
 
-    if (IS_WHITE && rank == RANK_2 || !IS_WHITE && rank == RANK_7) && !moves.is_empty() {
-        let new_pos_2 = if IS_WHITE { shift_north(new_pos_1) } else { shift_south(new_pos_1) };
-        if (new_pos_2 & pos.occupancies[Color::Both as usize]).is_empty() {
-            moves |= new_pos_2;
+        if (IS_WHITE && rank == RANK_2 || !IS_WHITE && rank == RANK_7) && !moves.is_empty() {
+            let new_pos_2 = if IS_WHITE { shift_north(new_pos_1) } else { shift_south(new_pos_1) };
+            if (new_pos_2 & pos.occupancies[Color::Both as usize]).is_empty() {
+                moves |= new_pos_2;
+            }
         }
     }
 
     // Attack
     let attack_left = if IS_WHITE { shift_nw(bb) } else { shift_sw(bb) };
-    if !(attack_left & pos.occupancies[opposite_color as usize]).is_empty() {
+    if ATTACK_ONLY || !(attack_left & pos.occupancies[opposite_color as usize]).is_empty() {
         moves |= attack_left;
     }
     let attack_right = if IS_WHITE { shift_ne(bb) } else { shift_se(bb) };
-    if !(attack_right & pos.occupancies[opposite_color as usize]).is_empty() {
+    if ATTACK_ONLY || !(attack_right & pos.occupancies[opposite_color as usize]).is_empty() {
         moves |= attack_right;
     }
 
-    moves.get()
+    moves
 }
 
-pub fn gen_moves(pos: &Position, square: u8) -> u64 {
+pub fn gen_moves(pos: &Position, square: u8) -> BitBoard {
+    gen_moves_impl::<false>(pos, square, pos.state.side_to_move)
+}
+
+pub fn gen_attack_moves(pos: &Position, square: u8, color: Color) -> BitBoard {
+    gen_moves_impl::<true>(pos, square, color)
+}
+
+fn gen_moves_impl<const ATTACK_ONLY: bool>(pos: &Position, square: u8, color: Color) -> BitBoard {
     let (file, rank) = get_file_rank(square);
 
-    for i in 0..pos.state.bitboards.len() {
-        if !pos.state.bitboards[i].has_bit(square) {
+    let start = if color == Color::White { W_START } else { B_START };
+    let end = if color == Color::White { W_END } else { B_END };
+    for i in start..end {
+        if !pos.state.bitboards[i as usize].has_bit(square) {
             continue;
         }
 
         let piece: Piece = unsafe { std::mem::transmute(i as u8) };
-        let color = if piece <= Piece::WKing { Color::White } else { Color::Black };
-        if color != pos.state.side_to_move {
-            return 0;
-        }
 
         return match piece {
-            Piece::WPawn => move_pawn::<true>(pos, file, rank),
-            Piece::BPawn => move_pawn::<false>(pos, file, rank),
+            Piece::WPawn => move_pawn::<true, ATTACK_ONLY>(pos, file, rank),
+            Piece::BPawn => move_pawn::<false, ATTACK_ONLY>(pos, file, rank),
             Piece::WRook | Piece::BRook => move_sliding::<0, 4>(pos, file, rank, color),
             Piece::WBishop | Piece::BBishop => move_sliding::<4, 8>(pos, file, rank, color),
             Piece::WQueen | Piece::BQueen => move_sliding::<0, 8>(pos, file, rank, color),
             Piece::WKnight | Piece::BKnight => move_knight(pos, file, rank, color),
-            Piece::WKing => move_king::<true>(pos, file, rank, color),
-            Piece::BKing => move_king::<false>(pos, file, rank, color),
-            _ => 0,
+            Piece::WKing => move_king::<true, ATTACK_ONLY>(pos, file, rank),
+            Piece::BKing => move_king::<false, ATTACK_ONLY>(pos, file, rank),
+            _ => panic!("Unsupported piece type for move generation: {:?}", piece),
         };
     }
 
-    0
+    BitBoard::new()
 }
 
 #[cfg(test)]
@@ -223,7 +239,7 @@ mod tests {
         assert_eq!(pos.state.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
 
         let moves = gen_moves(&pos, SQ_E2);
-        assert_eq!(moves, (1u64 << SQ_E3) | (1u64 << SQ_E4));
+        assert_eq!(moves, BitBoard::from_bit(SQ_E3) | BitBoard::from_bit(SQ_E4));
     }
 
     #[test]
@@ -232,7 +248,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_D7);
-        assert_eq!(moves, (1u64 << SQ_D6) | (1u64 << SQ_D5));
+        assert_eq!(moves, BitBoard::from_bit(SQ_D6) | BitBoard::from_bit(SQ_D5));
     }
 
     #[test]
@@ -241,7 +257,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_E4);
-        assert_eq!(moves, (1u64 << SQ_D5) | (1u64 << SQ_E5));
+        assert_eq!(moves, BitBoard::from_bit(SQ_D5) | BitBoard::from_bit(SQ_E5));
     }
 
     #[test]
@@ -250,7 +266,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_D5);
-        assert_eq!(moves, (1u64 << SQ_D4) | (1u64 << SQ_E4));
+        assert_eq!(moves, BitBoard::from_bit(SQ_D4) | BitBoard::from_bit(SQ_E4));
     }
 
     #[test]
@@ -259,7 +275,14 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_E6);
-        assert_eq!(moves, (1u64 << SQ_C8) | (1u64 << SQ_D7) | (1u64 << SQ_F5) | (1u64 << SQ_G4) | (1u64 << SQ_H3));
+        assert_eq!(
+            moves,
+            BitBoard::from_bit(SQ_C8)
+                | BitBoard::from_bit(SQ_D7)
+                | BitBoard::from_bit(SQ_F5)
+                | BitBoard::from_bit(SQ_G4)
+                | BitBoard::from_bit(SQ_H3)
+        );
     }
 
     #[test]
@@ -268,7 +291,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_H7);
-        assert_eq!(moves, (1u64 << SQ_H8) | (1u64 << SQ_G7));
+        assert_eq!(moves, BitBoard::from_bit(SQ_H8) | BitBoard::from_bit(SQ_G7));
     }
 
     #[test]
@@ -277,7 +300,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_B1);
-        assert_eq!(moves, (1u64 << SQ_A3) | (1u64 << SQ_C3));
+        assert_eq!(moves, BitBoard::from_bit(SQ_A3) | BitBoard::from_bit(SQ_C3));
     }
 
     #[test]
@@ -286,6 +309,6 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_F6);
-        assert_eq!(moves, (1u64 << SQ_E4) | (1u64 << SQ_G8) | (1u64 << SQ_H7));
+        assert_eq!(moves, BitBoard::from_bit(SQ_E4) | BitBoard::from_bit(SQ_G8) | BitBoard::from_bit(SQ_H7));
     }
 }

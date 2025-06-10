@@ -1,3 +1,5 @@
+use crate::engine::move_gen;
+
 use super::bitboard::BitBoard;
 use super::fen_state::FenState;
 use super::{fen_state, types::*};
@@ -57,7 +59,23 @@ impl Position {
 
     fn update_cache(&mut self) {
         self.occupancies = fen_state::occupancies(&self.state);
-        // @TODO: update attack_map based on the current state
+
+        for (start, end, color) in [(W_START, W_END, Color::White), (B_START, B_END, Color::Black)] {
+            let mut attack_map = BitBoard::new();
+            for i in start..end {
+                // pieces from W to B
+                let bb = self.state.bitboards[i as usize].get();
+                for f in 0..8 {
+                    for r in 0..8 {
+                        let sq = make_square(f, r);
+                        if bb & (1u64 << sq) != 0 {
+                            attack_map |= move_gen::gen_attack_moves(self, sq, color);
+                        }
+                    }
+                }
+            }
+            self.attack_map[color as usize] = attack_map;
+        }
     }
 
     pub fn do_move(&mut self, m: &Move) -> bool {
