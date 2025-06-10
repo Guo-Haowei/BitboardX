@@ -1,3 +1,4 @@
+use super::bitboard::BitBoard;
 use bitflags::bitflags;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -150,6 +151,78 @@ pub const SQ_E8: u8 = 60u8;
 pub const SQ_F8: u8 = 61u8;
 pub const SQ_G8: u8 = 62u8;
 pub const SQ_H8: u8 = 63u8;
+
+pub const BB_A1: BitBoard = BitBoard::from_bit(SQ_A1);
+pub const BB_A2: BitBoard = BitBoard::from_bit(SQ_A2);
+pub const BB_A3: BitBoard = BitBoard::from_bit(SQ_A3);
+pub const BB_A4: BitBoard = BitBoard::from_bit(SQ_A4);
+pub const BB_A5: BitBoard = BitBoard::from_bit(SQ_A5);
+pub const BB_A6: BitBoard = BitBoard::from_bit(SQ_A6);
+pub const BB_A7: BitBoard = BitBoard::from_bit(SQ_A7);
+pub const BB_A8: BitBoard = BitBoard::from_bit(SQ_A8);
+
+pub const BB_B1: BitBoard = BitBoard::from_bit(SQ_B1);
+pub const BB_B2: BitBoard = BitBoard::from_bit(SQ_B2);
+pub const BB_B3: BitBoard = BitBoard::from_bit(SQ_B3);
+pub const BB_B4: BitBoard = BitBoard::from_bit(SQ_B4);
+pub const BB_B5: BitBoard = BitBoard::from_bit(SQ_B5);
+pub const BB_B6: BitBoard = BitBoard::from_bit(SQ_B6);
+pub const BB_B7: BitBoard = BitBoard::from_bit(SQ_B7);
+pub const BB_B8: BitBoard = BitBoard::from_bit(SQ_B8);
+
+pub const BB_C1: BitBoard = BitBoard::from_bit(SQ_C1);
+pub const BB_C2: BitBoard = BitBoard::from_bit(SQ_C2);
+pub const BB_C3: BitBoard = BitBoard::from_bit(SQ_C3);
+pub const BB_C4: BitBoard = BitBoard::from_bit(SQ_C4);
+pub const BB_C5: BitBoard = BitBoard::from_bit(SQ_C5);
+pub const BB_C6: BitBoard = BitBoard::from_bit(SQ_C6);
+pub const BB_C7: BitBoard = BitBoard::from_bit(SQ_C7);
+pub const BB_C8: BitBoard = BitBoard::from_bit(SQ_C8);
+
+pub const BB_D1: BitBoard = BitBoard::from_bit(SQ_D1);
+pub const BB_D2: BitBoard = BitBoard::from_bit(SQ_D2);
+pub const BB_D3: BitBoard = BitBoard::from_bit(SQ_D3);
+pub const BB_D4: BitBoard = BitBoard::from_bit(SQ_D4);
+pub const BB_D5: BitBoard = BitBoard::from_bit(SQ_D5);
+pub const BB_D6: BitBoard = BitBoard::from_bit(SQ_D6);
+pub const BB_D7: BitBoard = BitBoard::from_bit(SQ_D7);
+pub const BB_D8: BitBoard = BitBoard::from_bit(SQ_D8);
+
+pub const BB_E1: BitBoard = BitBoard::from_bit(SQ_E1);
+pub const BB_E2: BitBoard = BitBoard::from_bit(SQ_E2);
+pub const BB_E3: BitBoard = BitBoard::from_bit(SQ_E3);
+pub const BB_E4: BitBoard = BitBoard::from_bit(SQ_E4);
+pub const BB_E5: BitBoard = BitBoard::from_bit(SQ_E5);
+pub const BB_E6: BitBoard = BitBoard::from_bit(SQ_E6);
+pub const BB_E7: BitBoard = BitBoard::from_bit(SQ_E7);
+pub const BB_E8: BitBoard = BitBoard::from_bit(SQ_E8);
+
+pub const BB_F1: BitBoard = BitBoard::from_bit(SQ_F1);
+pub const BB_F2: BitBoard = BitBoard::from_bit(SQ_F2);
+pub const BB_F3: BitBoard = BitBoard::from_bit(SQ_F3);
+pub const BB_F4: BitBoard = BitBoard::from_bit(SQ_F4);
+pub const BB_F5: BitBoard = BitBoard::from_bit(SQ_F5);
+pub const BB_F6: BitBoard = BitBoard::from_bit(SQ_F6);
+pub const BB_F7: BitBoard = BitBoard::from_bit(SQ_F7);
+pub const BB_F8: BitBoard = BitBoard::from_bit(SQ_F8);
+
+pub const BB_G1: BitBoard = BitBoard::from_bit(SQ_G1);
+pub const BB_G2: BitBoard = BitBoard::from_bit(SQ_G2);
+pub const BB_G3: BitBoard = BitBoard::from_bit(SQ_G3);
+pub const BB_G4: BitBoard = BitBoard::from_bit(SQ_G4);
+pub const BB_G5: BitBoard = BitBoard::from_bit(SQ_G5);
+pub const BB_G6: BitBoard = BitBoard::from_bit(SQ_G6);
+pub const BB_G7: BitBoard = BitBoard::from_bit(SQ_G7);
+pub const BB_G8: BitBoard = BitBoard::from_bit(SQ_G8);
+
+pub const BB_H1: BitBoard = BitBoard::from_bit(SQ_H1);
+pub const BB_H2: BitBoard = BitBoard::from_bit(SQ_H2);
+pub const BB_H3: BitBoard = BitBoard::from_bit(SQ_H3);
+pub const BB_H4: BitBoard = BitBoard::from_bit(SQ_H4);
+pub const BB_H5: BitBoard = BitBoard::from_bit(SQ_H5);
+pub const BB_H6: BitBoard = BitBoard::from_bit(SQ_H6);
+pub const BB_H7: BitBoard = BitBoard::from_bit(SQ_H7);
+pub const BB_H8: BitBoard = BitBoard::from_bit(SQ_H8);
 
 pub fn get_opposite_color(color: Color) -> Color {
     match color {

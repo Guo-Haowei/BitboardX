@@ -114,20 +114,20 @@ fn move_king<const IS_WHITE: bool, const ATTACK_ONLY: bool>(pos: &Position, file
         if IS_WHITE {
             // King side castling, G1, F1 must be empty, G1, F1, H1 must not be attacked
             if (pos.state.castling & Castling::WK.bits()) != 0 {
-                moves |= BitBoard::from_bit(SQ_G1) & occupancy;
+                moves |= BB_G1 & occupancy;
             }
             // Queen side castling, B1, C1, D1 must be empty, B1, C1, D1, E1 must not be attacked
             if (pos.state.castling & Castling::WQ.bits()) != 0 {
-                moves |= BitBoard::from_bit(SQ_C1) & occupancy;
+                moves |= BB_C1 & occupancy;
             }
         } else {
             // King side castling
             if (pos.state.castling & Castling::BK.bits()) != 0 {
-                moves |= BitBoard::from_bit(SQ_G8) & occupancy;
+                moves |= BB_G8 & occupancy;
             }
             // Queen side castling
             if (pos.state.castling & Castling::BQ.bits()) != 0 {
-                moves |= BitBoard::from_bit(SQ_C8) & occupancy;
+                moves |= BB_C8 & occupancy;
             }
         }
     }
@@ -239,7 +239,7 @@ mod tests {
         assert_eq!(pos.state.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
 
         let moves = gen_moves(&pos, SQ_E2);
-        assert_eq!(moves, BitBoard::from_bit(SQ_E3) | BitBoard::from_bit(SQ_E4));
+        assert_eq!(moves, BB_E3 | BB_E4);
     }
 
     #[test]
@@ -248,7 +248,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_D7);
-        assert_eq!(moves, BitBoard::from_bit(SQ_D6) | BitBoard::from_bit(SQ_D5));
+        assert_eq!(moves, BB_D6 | BB_D5);
     }
 
     #[test]
@@ -257,7 +257,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_E4);
-        assert_eq!(moves, BitBoard::from_bit(SQ_D5) | BitBoard::from_bit(SQ_E5));
+        assert_eq!(moves, BB_D5 | BB_E5);
     }
 
     #[test]
@@ -266,7 +266,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_D5);
-        assert_eq!(moves, BitBoard::from_bit(SQ_D4) | BitBoard::from_bit(SQ_E4));
+        assert_eq!(moves, BB_D4 | BB_E4);
     }
 
     #[test]
@@ -275,14 +275,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_E6);
-        assert_eq!(
-            moves,
-            BitBoard::from_bit(SQ_C8)
-                | BitBoard::from_bit(SQ_D7)
-                | BitBoard::from_bit(SQ_F5)
-                | BitBoard::from_bit(SQ_G4)
-                | BitBoard::from_bit(SQ_H3)
-        );
+        assert_eq!(moves, BB_C8 | BB_D7 | BB_F5 | BB_G4 | BB_H3);
     }
 
     #[test]
@@ -291,7 +284,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_H7);
-        assert_eq!(moves, BitBoard::from_bit(SQ_H8) | BitBoard::from_bit(SQ_G7));
+        assert_eq!(moves, BB_H8 | BB_G7);
     }
 
     #[test]
@@ -300,7 +293,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_B1);
-        assert_eq!(moves, BitBoard::from_bit(SQ_A3) | BitBoard::from_bit(SQ_C3));
+        assert_eq!(moves, BB_A3 | BB_C3);
     }
 
     #[test]
@@ -309,6 +302,6 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_F6);
-        assert_eq!(moves, BitBoard::from_bit(SQ_E4) | BitBoard::from_bit(SQ_G8) | BitBoard::from_bit(SQ_H7));
+        assert_eq!(moves, BB_E4 | BB_G8 | BB_H7);
     }
 }
