@@ -1,48 +1,34 @@
+pub mod core;
+pub mod engine;
+pub mod game;
+
 use std::io::{self, Write};
 
-pub mod board;
-pub mod moves;
-pub mod types;
-
 fn main() {
-    let mut board = board::Board::new();
-    // let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-    let fen = "r1bqkb1r/8/8/8/8/8/8/R1BQKB1R w KQkq - 0 1";
-
-    match board.parse_fen(fen) {
-        Ok(()) => {}
-        Err(err) => panic!("Error parsing fen '{}', {}", fen, err),
-    }
+    let mut game = game::Game::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     loop {
-        print!("{}", board.pretty_string());
-        print!("------\nEnter move (e.g. e2e4): ");
-        io::stdout().flush().unwrap();
+        let board = game.to_string(true);
+        println!("{}------", board);
 
-        let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() {
-            println!("Error reading input.");
-            continue;
-        }
+        loop {
+            print!("Enter move (e.g. e2e4): ");
+            io::stdout().flush().unwrap();
 
-        let input = input.trim();
-
-        if input.eq_ignore_ascii_case("exit") {
-            break;
-        }
-
-        match moves::parse_move(input) {
-            Some((from, to)) => {
-                if board.apply_move(from, to) {
-                    println!("Move applied: {} to {}", from, to);
-                } else {
-                    println!("Invalid move: {} to {}", from, to);
-                }
+            let mut input = String::new();
+            if io::stdin().read_line(&mut input).is_err() {
+                println!("Error reading input.");
+                continue;
             }
-            None => println!("Invalid input '{}'.", input),
-        }
 
-        println!("------");
+            let input = input.trim();
+
+            if game.apply_move_str(input) {
+                break;
+            }
+
+            println!("Invalid move: {}", input);
+            println!("------");
+        }
     }
 }

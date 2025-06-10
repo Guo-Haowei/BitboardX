@@ -1,10 +1,11 @@
 import { BOARD_SIZE, CANVAS_ID, DEFAULT_FEN, TILE_SIZE } from './constants.js';
-import { Engine } from '../engine/pkg/engine.js';
+import * as Engine from '../engine/pkg/engine.js';
 import { renderer } from './renderer.js';
 
+// @TODO: come up with a better name
 export class Game {
   constructor() {
-    this.engine = new Engine();
+    this.engine = null;
     this.selected = null;
     this.boardString = '';
     this.canvas = document.getElementById(CANVAS_ID);
@@ -14,8 +15,9 @@ export class Game {
     fen = fen || DEFAULT_FEN;
     console.log(`Initializing game with FEN: ${fen}`);
     try {
-      this.engine.parse_fen(fen);
-      this.boardString = this.engine.to_string();
+      this.engine = new Engine.Game(fen);
+      console.log(this.engine.to_string(false));
+      this.boardString = this.engine.to_board_string();
       return true;
     } catch (e) {
       console.error(`Error parsing FEN '${fen}': ${e}`);
@@ -76,11 +78,22 @@ export class Game {
     const to = `${String.fromCharCode(97 + file)}${rank + 1}`;
     const square = file + rank * BOARD_SIZE;
 
-    console.log(`${from}${to}`);
     if (this.engine.apply_move(this.selected, square)) {
-      this.boardString = this.engine.to_string();
+      // Update the board status here
+      console.log(`${from}${to}`);
+      this.boardString = this.engine.to_board_string();
     }
 
     this.selected = null;
+  }
+
+  undo() {
+    if (this.engine.undo_move()) {
+      this.boardString = this.engine.to_board_string();
+    }
+  }
+
+  redo() {
+    console.warn('Redo is not implemented yet');
   }
 }

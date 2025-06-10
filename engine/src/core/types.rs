@@ -1,23 +1,66 @@
-pub const SIDE_WHITE: u8 = 0;
-pub const SIDE_BLACK: u8 = 1;
-pub const SIDE_BOTH: u8 = 2;
+use bitflags::bitflags;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(u8)]
+pub enum Color {
+    White = 0,
+    Black = 1,
+    Both = 2,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(u8)]
+pub enum PieceType {
+    Pawn,
+    Knight,
+    Bishop,
+    Rook,
+    Queen,
+    King,
+    None,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Piece {
-    WhitePawn,
-    WhiteKnight,
-    WhiteBishop,
-    WhiteRook,
-    WhiteQueen,
-    WhiteKing,
-    BlackPawn,
-    BlackKnight,
-    BlackBishop,
-    BlackRook,
-    BlackQueen,
-    BlackKing,
-    Count,
+    WPawn,
+    WKnight,
+    WBishop,
+    WRook,
+    WQueen,
+    WKing,
+    BPawn,
+    BKnight,
+    BBishop,
+    BRook,
+    BQueen,
+    BKing,
+    None,
+}
+
+pub const NB_COLORS: usize = Color::Both as usize;
+pub const NB_PIECE_TYPES: usize = PieceType::None as usize;
+pub const NB_PIECES: usize = Piece::None as usize;
+
+pub fn get_color_type(piece: Piece) -> (Color, PieceType) {
+    if piece == Piece::None {
+        return (Color::White, PieceType::None);
+    }
+
+    let color = if (piece as i8) < (Piece::BPawn as i8) { Color::White } else { Color::Black };
+    let piece_type: PieceType = unsafe { std::mem::transmute((piece as i8) % (NB_PIECE_TYPES as i8)) };
+    (color, piece_type)
+}
+
+// castling rights
+bitflags! {
+    pub struct Castling: u8 {
+        const WK = 0b0001;
+        const WQ = 0b0010;
+        const BK = 0b0100;
+        const BQ = 0b1000;
+        const ALL = Self::WK.bits | Self::WQ.bits | Self::BK.bits | Self::BQ.bits;
+    }
 }
 
 // Constants for files
@@ -113,13 +156,12 @@ pub const SQ_F8: u8 = 61u8;
 pub const SQ_G8: u8 = 62u8;
 pub const SQ_H8: u8 = 63u8;
 
-pub fn get_opposite_side(side: u8) -> u8 {
-    assert!(
-        side == SIDE_WHITE || side == SIDE_BLACK,
-        "Invalid side: {}",
-        side
-    );
-    return 1u8 - side;
+pub fn get_opposite_color(color: Color) -> Color {
+    match color {
+        Color::White => Color::Black,
+        Color::Black => Color::White,
+        Color::Both => panic!("Cannot get opposite color of Both"),
+    }
 }
 
 pub fn make_square(file: u8, rank: u8) -> u8 {
@@ -158,5 +200,14 @@ mod tests {
         assert_eq!(get_file_rank(SQ_F3), (FILE_F, RANK_3));
         assert_eq!(get_file_rank(SQ_G2), (FILE_G, RANK_2));
         assert_eq!(get_file_rank(SQ_H1), (FILE_H, RANK_1));
+    }
+
+    #[test]
+    fn to_piece_test() {
+        assert_eq!(get_color_type(Piece::WPawn), (Color::White, PieceType::Pawn));
+        assert_eq!(get_color_type(Piece::BKnight), (Color::Black, PieceType::Knight));
+        assert_eq!(get_color_type(Piece::WQueen), (Color::White, PieceType::Queen));
+        assert_eq!(get_color_type(Piece::BKing), (Color::Black, PieceType::King));
+        assert_eq!(get_color_type(Piece::None), (Color::White, PieceType::None));
     }
 }
