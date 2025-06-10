@@ -1,3 +1,5 @@
+use crate::board::types::get_opposite_color;
+
 use super::bitboard::BitBoard;
 use super::types::{Castling, Color, NB_PIECES, Piece};
 
@@ -14,18 +16,18 @@ pub struct FenState {
 impl FenState {
     pub fn new() -> Self {
         let bitboards = [
-            BitBoard::new(0x000000000000FF00), // White Pawns
-            BitBoard::new(0x0000000000000042), // White Knights
-            BitBoard::new(0x0000000000000024), // White Bishops
-            BitBoard::new(0x0000000000000081), // White Rooks
-            BitBoard::new(0x0000000000000008), // White Queens
-            BitBoard::new(0x0000000000000010), // White King
-            BitBoard::new(0x00FF000000000000), // Black Pawns
-            BitBoard::new(0x4200000000000000), // Black Knights
-            BitBoard::new(0x2400000000000000), // Black Bishops
-            BitBoard::new(0x8100000000000000), // Black Rooks
-            BitBoard::new(0x0800000000000000), // Black Queens
-            BitBoard::new(0x1000000000000000), // Black King
+            BitBoard::from(0x000000000000FF00), // White Pawns
+            BitBoard::from(0x0000000000000042), // White Knights
+            BitBoard::from(0x0000000000000024), // White Bishops
+            BitBoard::from(0x0000000000000081), // White Rooks
+            BitBoard::from(0x0000000000000008), // White Queens
+            BitBoard::from(0x0000000000000010), // White King
+            BitBoard::from(0x00FF000000000000), // Black Pawns
+            BitBoard::from(0x4200000000000000), // Black Knights
+            BitBoard::from(0x2400000000000000), // Black Bishops
+            BitBoard::from(0x8100000000000000), // Black Rooks
+            BitBoard::from(0x0800000000000000), // Black Queens
+            BitBoard::from(0x1000000000000000), // Black King
         ];
 
         Self {
@@ -49,9 +51,13 @@ impl FenState {
         let fullmove_number = 1;
 
         let mut state =
-            Self { bitboards: [BitBoard::zero(); NB_PIECES], side_to_move, castling, halfmove_clock, fullmove_number };
+            Self { bitboards: [BitBoard::new(); NB_PIECES], side_to_move, castling, halfmove_clock, fullmove_number };
         parse_board(parts[0], &mut state)?;
         Ok(state)
+    }
+
+    pub fn change_side(&mut self) {
+        self.side_to_move = get_opposite_color(self.side_to_move);
     }
 
     pub fn to_board_string(&self) -> String {

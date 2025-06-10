@@ -12,6 +12,7 @@ pub struct Move {
 pub struct Position {
     pub state: FenState,
     pub occupancies: [BitBoard; 3],
+    pub attack_map: [BitBoard; NB_COLORS],
 }
 
 impl Move {
@@ -40,14 +41,23 @@ impl Move {
 impl Position {
     pub fn new() -> Self {
         let state = FenState::new();
-        let occupancies = fen_state::occupancies(&state);
-        Self { state, occupancies }
+        let mut pos = Self { state, occupancies: [BitBoard::new(); 3], attack_map: [BitBoard::new(); NB_COLORS] };
+
+        pos.update_cache();
+        pos
     }
 
     pub fn from_fen(fen: &str) -> Result<Self, String> {
         let state = FenState::from_fen(fen)?;
-        let occupancies = fen_state::occupancies(&state);
-        Ok(Self { state, occupancies })
+        let mut pos = Self { state, occupancies: [BitBoard::new(); 3], attack_map: [BitBoard::new(); NB_COLORS] };
+
+        pos.update_cache();
+        Ok(pos)
+    }
+
+    fn update_cache(&mut self) {
+        self.occupancies = fen_state::occupancies(&self.state);
+        // @TODO: update attack_map based on the current state
     }
 
     pub fn do_move(&mut self, m: &Move) -> bool {
@@ -66,9 +76,8 @@ impl Position {
             self.state.bitboards[to as usize].unset_bit(m.to_sq); // Clear the 'to' square for the captured piece
         }
 
-        // @TODO: extract to a function
-        self.state.side_to_move = get_opposite_color(self.state.side_to_move);
-        self.occupancies = fen_state::occupancies(&self.state);
+        self.state.change_side();
+        self.update_cache();
 
         true
     }
@@ -85,9 +94,8 @@ impl Position {
             self.state.bitboards[to as usize].set_bit(m.to_sq); // Place captured piece back on 'to' square
         }
 
-        // @TODO: extract to a function
-        self.state.side_to_move = get_opposite_color(self.state.side_to_move);
-        self.occupancies = fen_state::occupancies(&self.state);
+        self.state.change_side();
+        self.update_cache();
     }
 
     pub fn create_move(&self, from_sq: u8, to_sq: u8) -> Option<Move> {

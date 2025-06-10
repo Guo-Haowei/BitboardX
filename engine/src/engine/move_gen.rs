@@ -11,22 +11,22 @@ const NW: i32 = NORTH + WEST;
 const SE: i32 = SOUTH + EAST;
 const SW: i32 = SOUTH + WEST;
 
-const BOUND_A: BitBoard = BitBoard::new(0x0101010101010101);
-const BOUND_B: BitBoard = BitBoard::new(0x0202020202020202);
-const BOUND_G: BitBoard = BitBoard::new(0x4040404040404040);
-const BOUND_H: BitBoard = BitBoard::new(0x8080808080808080);
-const BOUND_1: BitBoard = BitBoard::new(0x00000000000000FF);
-const BOUND_2: BitBoard = BitBoard::new(0x000000000000FF00);
-const BOUND_7: BitBoard = BitBoard::new(0x00FF000000000000);
-const BOUND_8: BitBoard = BitBoard::new(0xFF00000000000000);
-const BOUND_AB: BitBoard = BitBoard::new(BOUND_A.get() | BOUND_B.get());
-const BOUND_GH: BitBoard = BitBoard::new(BOUND_G.get() | BOUND_H.get());
-const BOUND_12: BitBoard = BitBoard::new(BOUND_1.get() | BOUND_2.get());
-const BOUND_78: BitBoard = BitBoard::new(BOUND_7.get() | BOUND_8.get());
+const BOUND_A: BitBoard = BitBoard::from(0x0101010101010101);
+const BOUND_B: BitBoard = BitBoard::from(0x0202020202020202);
+const BOUND_G: BitBoard = BitBoard::from(0x4040404040404040);
+const BOUND_H: BitBoard = BitBoard::from(0x8080808080808080);
+const BOUND_1: BitBoard = BitBoard::from(0x00000000000000FF);
+const BOUND_2: BitBoard = BitBoard::from(0x000000000000FF00);
+const BOUND_7: BitBoard = BitBoard::from(0x00FF000000000000);
+const BOUND_8: BitBoard = BitBoard::from(0xFF00000000000000);
+const BOUND_AB: BitBoard = BitBoard::from(BOUND_A.get() | BOUND_B.get());
+const BOUND_GH: BitBoard = BitBoard::from(BOUND_G.get() | BOUND_H.get());
+const BOUND_12: BitBoard = BitBoard::from(BOUND_1.get() | BOUND_2.get());
+const BOUND_78: BitBoard = BitBoard::from(BOUND_7.get() | BOUND_8.get());
 
 fn shift(bb: BitBoard, dir: i32) -> BitBoard {
     // if dir > 0 { bb.get() << dir } else { bb.get() >> -dir }
-    BitBoard::new(if dir < 0 { bb.get() >> -dir } else { bb.get() << dir })
+    BitBoard::from(if dir < 0 { bb.get() >> -dir } else { bb.get() << dir })
 }
 
 fn shift_east(bb: BitBoard) -> BitBoard {
@@ -65,12 +65,12 @@ const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
     [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
 
 fn move_sliding<const START: u8, const END: u8>(pos: &Position, file: u8, rank: u8, color: Color) -> u64 {
-    let mut moves = BitBoard::zero();
-    let bb = 1u64 << make_square(file, rank);
+    let mut moves = BitBoard::new();
+    let bb = BitBoard::from_bit(make_square(file, rank));
     let opposite_color = get_opposite_color(color);
 
     for i in START..END {
-        let mut new_pos = SHIFT_FUNCS[i as usize](BitBoard::new(bb));
+        let mut new_pos = SHIFT_FUNCS[i as usize](bb);
 
         while !new_pos.is_empty() {
             if !(new_pos & pos.occupancies[color as usize]).is_empty() {
@@ -91,8 +91,8 @@ fn move_sliding<const START: u8, const END: u8>(pos: &Position, file: u8, rank: 
 }
 
 fn move_king<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8, color: Color) -> u64 {
-    let bb = BitBoard::new(1u64 << make_square(file, rank));
-    let mut moves = BitBoard::zero();
+    let bb = BitBoard::from_bit(make_square(file, rank));
+    let mut moves = BitBoard::new();
     let occupancy = !pos.occupancies[color as usize];
     moves |= shift_north(bb) & occupancy;
     moves |= shift_south(bb) & occupancy;
@@ -107,20 +107,20 @@ fn move_king<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8, color: Co
     if IS_WHITE {
         // King side castling, G1, F1 must be empty, G1, F1, H1 must not be attacked
         if (pos.state.castling & Castling::WK.bits()) != 0 {
-            moves |= BitBoard::new(1u64 << SQ_G1) & occupancy;
+            moves |= BitBoard::from_bit(SQ_G1) & occupancy;
         }
         // Queen side castling, B1, C1, D1 must be empty, B1, C1, D1, E1 must not be attacked
         if (pos.state.castling & Castling::WQ.bits()) != 0 {
-            moves |= BitBoard::new(1u64 << SQ_C1) & occupancy;
+            moves |= BitBoard::from_bit(SQ_C1) & occupancy;
         }
     } else {
         // King side castling
         if (pos.state.castling & Castling::BK.bits()) != 0 {
-            moves |= BitBoard::new(1u64 << SQ_G8) & occupancy;
+            moves |= BitBoard::from_bit(SQ_G8) & occupancy;
         }
         // Queen side castling
         if (pos.state.castling & Castling::BQ.bits()) != 0 {
-            moves |= BitBoard::new(1u64 << SQ_C8) & occupancy;
+            moves |= BitBoard::from_bit(SQ_C8) & occupancy;
         }
     }
 
@@ -128,8 +128,8 @@ fn move_king<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8, color: Co
 }
 
 fn move_knight(pos: &Position, file: u8, rank: u8, color: Color) -> u64 {
-    let mut moves = BitBoard::zero();
-    let bb = BitBoard::new(1u64 << make_square(file, rank));
+    let mut moves = BitBoard::new();
+    let bb = BitBoard::from_bit(make_square(file, rank));
     let occupancy = !pos.occupancies[color as usize];
 
     moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & occupancy;
@@ -146,8 +146,8 @@ fn move_knight(pos: &Position, file: u8, rank: u8, color: Color) -> u64 {
 }
 
 fn move_pawn<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8) -> u64 {
-    let bb = BitBoard::new(1u64 << make_square(file, rank));
-    let mut moves = BitBoard::zero();
+    let bb = BitBoard::from_bit(make_square(file, rank));
+    let mut moves = BitBoard::new();
     let opposite_color = if IS_WHITE { Color::Black } else { Color::White };
 
     // Promotion
