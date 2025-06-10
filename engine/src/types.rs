@@ -1,12 +1,15 @@
 use bitflags::bitflags;
+use wasm_bindgen::prelude::*;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[wasm_bindgen]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(i8)]
 pub enum Color {
     White = 0,
     Black,
 }
 
+#[wasm_bindgen]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Piece {
@@ -32,6 +35,7 @@ bitflags! {
         const WQ = 0b0010;
         const BK = 0b0100;
         const BQ = 0b1000;
+        const ALL = Self::WK.bits | Self::WQ.bits | Self::BK.bits | Self::BQ.bits;
     }
 }
 

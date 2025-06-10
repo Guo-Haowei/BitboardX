@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::types::*;
+use crate::{fen_state, types::*};
 
 const NORTH: i32 = 8;
 const SOUTH: i32 = -8;
@@ -120,17 +120,17 @@ fn move_king<const IS_WHITE: bool>(board: &Board, file: u8, rank: u8, color: Col
 
     // Castling
     if IS_WHITE {
-        if (board.castling & Castling::WK.bits()) != 0 {
+        if (board.state.castling & Castling::WK.bits()) != 0 {
             moves |= (1u64 << SQ_G1) & occupancy;
         }
-        if (board.castling & Castling::WQ.bits()) != 0 {
+        if (board.state.castling & Castling::WQ.bits()) != 0 {
             moves |= (1u64 << SQ_C1) & occupancy;
         }
     } else {
-        if (board.castling & Castling::BK.bits()) != 0 {
+        if (board.state.castling & Castling::BK.bits()) != 0 {
             moves |= (1u64 << SQ_G8) & occupancy;
         }
-        if (board.castling & Castling::BQ.bits()) != 0 {
+        if (board.state.castling & Castling::BQ.bits()) != 0 {
             moves |= (1u64 << SQ_C8) & occupancy;
         }
     }
@@ -197,14 +197,15 @@ pub fn gen_moves(board: &Board, square: u8) -> u64 {
     let (file, rank) = get_file_rank(square);
     let mask = 1u64 << square;
 
-    for i in 0..board.bitboards.len() {
-        if (board.bitboards[i] & mask) == 0 {
+    let bitboards = fen_state::to_vec(&board.state);
+    for i in 0..bitboards.len() {
+        if (bitboards[i] & mask) == 0 {
             continue;
         }
 
         let piece: Piece = unsafe { std::mem::transmute(i as u8) };
         let color = if piece <= Piece::WhiteKing { Color::White } else { Color::Black };
-        if color != board.side_to_move {
+        if color != board.state.side_to_move {
             return 0;
         }
 
@@ -230,9 +231,8 @@ mod tests {
 
     #[test]
     fn move_white_pawn() {
-        let mut board = Board::new();
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        assert!(board.parse_fen(fen).is_ok());
+        let board = Board::from_fen(fen).unwrap();
 
         let moves = gen_moves(&board, SQ_E2);
         assert_eq!(moves, (1u64 << SQ_E3) | (1u64 << SQ_E4));
@@ -240,9 +240,8 @@ mod tests {
 
     #[test]
     fn move_black_pawn() {
-        let mut board = Board::new();
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1";
-        assert!(board.parse_fen(fen).is_ok());
+        let board = Board::from_fen(fen).unwrap();
 
         let moves = gen_moves(&board, SQ_D7);
         assert_eq!(moves, (1u64 << SQ_D6) | (1u64 << SQ_D5));
@@ -250,9 +249,8 @@ mod tests {
 
     #[test]
     fn white_pawn_attack() {
-        let mut board = Board::new();
         let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 w - - 0 10";
-        assert!(board.parse_fen(fen).is_ok());
+        let board = Board::from_fen(fen).unwrap();
 
         let moves = gen_moves(&board, SQ_E4);
         assert_eq!(moves, (1u64 << SQ_D5) | (1u64 << SQ_E5));
@@ -260,9 +258,8 @@ mod tests {
 
     #[test]
     fn black_pawn_attack() {
-        let mut board = Board::new();
         let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 b - - 0 10";
-        assert!(board.parse_fen(fen).is_ok());
+        let board = Board::from_fen(fen).unwrap();
 
         let moves = gen_moves(&board, SQ_D5);
         assert_eq!(moves, (1u64 << SQ_D4) | (1u64 << SQ_E4));
@@ -270,9 +267,8 @@ mod tests {
 
     #[test]
     fn move_biship() {
-        let mut board = Board::new();
         let fen = "rn1qkbnr/ppp1pppp/4b3/3p4/3PP3/8/PPP2PPP/RNBQKBNR b KQkq e3 0 1";
-        assert!(board.parse_fen(fen).is_ok());
+        let board = Board::from_fen(fen).unwrap();
 
         let moves = gen_moves(&board, SQ_E6);
         assert_eq!(moves, (1u64 << SQ_C8) | (1u64 << SQ_D7) | (1u64 << SQ_F5) | (1u64 << SQ_G4) | (1u64 << SQ_H3));
@@ -280,9 +276,8 @@ mod tests {
 
     #[test]
     fn move_rook() {
-        let mut board = Board::new();
         let fen = "rnbqkbn1/ppp1pp1r/7p/3p2p1/7P/3P1PPR/PPP1P3/RNBQKBN1 b - - 0 1";
-        assert!(board.parse_fen(fen).is_ok());
+        let board = Board::from_fen(fen).unwrap();
 
         let moves = gen_moves(&board, SQ_H7);
         assert_eq!(moves, (1u64 << SQ_H8) | (1u64 << SQ_G7));
@@ -290,9 +285,8 @@ mod tests {
 
     #[test]
     fn move_knight() {
-        let mut board = Board::new();
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        assert!(board.parse_fen(fen).is_ok());
+        let board = Board::from_fen(fen).unwrap();
 
         let moves = gen_moves(&board, SQ_B1);
         assert_eq!(moves, (1u64 << SQ_A3) | (1u64 << SQ_C3));
@@ -300,9 +294,8 @@ mod tests {
 
     #[test]
     fn knight_attack() {
-        let mut board = Board::new();
         let fen = "rn2kb1r/pppqppp1/5n2/3p3p/4P1b1/BPN5/P1PP1PPP/R2QKBNR b KQkq - 0 1";
-        assert!(board.parse_fen(fen).is_ok());
+        let board = Board::from_fen(fen).unwrap();
 
         let moves = gen_moves(&board, SQ_F6);
         assert_eq!(moves, (1u64 << SQ_E4) | (1u64 << SQ_G8) | (1u64 << SQ_H7));

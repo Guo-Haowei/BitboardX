@@ -1,7 +1,6 @@
 import { BOARD_SIZE, CANVAS_ID, DEFAULT_FEN, TILE_SIZE } from './constants.js';
 import { Game } from './game.js';
 import { renderer } from './renderer.js'
-import { printBoard } from './utility.js';
 import init from '../engine/pkg/engine.js';
 
 let game = null;
@@ -15,8 +14,6 @@ function updateBoard(fen) {
   if (!game.init(fen)) {
     return;
   }
-
-  printBoard(game.engine.to_string());
 }
 
 function setupListeners() {
@@ -61,7 +58,7 @@ function processEvents() {
 }
 
 function render() {
-  const boardString = game.engine.to_string();
+  const {boardString} = game;
   renderer.draw({ boardString });
 }
 

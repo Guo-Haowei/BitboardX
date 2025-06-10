@@ -1,22 +1,18 @@
 use std::io::{self, Write};
 
 pub mod board;
+pub mod fen_state;
 pub mod moves;
 pub mod types;
 
 fn main() {
-    let mut board = board::Board::new();
     let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "r1bqkb1r/8/8/8/8/8/8/R1BQKB1R w KQkq - 0 1";
-
-    match board.parse_fen(fen) {
-        Ok(()) => {}
-        Err(err) => panic!("Error parsing fen '{}', {}", fen, err),
-    }
+    let mut board = board::Board::from_fen(fen).unwrap();
 
     loop {
-        print!("{}", board.pretty_string());
-        print!("------\nEnter move (e.g. e2e4): ");
+        let board_string = board.state.to_string(true);
+        print!("{}------\nEnter move (e.g. e2e4): ", board_string);
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
