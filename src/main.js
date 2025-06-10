@@ -1,12 +1,12 @@
 import { BOARD_SIZE, CANVAS_ID, DEFAULT_FEN, TILE_SIZE } from './constants.js';
 import { Game } from './game.js';
 import { renderer } from './renderer.js'
+import { InputManager } from './input.js';
 import init from '../engine/pkg/engine.js';
 
 let game = null;
 let canvas = null;
-
-const eventQueue = [];
+let inputManager = null;
 
 // @TODO: get rid of this function
 function updateBoard(fen) {
@@ -16,42 +16,16 @@ function updateBoard(fen) {
   }
 }
 
-function setupListeners() {
-  document.getElementById('fenButton').addEventListener('click', () => {
-    const fen = document.getElementById('fenInput').value;
-    updateBoard(fen);
-  });
-
-  const getMousePosition = (canvas, e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    return {x, y};
-  };
-
-  canvas.addEventListener('mousedown', (e) => {
-    const { x, y } = getMousePosition(canvas, e);
-    eventQueue.push({ type: 'mousedown', x, y });
-  });
-
-  canvas.addEventListener('mousemove', (e) => {
-    const { x, y } = getMousePosition(canvas, e);
-    eventQueue.push({ type: 'mousemove', x, y});
-  });
-
-  canvas.addEventListener('mouseup', (e) => {
-    const { x, y } = getMousePosition(canvas, e);
-    eventQueue.push({ type: 'mouseup', x, y });
-  });
-}
-
 function processEvents() {
+  let { eventQueue } = inputManager;
   while (eventQueue.length > 0) {
     const event = eventQueue.shift();
     switch (event.type) {
       case 'mousedown': game.onMouseDown(event); break;
       case 'mousemove': game.onMouseMove(event); break
       case 'mouseup': game.onMouseUp(event); break;
+      case 'undo': game.undo(); break;
+      case 'redo': game.redo(); break;
       default: break;
     }
   }
@@ -85,7 +59,8 @@ async function run() {
   initCanvas();
   renderer.init(canvas);
 
-  setupListeners();
+  inputManager = new InputManager();
+  inputManager.init(canvas);
 
   updateBoard(DEFAULT_FEN);
 

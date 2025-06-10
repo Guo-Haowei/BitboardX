@@ -1,5 +1,5 @@
 use crate::core::board::{Move, Position};
-use crate::core::types::make_square;
+use crate::core::types::*;
 use crate::engine::move_gen;
 use wasm_bindgen::prelude::*;
 
@@ -47,10 +47,13 @@ impl Game {
         true
     }
 
-    pub fn undo_move(&mut self) {
+    pub fn undo_move(&mut self) -> bool {
         if let Some(last_move) = self.history.pop() {
             self.pos.undo_move(&last_move);
+            return true;
         }
+
+        false
     }
 
     pub fn apply_move_str(&mut self, input: &str) -> bool {
@@ -77,4 +80,24 @@ fn parse_move(input: &str) -> Option<(u8, u8)> {
     }
 
     Some((make_square(from_file, from_rank), make_square(to_file, to_rank)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_game_creation() {
+        let game = Game::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
+    }
+
+    #[test]
+    fn test_apply_move() {
+        let mut game = Game::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        assert!(game.apply_move(SQ_E2, SQ_E4)); // e2 to e4
+        assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp....................P...........PPPP.PPPRNBQKBNR");
+        game.undo_move();
+        assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
+    }
 }

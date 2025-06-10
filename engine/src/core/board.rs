@@ -84,13 +84,13 @@ impl Position {
         *bb_attack |= from_mask; // Place piece back on 'from' square
         *bb_attack &= !to_mask; // Remove piece from 'to' square
 
-        self.state.bitboards[to as usize] |= to_mask; // Place piece back on 'to' square
+        if to != Piece::None {
+            self.state.bitboards[to as usize] |= to_mask; // Place piece back on 'to' square
+        }
 
         // @TODO: extract to a function
         self.state.side_to_move = get_opposite_color(self.state.side_to_move);
         self.occupancies = fen_state::occupancies(&self.state);
-
-        panic!("not implemented yet");
     }
 
     pub fn create_move(&self, from_sq: u8, to_sq: u8) -> Option<Move> {

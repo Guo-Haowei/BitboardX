@@ -86,4 +86,14 @@ export class Game {
 
     this.selected = null;
   }
+
+  undo() {
+    if (this.engine.undo_move()) {
+      this.boardString = this.engine.to_board_string();
+    }
+  }
+
+  redo() {
+    console.warn('Redo is not implemented yet');
+  }
 }
