@@ -1,3 +1,6 @@
+use crate::engine::move_gen;
+
+use super::bitboard::BitBoard;
 use super::fen_state::FenState;
 use super::{fen_state, types::*};
 
@@ -10,7 +13,8 @@ pub struct Move {
 
 pub struct Position {
     pub state: FenState,
-    pub occupancies: [u64; 3],
+    pub occupancies: [BitBoard; 3],
+    pub attack_map: [BitBoard; NB_COLORS],
 }
 
 impl Move {
@@ -39,21 +43,44 @@ impl Move {
 impl Position {
     pub fn new() -> Self {
         let state = FenState::new();
-        let occupancies = fen_state::occupancies(&state);
-        Self { state, occupancies }
+        let mut pos = Self { state, occupancies: [BitBoard::new(); 3], attack_map: [BitBoard::new(); NB_COLORS] };
+
+        pos.update_cache();
+        pos
     }
 
     pub fn from_fen(fen: &str) -> Result<Self, String> {
         let state = FenState::from_fen(fen)?;
-        let occupancies = fen_state::occupancies(&state);
-        Ok(Self { state, occupancies })
+        let mut pos = Self { state, occupancies: [BitBoard::new(); 3], attack_map: [BitBoard::new(); NB_COLORS] };
+
+        pos.update_cache();
+        Ok(pos)
+    }
+
+    fn update_cache(&mut self) {
+        self.occupancies = fen_state::occupancies(&self.state);
+
+        for (start, end, color) in [(W_START, W_END, Color::White), (B_START, B_END, Color::Black)] {
+            let mut attack_map = BitBoard::new();
+            for i in start..end {
+                // pieces from W to B
+                let bb = self.state.bitboards[i as usize].get();
+                for f in 0..8 {
+                    for r in 0..8 {
+                        let sq = make_square(f, r);
+                        if bb & (1u64 << sq) != 0 {
+                            attack_map |= move_gen::gen_attack_moves(self, sq, color);
+                        }
+                    }
+                }
+            }
+            self.attack_map[color as usize] = attack_map;
+        }
     }
 
     pub fn do_move(&mut self, m: &Move) -> bool {
-        let from_mask = 1u64 << m.from_sq;
-        let to_mask = 1u64 << m.to_sq;
-        if self.occupancies[self.state.side_to_move as usize] & from_mask == 0 {
-            return false;
+        if !self.occupancies[self.state.side_to_move as usize].has_bit(m.from_sq) {
+            panic!("Invalid move: 'from' square does not contain a piece of the current side");
         }
 
         let from = m.piece();
@@ -61,15 +88,14 @@ impl Position {
 
         let bb_attack = &mut self.state.bitboards[from as usize];
 
-        *bb_attack &= !from_mask; // Remove piece from 'from' square
-        *bb_attack |= to_mask; // Place piece on 'to' square
+        bb_attack.unset_bit(m.from_sq); // Clear the 'from' square
+        bb_attack.set_bit(m.to_sq); // Place piece on 'to' square
         if to != Piece::None {
-            self.state.bitboards[to as usize] &= !to_mask; // Clear the 'to' square for the captured piece
+            self.state.bitboards[to as usize].unset_bit(m.to_sq); // Clear the 'to' square for the captured piece
         }
 
-        // @TODO: extract to a function
-        self.state.side_to_move = get_opposite_color(self.state.side_to_move);
-        self.occupancies = fen_state::occupancies(&self.state);
+        self.state.change_side();
+        self.update_cache();
 
         true
     }
@@ -77,37 +103,32 @@ impl Position {
     pub fn undo_move(&mut self, m: &Move) {
         let from = m.piece();
         let to = m.capture();
-        let from_mask = 1u64 << m.from_sq;
-        let to_mask = 1u64 << m.to_sq;
 
         let bb_attack = &mut self.state.bitboards[from as usize];
-        *bb_attack |= from_mask; // Place piece back on 'from' square
-        *bb_attack &= !to_mask; // Remove piece from 'to' square
+        bb_attack.set_bit(m.from_sq); // Place piece back on 'from' square
+        bb_attack.unset_bit(m.to_sq); // Clear the 'to' square
 
         if to != Piece::None {
-            self.state.bitboards[to as usize] |= to_mask; // Place piece back on 'to' square
+            self.state.bitboards[to as usize].set_bit(m.to_sq); // Place captured piece back on 'to' square
         }
 
-        // @TODO: extract to a function
-        self.state.side_to_move = get_opposite_color(self.state.side_to_move);
-        self.occupancies = fen_state::occupancies(&self.state);
+        self.state.change_side();
+        self.update_cache();
     }
 
     pub fn create_move(&self, from_sq: u8, to_sq: u8) -> Option<Move> {
-        let from_mask = 1u64 << from_sq;
-        let to_mask = 1u64 << to_sq;
-        if self.occupancies[self.state.side_to_move as usize] & from_mask == 0 {
+        if !self.occupancies[self.state.side_to_move as usize].has_bit(from_sq) {
             return None;
         }
 
         let mut from = Piece::None;
         let mut to = Piece::None;
         for i in 0..self.state.bitboards.len() {
-            let bb = self.state.bitboards[i];
-            if (bb & from_mask) != 0 {
+            let bb = &self.state.bitboards[i];
+            if bb.has_bit(from_sq) {
                 from = unsafe { std::mem::transmute(i as u8) };
             }
-            if (bb & to_mask) != 0 {
+            if bb.has_bit(to_sq) {
                 to = unsafe { std::mem::transmute(i as u8) };
             }
         }

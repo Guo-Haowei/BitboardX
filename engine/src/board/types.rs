@@ -42,15 +42,10 @@ pub const NB_COLORS: usize = Color::Both as usize;
 pub const NB_PIECE_TYPES: usize = PieceType::None as usize;
 pub const NB_PIECES: usize = Piece::None as usize;
 
-pub fn get_color_type(piece: Piece) -> (Color, PieceType) {
-    if piece == Piece::None {
-        return (Color::White, PieceType::None);
-    }
-
-    let color = if (piece as i8) < (Piece::BPawn as i8) { Color::White } else { Color::Black };
-    let piece_type: PieceType = unsafe { std::mem::transmute((piece as i8) % (NB_PIECE_TYPES as i8)) };
-    (color, piece_type)
-}
+pub const W_START: u8 = Piece::WPawn as u8;
+pub const W_END: u8 = Piece::WKing as u8 + 1;
+pub const B_START: u8 = Piece::BPawn as u8;
+pub const B_END: u8 = Piece::BKing as u8 + 1;
 
 // castling rights
 bitflags! {
@@ -200,14 +195,5 @@ mod tests {
         assert_eq!(get_file_rank(SQ_F3), (FILE_F, RANK_3));
         assert_eq!(get_file_rank(SQ_G2), (FILE_G, RANK_2));
         assert_eq!(get_file_rank(SQ_H1), (FILE_H, RANK_1));
-    }
-
-    #[test]
-    fn to_piece_test() {
-        assert_eq!(get_color_type(Piece::WPawn), (Color::White, PieceType::Pawn));
-        assert_eq!(get_color_type(Piece::BKnight), (Color::Black, PieceType::Knight));
-        assert_eq!(get_color_type(Piece::WQueen), (Color::White, PieceType::Queen));
-        assert_eq!(get_color_type(Piece::BKing), (Color::Black, PieceType::King));
-        assert_eq!(get_color_type(Piece::None), (Color::White, PieceType::None));
     }
 }
