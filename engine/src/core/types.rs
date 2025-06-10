@@ -4,11 +4,24 @@ use bitflags::bitflags;
 #[repr(i8)]
 pub enum Color {
     White = 0,
-    Black,
+    Black = 1,
+    Both = 2,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(i8)]
+pub enum PieceType {
+    Pawn,
+    Knight,
+    Bishop,
+    Rook,
+    Queen,
+    King,
+    None,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
+#[repr(i8)]
 pub enum Piece {
     WhitePawn,
     WhiteKnight,
@@ -22,7 +35,21 @@ pub enum Piece {
     BlackRook,
     BlackQueen,
     BlackKing,
-    Count,
+    None,
+}
+
+pub const NB_COLORS: usize = Color::Both as usize;
+pub const NB_PIECE_TYPES: usize = PieceType::None as usize;
+pub const NB_PIECES: usize = Piece::None as usize;
+
+pub fn get_color_type(piece: Piece) -> (Color, PieceType) {
+    if piece == Piece::None {
+        return (Color::White, PieceType::None);
+    }
+
+    let color = if (piece as i8) < (Piece::BlackPawn as i8) { Color::White } else { Color::Black };
+    let piece_type: PieceType = unsafe { std::mem::transmute((piece as i8) % (NB_PIECE_TYPES as i8)) };
+    (color, piece_type)
 }
 
 // castling rights
@@ -133,6 +160,7 @@ pub fn get_opposite_color(color: Color) -> Color {
     match color {
         Color::White => Color::Black,
         Color::Black => Color::White,
+        Color::Both => panic!("Cannot get opposite color of Both"),
     }
 }
 
@@ -172,5 +200,14 @@ mod tests {
         assert_eq!(get_file_rank(SQ_F3), (FILE_F, RANK_3));
         assert_eq!(get_file_rank(SQ_G2), (FILE_G, RANK_2));
         assert_eq!(get_file_rank(SQ_H1), (FILE_H, RANK_1));
+    }
+
+    #[test]
+    fn to_piece_test() {
+        assert_eq!(get_color_type(Piece::WhitePawn), (Color::White, PieceType::Pawn));
+        assert_eq!(get_color_type(Piece::BlackKnight), (Color::Black, PieceType::Knight));
+        assert_eq!(get_color_type(Piece::WhiteQueen), (Color::White, PieceType::Queen));
+        assert_eq!(get_color_type(Piece::BlackKing), (Color::Black, PieceType::King));
+        assert_eq!(get_color_type(Piece::None), (Color::White, PieceType::None));
     }
 }

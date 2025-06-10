@@ -1,7 +1,8 @@
 import { BOARD_SIZE, CANVAS_ID, DEFAULT_FEN, TILE_SIZE } from './constants.js';
-import { ChessEngine } from '../engine/pkg/engine.js';
+import * as Engine from '../engine/pkg/engine.js';
 import { renderer } from './renderer.js';
 
+// @TODO: come up with a better name
 export class Game {
   constructor() {
     this.engine = null;
@@ -14,7 +15,7 @@ export class Game {
     fen = fen || DEFAULT_FEN;
     console.log(`Initializing game with FEN: ${fen}`);
     try {
-      this.engine = new ChessEngine();
+      this.engine = new Engine.Game(fen);
       console.log(this.engine.to_string(false));
       this.boardString = this.engine.to_board_string();
       return true;

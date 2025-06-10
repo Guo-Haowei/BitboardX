@@ -1,4 +1,4 @@
-use super::types::{Castling, Color, Piece};
+use super::types::{Castling, Color, NB_PIECES};
 
 pub struct FenState {
     pub white_pawn: u64,
@@ -263,8 +263,7 @@ pub fn occupancies(state: &FenState) -> [u64; 3] {
     [white_pieces, black_pieces, white_pieces | black_pieces]
 }
 
-// @TODO: use array instead of Vec
-pub fn to_vec(state: &FenState) -> [u64; Piece::Count as usize] {
+pub fn to_vec(state: &FenState) -> [u64; NB_PIECES] {
     [
         state.white_pawn,
         state.white_knight,
@@ -281,8 +280,7 @@ pub fn to_vec(state: &FenState) -> [u64; Piece::Count as usize] {
     ]
 }
 
-// @TODO: use array instead of Vec
-pub fn to_mut_vec(state: &mut FenState) -> [&mut u64; Piece::Count as usize] {
+pub fn to_mut_vec(state: &mut FenState) -> [&mut u64; NB_PIECES] {
     [
         &mut state.white_pawn,
         &mut state.white_knight,

@@ -1,17 +1,15 @@
-mod core;
-mod engine;
+pub mod core;
+pub mod engine;
+pub mod game;
 
-use core::position::Position;
 use std::io::{self, Write};
 
 fn main() {
-    let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    // let fen = "r1bqkb1r/8/8/8/8/8/8/R1BQKB1R w KQkq - 0 1";
-    let mut board = Position::from_fen(fen).unwrap();
+    let mut game = game::Game::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     loop {
-        let board_string = board.state.to_string(true);
-        print!("{}------\nEnter move (e.g. e2e4): ", board_string);
+        let board = game.to_string(true);
+        print!("{}------\nEnter move (e.g. e2e4): ", board);
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
@@ -26,15 +24,8 @@ fn main() {
             break;
         }
 
-        match engine::move_gen::parse_move(input) {
-            Some((from, to)) => {
-                if board.apply_move(from, to) {
-                    println!("Move applied: {} to {}", from, to);
-                } else {
-                    println!("Invalid move: {} to {}", from, to);
-                }
-            }
-            None => println!("Invalid input '{}'.", input),
+        if !game.apply_move_str(input) {
+            println!("Invalid move: {}", input);
         }
 
         println!("------");
