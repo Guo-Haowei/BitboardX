@@ -57,25 +57,32 @@ impl Position {
         Ok(pos)
     }
 
-    fn update_cache(&mut self) {
-        self.occupancies = fen_state::occupancies(&self.state);
+    fn attack_map<const IS_WHITE: bool, const START: u8, const END: u8>(&self) -> BitBoard {
+        let mut attack_map = BitBoard::new();
+        let color = if IS_WHITE { Color::White } else { Color::Black };
 
-        for (start, end, color) in [(W_START, W_END, Color::White), (B_START, B_END, Color::Black)] {
-            let mut attack_map = BitBoard::new();
-            for i in start..end {
-                // pieces from W to B
-                let bb = self.state.bitboards[i as usize].get();
-                for f in 0..8 {
-                    for r in 0..8 {
-                        let sq = make_square(f, r);
-                        if bb & (1u64 << sq) != 0 {
-                            attack_map |= move_gen::gen_attack_moves(self, sq, color);
-                        }
+        for i in START..END {
+            // pieces from W to B
+            let bb = self.state.bitboards[i as usize].get();
+            for f in 0..8 {
+                for r in 0..8 {
+                    let sq = make_square(f, r);
+                    if bb & (1u64 << sq) != 0 {
+                        attack_map |= move_gen::gen_attack_moves(self, sq, color);
                     }
                 }
             }
-            self.attack_map[color as usize] = attack_map;
         }
+
+        attack_map
+    }
+
+    fn update_cache(&mut self) {
+        self.occupancies = fen_state::occupancies(&self.state);
+
+        // maybe only need to update the attack map for the inactive side
+        self.attack_map[Color::White as usize] = self.attack_map::<true, W_START, W_END>();
+        self.attack_map[Color::Black as usize] = self.attack_map::<false, B_START, B_END>();
     }
 
     pub fn do_move(&mut self, m: &Move) -> bool {
@@ -152,5 +159,15 @@ mod tests {
         let m = Move::new(SQ_E7, SQ_E8, Piece::BQueen, Piece::None);
         assert_eq!(m.piece(), Piece::BQueen);
         assert_eq!(m.capture(), Piece::None);
+    }
+
+    #[test]
+    fn test_attack_map() {
+        let pos = Position::new();
+        let white_attack_map = pos.attack_map::<true, W_START, W_END>();
+        let black_attack_map = pos.attack_map::<false, B_START, B_END>();
+
+        assert_eq!(white_attack_map.get(), 0x0000000000FF0000);
+        assert_eq!(black_attack_map.get(), 0x0000FF0000000000);
     }
 }
