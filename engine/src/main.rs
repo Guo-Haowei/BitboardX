@@ -1,14 +1,13 @@
-use std::io::{self, Write};
+mod core;
+mod engine;
 
-pub mod board;
-pub mod fen_state;
-pub mod moves;
-pub mod types;
+use core::position::Position;
+use std::io::{self, Write};
 
 fn main() {
     let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "r1bqkb1r/8/8/8/8/8/8/R1BQKB1R w KQkq - 0 1";
-    let mut board = board::Board::from_fen(fen).unwrap();
+    let mut board = Position::from_fen(fen).unwrap();
 
     loop {
         let board_string = board.state.to_string(true);
@@ -27,7 +26,7 @@ fn main() {
             break;
         }
 
-        match moves::parse_move(input) {
+        match engine::move_gen::parse_move(input) {
             Some((from, to)) => {
                 if board.apply_move(from, to) {
                     println!("Move applied: {} to {}", from, to);

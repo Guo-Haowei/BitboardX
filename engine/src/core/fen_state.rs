@@ -1,7 +1,5 @@
-use crate::types::*;
-use wasm_bindgen::prelude::*;
+use super::types::{Castling, Color, Piece};
 
-#[wasm_bindgen]
 pub struct FenState {
     pub white_pawn: u64,
     pub white_knight: u64,
@@ -23,23 +21,22 @@ pub struct FenState {
     pub fullmove_number: u32,
 }
 
-#[wasm_bindgen]
 impl FenState {
-    #[wasm_bindgen(constructor)]
+    #[rustfmt::skip]
     pub fn new() -> Self {
         Self {
-            white_pawn: 0x000000000000FF00,
+            white_pawn:   0x000000000000FF00,
             white_knight: 0x0000000000000042,
             white_bishop: 0x0000000000000024,
-            white_rook: 0x0000000000000081,
-            white_queen: 0x0000000000000008,
-            white_king: 0x0000000000000010,
-            black_pawn: 0x00FF000000000000,
+            white_rook:   0x0000000000000081,
+            white_queen:  0x0000000000000008,
+            white_king:   0x0000000000000010,
+            black_pawn:   0x00FF000000000000,
             black_knight: 0x4200000000000000,
             black_bishop: 0x2400000000000000,
-            black_rook: 0x8100000000000000,
-            black_queen: 0x0800000000000000,
-            black_king: 0x10000000000000,
+            black_rook:   0x8100000000000000,
+            black_queen:  0x0800000000000000,
+            black_king:   0x1000000000000000,
             side_to_move: Color::White,
             castling: Castling::ALL.bits(),
             halfmove_clock: 0,
@@ -267,8 +264,8 @@ pub fn occupancies(state: &FenState) -> [u64; 3] {
 }
 
 // @TODO: use array instead of Vec
-pub fn to_vec(state: &FenState) -> Vec<u64> {
-    vec![
+pub fn to_vec(state: &FenState) -> [u64; Piece::Count as usize] {
+    [
         state.white_pawn,
         state.white_knight,
         state.white_bishop,
@@ -285,8 +282,8 @@ pub fn to_vec(state: &FenState) -> Vec<u64> {
 }
 
 // @TODO: use array instead of Vec
-pub fn to_mut_vec(state: &mut FenState) -> Vec<&mut u64> {
-    vec![
+pub fn to_mut_vec(state: &mut FenState) -> [&mut u64; Piece::Count as usize] {
+    [
         &mut state.white_pawn,
         &mut state.white_knight,
         &mut state.white_bishop,
@@ -353,6 +350,12 @@ mod tests {
         assert_eq!(parse_castling("kq").unwrap(), Castling::BK.bits() | Castling::BQ.bits());
         assert_eq!(parse_castling("-").unwrap(), 0);
         assert!(parse_castling("X").is_err());
+    }
+
+    #[test]
+    fn constructor_test() {
+        let state = FenState::new();
+        assert_eq!(state.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
     }
 
     #[test]

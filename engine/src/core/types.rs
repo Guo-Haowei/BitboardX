@@ -1,7 +1,5 @@
 use bitflags::bitflags;
-use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(i8)]
 pub enum Color {
@@ -9,7 +7,6 @@ pub enum Color {
     Black,
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Piece {

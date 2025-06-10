@@ -1,14 +1,14 @@
-use crate::{board, fen_state, moves::*, types::*};
-use fen_state::FenState;
+use super::fen_state::FenState;
+use super::{fen_state, types::*};
 
-pub struct Board {
+pub struct Position {
     pub state: FenState,
     pub occupancies: [u64; 3],
 }
 
-impl Board {
+impl Position {
     pub fn new() -> Self {
-        let state = FenState::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        let state = FenState::new();
         let occupancies = fen_state::occupancies(&state);
         Self { state, occupancies }
     }
@@ -26,13 +26,14 @@ impl Board {
             return false;
         }
 
-        let moves = board::gen_moves(self, from);
-        if moves & to_mask == 0 {
-            return false;
-        }
+        // @TODO: validate move legality
+        // let moves = position::gen_moves(self, from);
+        // if moves & to_mask == 0 {
+        //     return false;
+        // }
 
         let mut index: i8 = -1;
-        let mut bitboards = fen_state::to_mut_vec(&mut self.state);
+        let bitboards = fen_state::to_mut_vec(&mut self.state);
         // let mut index: usize = self.bitboards.len();
         for i in 0..bitboards.len() {
             if (*bitboards[i] & from_mask) != 0 {

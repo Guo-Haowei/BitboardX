@@ -1,10 +1,10 @@
 import { BOARD_SIZE, CANVAS_ID, DEFAULT_FEN, TILE_SIZE } from './constants.js';
-import { FenState } from '../engine/pkg/engine.js';
+import { ChessEngine } from '../engine/pkg/engine.js';
 import { renderer } from './renderer.js';
 
 export class Game {
   constructor() {
-    this.state = null;
+    this.engine = null;
     this.selected = null;
     this.boardString = '';
     this.canvas = document.getElementById(CANVAS_ID);
@@ -14,9 +14,9 @@ export class Game {
     fen = fen || DEFAULT_FEN;
     console.log(`Initializing game with FEN: ${fen}`);
     try {
-      this.state = FenState.from_fen(fen);
-      console.log(this.state.to_string(false));
-      this.boardString = this.state.to_board_string();
+      this.engine = new ChessEngine();
+      console.log(this.engine.to_string(false));
+      this.boardString = this.engine.to_board_string();
       return true;
     } catch (e) {
       console.error(`Error parsing FEN '${fen}': ${e}`);
@@ -80,7 +80,7 @@ export class Game {
     if (this.engine.apply_move(this.selected, square)) {
       // Update the board status here
       console.log(`${from}${to}`);
-      this.boardString = this.state.to_board_string();
+      this.boardString = this.engine.to_board_string();
     }
 
     this.selected = null;
