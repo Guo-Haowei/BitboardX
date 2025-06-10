@@ -9,25 +9,26 @@ fn main() {
 
     loop {
         let board = game.to_string(true);
-        print!("{}------\nEnter move (e.g. e2e4): ", board);
-        io::stdout().flush().unwrap();
+        println!("{}------", board);
 
-        let mut input = String::new();
-        if io::stdin().read_line(&mut input).is_err() {
-            println!("Error reading input.");
-            continue;
-        }
+        loop {
+            print!("Enter move (e.g. e2e4): ");
+            io::stdout().flush().unwrap();
 
-        let input = input.trim();
+            let mut input = String::new();
+            if io::stdin().read_line(&mut input).is_err() {
+                println!("Error reading input.");
+                continue;
+            }
 
-        if input.eq_ignore_ascii_case("exit") {
-            break;
-        }
+            let input = input.trim();
 
-        if !game.apply_move_str(input) {
+            if game.apply_move_str(input) {
+                break;
+            }
+
             println!("Invalid move: {}", input);
+            println!("------");
         }
-
-        println!("------");
     }
 }

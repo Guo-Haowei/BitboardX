@@ -1,7 +1,7 @@
 use bitflags::bitflags;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(i8)]
+#[repr(u8)]
 pub enum Color {
     White = 0,
     Black = 1,
@@ -9,7 +9,7 @@ pub enum Color {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(i8)]
+#[repr(u8)]
 pub enum PieceType {
     Pawn,
     Knight,
@@ -21,20 +21,20 @@ pub enum PieceType {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
-#[repr(i8)]
+#[repr(u8)]
 pub enum Piece {
-    WhitePawn,
-    WhiteKnight,
-    WhiteBishop,
-    WhiteRook,
-    WhiteQueen,
-    WhiteKing,
-    BlackPawn,
-    BlackKnight,
-    BlackBishop,
-    BlackRook,
-    BlackQueen,
-    BlackKing,
+    WPawn,
+    WKnight,
+    WBishop,
+    WRook,
+    WQueen,
+    WKing,
+    BPawn,
+    BKnight,
+    BBishop,
+    BRook,
+    BQueen,
+    BKing,
     None,
 }
 
@@ -47,7 +47,7 @@ pub fn get_color_type(piece: Piece) -> (Color, PieceType) {
         return (Color::White, PieceType::None);
     }
 
-    let color = if (piece as i8) < (Piece::BlackPawn as i8) { Color::White } else { Color::Black };
+    let color = if (piece as i8) < (Piece::BPawn as i8) { Color::White } else { Color::Black };
     let piece_type: PieceType = unsafe { std::mem::transmute((piece as i8) % (NB_PIECE_TYPES as i8)) };
     (color, piece_type)
 }
@@ -204,10 +204,10 @@ mod tests {
 
     #[test]
     fn to_piece_test() {
-        assert_eq!(get_color_type(Piece::WhitePawn), (Color::White, PieceType::Pawn));
-        assert_eq!(get_color_type(Piece::BlackKnight), (Color::Black, PieceType::Knight));
-        assert_eq!(get_color_type(Piece::WhiteQueen), (Color::White, PieceType::Queen));
-        assert_eq!(get_color_type(Piece::BlackKing), (Color::Black, PieceType::King));
+        assert_eq!(get_color_type(Piece::WPawn), (Color::White, PieceType::Pawn));
+        assert_eq!(get_color_type(Piece::BKnight), (Color::Black, PieceType::Knight));
+        assert_eq!(get_color_type(Piece::WQueen), (Color::White, PieceType::Queen));
+        assert_eq!(get_color_type(Piece::BKing), (Color::Black, PieceType::King));
         assert_eq!(get_color_type(Piece::None), (Color::White, PieceType::None));
     }
 }

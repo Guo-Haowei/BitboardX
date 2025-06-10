@@ -103,21 +103,23 @@ fn move_king<const IS_WHITE: bool>(pos: &Position, file: u8, rank: u8, color: Co
     moves |= shift_sw(bb) & occupancy;
 
     // Castling
-    // if IS_WHITE {
-    //     if (pos.state.castling & Castling::WK.bits()) != 0 {
-    //         moves |= (1u64 << SQ_G1) & occupancy;
-    //     }
-    //     if (pos.state.castling & Castling::WQ.bits()) != 0 {
-    //         moves |= (1u64 << SQ_C1) & occupancy;
-    //     }
-    // } else {
-    //     if (pos.state.castling & Castling::BK.bits()) != 0 {
-    //         moves |= (1u64 << SQ_G8) & occupancy;
-    //     }
-    //     if (pos.state.castling & Castling::BQ.bits()) != 0 {
-    //         moves |= (1u64 << SQ_C8) & occupancy;
-    //     }
-    // }
+    if false {
+        if IS_WHITE {
+            if (pos.state.castling & Castling::WK.bits()) != 0 {
+                moves |= (1u64 << SQ_G1) & occupancy;
+            }
+            if (pos.state.castling & Castling::WQ.bits()) != 0 {
+                moves |= (1u64 << SQ_C1) & occupancy;
+            }
+        } else {
+            if (pos.state.castling & Castling::BK.bits()) != 0 {
+                moves |= (1u64 << SQ_G8) & occupancy;
+            }
+            if (pos.state.castling & Castling::BQ.bits()) != 0 {
+                moves |= (1u64 << SQ_C8) & occupancy;
+            }
+        }
+    }
 
     moves
 }
@@ -188,20 +190,20 @@ pub fn gen_moves(pos: &Position, square: u8) -> u64 {
         }
 
         let piece: Piece = unsafe { std::mem::transmute(i as u8) };
-        let color = if piece <= Piece::WhiteKing { Color::White } else { Color::Black };
+        let color = if piece <= Piece::WKing { Color::White } else { Color::Black };
         if color != pos.state.side_to_move {
             return 0;
         }
 
         return match piece {
-            Piece::WhitePawn => move_pawn::<true>(pos, file, rank),
-            Piece::BlackPawn => move_pawn::<false>(pos, file, rank),
-            Piece::WhiteRook | Piece::BlackRook => move_sliding::<0, 4>(pos, file, rank, color),
-            Piece::WhiteBishop | Piece::BlackBishop => move_sliding::<4, 8>(pos, file, rank, color),
-            Piece::WhiteQueen | Piece::BlackQueen => move_sliding::<0, 8>(pos, file, rank, color),
-            Piece::WhiteKnight | Piece::BlackKnight => move_knight(pos, file, rank, color),
-            Piece::WhiteKing => move_king::<true>(pos, file, rank, color),
-            Piece::BlackKing => move_king::<false>(pos, file, rank, color),
+            Piece::WPawn => move_pawn::<true>(pos, file, rank),
+            Piece::BPawn => move_pawn::<false>(pos, file, rank),
+            Piece::WRook | Piece::BRook => move_sliding::<0, 4>(pos, file, rank, color),
+            Piece::WBishop | Piece::BBishop => move_sliding::<4, 8>(pos, file, rank, color),
+            Piece::WQueen | Piece::BQueen => move_sliding::<0, 8>(pos, file, rank, color),
+            Piece::WKnight | Piece::BKnight => move_knight(pos, file, rank, color),
+            Piece::WKing => move_king::<true>(pos, file, rank, color),
+            Piece::BKing => move_king::<false>(pos, file, rank, color),
             _ => 0,
         };
     }
