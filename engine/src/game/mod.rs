@@ -1,4 +1,4 @@
-use crate::core::board::Position;
+use crate::core::board::{Move, Position};
 use crate::core::types::make_square;
 use crate::engine::move_gen;
 use wasm_bindgen::prelude::*;
@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub struct Game {
     pos: Position,
+    history: Vec<Move>,
 }
 
 #[wasm_bindgen]
@@ -19,7 +20,7 @@ impl Game {
                 Position::new()
             }
         };
-        Self { pos: position }
+        Self { pos: position, history: Vec::new() }
     }
 
     pub fn to_string(&self, pad: bool) -> String {
@@ -34,7 +35,22 @@ impl Game {
         if move_gen::gen_moves(&self.pos, from) & (1u64 << to) == 0 {
             return false;
         }
-        self.pos.apply_move(from, to)
+
+        let m = match self.pos.create_move(from, to) {
+            Some(m) => m,
+            None => return false,
+        };
+
+        self.pos.do_move(&m);
+        self.history.push(m);
+
+        true
+    }
+
+    pub fn undo_move(&mut self) {
+        if let Some(last_move) = self.history.pop() {
+            self.pos.undo_move(&last_move);
+        }
     }
 
     pub fn apply_move_str(&mut self, input: &str) -> bool {

@@ -1,5 +1,4 @@
 use crate::core::board::*;
-use crate::core::fen_state;
 use crate::core::types::*;
 
 const NORTH: i32 = 8;
@@ -183,9 +182,8 @@ pub fn gen_moves(pos: &Position, square: u8) -> u64 {
     let (file, rank) = get_file_rank(square);
     let mask = 1u64 << square;
 
-    let bb = fen_state::to_vec(&pos.state);
-    for i in 0..bb.len() {
-        if (bb[i] & mask) == 0 {
+    for i in 0..pos.state.bitboards.len() {
+        if (pos.state.bitboards[i] & mask) == 0 {
             continue;
         }
 

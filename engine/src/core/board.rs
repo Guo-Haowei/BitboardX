@@ -2,8 +2,8 @@ use super::fen_state::FenState;
 use super::{fen_state, types::*};
 
 pub struct Move {
-    pub from: u8,
-    pub to: u8,
+    pub from_sq: u8,
+    pub to_sq: u8,
     pub pieces: u8, // encode from piece and to piece,
                     // @TODO: promotion, en passant, castling
 }
@@ -11,19 +11,18 @@ pub struct Move {
 pub struct Position {
     pub state: FenState,
     pub occupancies: [u64; 3],
-    history: Vec<Move>,
 }
 
 impl Move {
     const PIECE_MASK: u8 = 0xF;
     const CAPTURE_MASK: u8 = 0xF0;
 
-    pub fn new(from: u8, to: u8, piece: Piece, capture: Piece) -> Self {
-        assert!(from < 64 && to < 64);
+    pub fn new(from_sq: u8, to_sq: u8, piece: Piece, capture: Piece) -> Self {
+        assert!(from_sq < 64 && to_sq < 64);
         assert!(piece != Piece::None);
 
         let pieces = (piece as u8) & Self::PIECE_MASK | ((capture as u8) << 4) & Self::CAPTURE_MASK;
-        Self { from, to, pieces }
+        Self { from_sq, to_sq, pieces }
     }
 
     pub fn piece(&self) -> Piece {
@@ -41,18 +40,18 @@ impl Position {
     pub fn new() -> Self {
         let state = FenState::new();
         let occupancies = fen_state::occupancies(&state);
-        Self { state, occupancies, history: Vec::new() }
+        Self { state, occupancies }
     }
 
     pub fn from_fen(fen: &str) -> Result<Self, String> {
         let state = FenState::from_fen(fen)?;
         let occupancies = fen_state::occupancies(&state);
-        Ok(Self { state, occupancies, history: Vec::new() })
+        Ok(Self { state, occupancies })
     }
 
     pub fn do_move(&mut self, m: &Move) -> bool {
-        let from_mask = 1u64 << m.from;
-        let to_mask = 1u64 << m.to;
+        let from_mask = 1u64 << m.from_sq;
+        let to_mask = 1u64 << m.to_sq;
         if self.occupancies[self.state.side_to_move as usize] & from_mask == 0 {
             return false;
         }
@@ -60,13 +59,15 @@ impl Position {
         let from = m.piece();
         let to = m.capture();
 
-        let bitboards = fen_state::to_mut_vec(&mut self.state);
-        *bitboards[from as usize] &= !from_mask; // Remove piece from 'from' square
-        *bitboards[from as usize] |= to_mask; // Place piece on 'to' square
+        let bb_attack = &mut self.state.bitboards[from as usize];
+
+        *bb_attack &= !from_mask; // Remove piece from 'from' square
+        *bb_attack |= to_mask; // Place piece on 'to' square
         if to != Piece::None {
-            *bitboards[to as usize] &= !to_mask; // Clear the 'to' square for the captured piece
+            self.state.bitboards[to as usize] &= !to_mask; // Clear the 'to' square for the captured piece
         }
 
+        // @TODO: extract to a function
         self.state.side_to_move = get_opposite_color(self.state.side_to_move);
         self.occupancies = fen_state::occupancies(&self.state);
 
@@ -76,39 +77,44 @@ impl Position {
     pub fn undo_move(&mut self, m: &Move) {
         let from = m.piece();
         let to = m.capture();
+        let from_mask = 1u64 << m.from_sq;
+        let to_mask = 1u64 << m.to_sq;
 
-        let bitboards = fen_state::to_mut_vec(&mut self.state);
+        let bb_attack = &mut self.state.bitboards[from as usize];
+        *bb_attack |= from_mask; // Place piece back on 'from' square
+        *bb_attack &= !to_mask; // Remove piece from 'to' square
 
+        self.state.bitboards[to as usize] |= to_mask; // Place piece back on 'to' square
+
+        // @TODO: extract to a function
         self.state.side_to_move = get_opposite_color(self.state.side_to_move);
         self.occupancies = fen_state::occupancies(&self.state);
+
+        panic!("not implemented yet");
     }
 
-    pub fn apply_move(&mut self, from_sq: u8, to_sq: u8) -> bool {
+    pub fn create_move(&self, from_sq: u8, to_sq: u8) -> Option<Move> {
         let from_mask = 1u64 << from_sq;
         let to_mask = 1u64 << to_sq;
         if self.occupancies[self.state.side_to_move as usize] & from_mask == 0 {
-            return false;
+            return None;
         }
-
-        let bitboards = fen_state::to_mut_vec(&mut self.state);
 
         let mut from = Piece::None;
         let mut to = Piece::None;
-        for i in 0..bitboards.len() {
-            if (*bitboards[i] & from_mask) != 0 {
+        for i in 0..self.state.bitboards.len() {
+            let bb = self.state.bitboards[i];
+            if (bb & from_mask) != 0 {
                 from = unsafe { std::mem::transmute(i as u8) };
             }
-            if (*bitboards[i] & to_mask) != 0 {
+            if (bb & to_mask) != 0 {
                 to = unsafe { std::mem::transmute(i as u8) };
             }
         }
 
         assert!(from != Piece::None, "No piece found on 'from' square");
 
-        let move_ = Move::new(from_sq, to_sq, from, to);
-        self.do_move(&move_);
-        self.history.push(move_);
-        true
+        Some(Move::new(from_sq, to_sq, from, to))
     }
 }
 

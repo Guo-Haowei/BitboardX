@@ -1,18 +1,9 @@
+use crate::core::types::Piece;
+
 use super::types::{Castling, Color, NB_PIECES};
 
 pub struct FenState {
-    pub white_pawn: u64,
-    pub white_knight: u64,
-    pub white_bishop: u64,
-    pub white_rook: u64,
-    pub white_queen: u64,
-    pub white_king: u64,
-    pub black_pawn: u64,
-    pub black_knight: u64,
-    pub black_bishop: u64,
-    pub black_rook: u64,
-    pub black_queen: u64,
-    pub black_king: u64,
+    pub bitboards: [u64; NB_PIECES],
 
     pub side_to_move: Color,
     pub castling: u8,
@@ -24,19 +15,23 @@ pub struct FenState {
 impl FenState {
     #[rustfmt::skip]
     pub fn new() -> Self {
+        let bitboards = [
+            0x000000000000FF00,
+            0x0000000000000042,
+             0x0000000000000024,
+               0x0000000000000081,
+              0x0000000000000008,
+               0x0000000000000010,
+               0x00FF000000000000,
+             0x4200000000000000,
+             0x2400000000000000,
+               0x8100000000000000,
+              0x0800000000000000,
+               0x1000000000000000,
+        ];
+
         Self {
-            white_pawn:   0x000000000000FF00,
-            white_knight: 0x0000000000000042,
-            white_bishop: 0x0000000000000024,
-            white_rook:   0x0000000000000081,
-            white_queen:  0x0000000000000008,
-            white_king:   0x0000000000000010,
-            black_pawn:   0x00FF000000000000,
-            black_knight: 0x4200000000000000,
-            black_bishop: 0x2400000000000000,
-            black_rook:   0x8100000000000000,
-            black_queen:  0x0800000000000000,
-            black_king:   0x1000000000000000,
+            bitboards,
             side_to_move: Color::White,
             castling: Castling::ALL.bits(),
             halfmove_clock: 0,
@@ -55,24 +50,7 @@ impl FenState {
         let halfmove_clock = 0;
         let fullmove_number = 1;
 
-        let mut state = Self {
-            white_pawn: 0,
-            white_knight: 0,
-            white_bishop: 0,
-            white_rook: 0,
-            white_queen: 0,
-            white_king: 0,
-            black_pawn: 0,
-            black_knight: 0,
-            black_bishop: 0,
-            black_rook: 0,
-            black_queen: 0,
-            black_king: 0,
-            side_to_move,
-            castling,
-            halfmove_clock,
-            fullmove_number,
-        };
+        let mut state = Self { bitboards: [0; NB_PIECES], side_to_move, castling, halfmove_clock, fullmove_number };
         parse_board(parts[0], &mut state)?;
         Ok(state)
     }
@@ -83,29 +61,29 @@ impl FenState {
             for file in 0..8 {
                 let sq = rank * 8 + file;
                 let mask = 1u64 << sq;
-                let c = if self.white_bishop & mask != 0 {
+                let c = if self.bitboards[Piece::WBishop as usize] & mask != 0 {
                     'B'
-                } else if self.white_knight & mask != 0 {
+                } else if self.bitboards[Piece::WKnight as usize] & mask != 0 {
                     'N'
-                } else if self.white_pawn & mask != 0 {
+                } else if self.bitboards[Piece::WPawn as usize] & mask != 0 {
                     'P'
-                } else if self.white_rook & mask != 0 {
+                } else if self.bitboards[Piece::WRook as usize] & mask != 0 {
                     'R'
-                } else if self.white_queen & mask != 0 {
+                } else if self.bitboards[Piece::WQueen as usize] & mask != 0 {
                     'Q'
-                } else if self.white_king & mask != 0 {
+                } else if self.bitboards[Piece::WKing as usize] & mask != 0 {
                     'K'
-                } else if self.black_bishop & mask != 0 {
+                } else if self.bitboards[Piece::BBishop as usize] & mask != 0 {
                     'b'
-                } else if self.black_knight & mask != 0 {
+                } else if self.bitboards[Piece::BKnight as usize] & mask != 0 {
                     'n'
-                } else if self.black_pawn & mask != 0 {
+                } else if self.bitboards[Piece::BPawn as usize] & mask != 0 {
                     'p'
-                } else if self.black_rook & mask != 0 {
+                } else if self.bitboards[Piece::BRook as usize] & mask != 0 {
                     'r'
-                } else if self.black_queen & mask != 0 {
+                } else if self.bitboards[Piece::BQueen as usize] & mask != 0 {
                     'q'
-                } else if self.black_king & mask != 0 {
+                } else if self.bitboards[Piece::BKing as usize] & mask != 0 {
                     'k'
                 } else {
                     '.'
@@ -124,29 +102,29 @@ impl FenState {
             for file in 0..8 {
                 let sq = rank * 8 + file;
                 let mask = 1u64 << sq;
-                let piece_char = if self.white_pawn & mask != 0 {
+                let piece_char = if self.bitboards[Piece::WPawn as usize] & mask != 0 {
                     '♙'
-                } else if self.white_knight & mask != 0 {
+                } else if self.bitboards[Piece::WKnight as usize] & mask != 0 {
                     '♘'
-                } else if self.white_bishop & mask != 0 {
+                } else if self.bitboards[Piece::WBishop as usize] & mask != 0 {
                     '♗'
-                } else if self.white_rook & mask != 0 {
+                } else if self.bitboards[Piece::WRook as usize] & mask != 0 {
                     '♖'
-                } else if self.white_queen & mask != 0 {
+                } else if self.bitboards[Piece::WQueen as usize] & mask != 0 {
                     '♕'
-                } else if self.white_king & mask != 0 {
+                } else if self.bitboards[Piece::WKing as usize] & mask != 0 {
                     '♔'
-                } else if self.black_pawn & mask != 0 {
+                } else if self.bitboards[Piece::BPawn as usize] & mask != 0 {
                     '♟'
-                } else if self.black_knight & mask != 0 {
+                } else if self.bitboards[Piece::BKnight as usize] & mask != 0 {
                     '♞'
-                } else if self.black_bishop & mask != 0 {
+                } else if self.bitboards[Piece::BBishop as usize] & mask != 0 {
                     '♝'
-                } else if self.black_rook & mask != 0 {
+                } else if self.bitboards[Piece::BRook as usize] & mask != 0 {
                     '♜'
-                } else if self.black_queen & mask != 0 {
+                } else if self.bitboards[Piece::BQueen as usize] & mask != 0 {
                     '♛'
-                } else if self.black_king & mask != 0 {
+                } else if self.bitboards[Piece::BKing as usize] & mask != 0 {
                     '♚'
                 } else {
                     '.'
@@ -191,18 +169,18 @@ fn parse_board(input: &str, state: &mut FenState) -> Result<(), String> {
             let sq = (rank << 3) + file as u8;
             let mut inc = 1;
             match c {
-                'p' => state.black_pawn |= 1 << sq,
-                'r' => state.black_rook |= 1 << sq,
-                'n' => state.black_knight |= 1 << sq,
-                'b' => state.black_bishop |= 1 << sq,
-                'q' => state.black_queen |= 1 << sq,
-                'k' => state.black_king |= 1 << sq,
-                'P' => state.white_pawn |= 1 << sq,
-                'R' => state.white_rook |= 1 << sq,
-                'N' => state.white_knight |= 1 << sq,
-                'B' => state.white_bishop |= 1 << sq,
-                'Q' => state.white_queen |= 1 << sq,
-                'K' => state.white_king |= 1 << sq,
+                'p' => state.bitboards[Piece::BPawn as usize] |= 1 << sq,
+                'r' => state.bitboards[Piece::BRook as usize] |= 1 << sq,
+                'n' => state.bitboards[Piece::BKnight as usize] |= 1 << sq,
+                'b' => state.bitboards[Piece::BBishop as usize] |= 1 << sq,
+                'q' => state.bitboards[Piece::BQueen as usize] |= 1 << sq,
+                'k' => state.bitboards[Piece::BKing as usize] |= 1 << sq,
+                'P' => state.bitboards[Piece::WPawn as usize] |= 1 << sq,
+                'R' => state.bitboards[Piece::WRook as usize] |= 1 << sq,
+                'N' => state.bitboards[Piece::WKnight as usize] |= 1 << sq,
+                'B' => state.bitboards[Piece::WBishop as usize] |= 1 << sq,
+                'Q' => state.bitboards[Piece::WQueen as usize] |= 1 << sq,
+                'K' => state.bitboards[Piece::WKing as usize] |= 1 << sq,
                 '1'..='8' => inc = c.to_digit(10).unwrap(),
                 _ => return Err(format!("Invalid character '{}' in board layout", c)),
             }
@@ -248,53 +226,19 @@ fn parse_castling(input: &str) -> Result<u8, String> {
 }
 
 pub fn occupancies(state: &FenState) -> [u64; 3] {
-    let white_pieces = state.white_pawn
-        | state.white_knight
-        | state.white_bishop
-        | state.white_rook
-        | state.white_queen
-        | state.white_king;
-    let black_pieces = state.black_pawn
-        | state.black_knight
-        | state.black_bishop
-        | state.black_rook
-        | state.black_queen
-        | state.black_king;
+    let white_pieces = state.bitboards[Piece::WPawn as usize]
+        | state.bitboards[Piece::WKnight as usize]
+        | state.bitboards[Piece::WBishop as usize]
+        | state.bitboards[Piece::WRook as usize]
+        | state.bitboards[Piece::WQueen as usize]
+        | state.bitboards[Piece::WKing as usize];
+    let black_pieces = state.bitboards[Piece::BPawn as usize]
+        | state.bitboards[Piece::BKnight as usize]
+        | state.bitboards[Piece::BBishop as usize]
+        | state.bitboards[Piece::BRook as usize]
+        | state.bitboards[Piece::BQueen as usize]
+        | state.bitboards[Piece::BKing as usize];
     [white_pieces, black_pieces, white_pieces | black_pieces]
-}
-
-pub fn to_vec(state: &FenState) -> [u64; NB_PIECES] {
-    [
-        state.white_pawn,
-        state.white_knight,
-        state.white_bishop,
-        state.white_rook,
-        state.white_queen,
-        state.white_king,
-        state.black_pawn,
-        state.black_knight,
-        state.black_bishop,
-        state.black_rook,
-        state.black_queen,
-        state.black_king,
-    ]
-}
-
-pub fn to_mut_vec(state: &mut FenState) -> [&mut u64; NB_PIECES] {
-    [
-        &mut state.white_pawn,
-        &mut state.white_knight,
-        &mut state.white_bishop,
-        &mut state.white_rook,
-        &mut state.white_queen,
-        &mut state.white_king,
-        &mut state.black_pawn,
-        &mut state.black_knight,
-        &mut state.black_bishop,
-        &mut state.black_rook,
-        &mut state.black_queen,
-        &mut state.black_king,
-    ]
 }
 
 #[cfg(test)]
@@ -304,10 +248,10 @@ mod tests {
     #[test]
     fn test_new() {
         let state = FenState::new();
-        assert_eq!(state.white_pawn, 0x000000000000FF00u64);
-        assert_eq!(state.black_pawn, 0x00FF000000000000u64);
-        assert_eq!(state.white_rook, 0x0000000000000081u64);
-        assert_eq!(state.black_rook, 0x8100000000000000u64);
+        assert_eq!(state.bitboards[Piece::WPawn as usize], 0x000000000000FF00u64);
+        assert_eq!(state.bitboards[Piece::BPawn as usize], 0x00FF000000000000u64);
+        assert_eq!(state.bitboards[Piece::WRook as usize], 0x0000000000000081u64);
+        assert_eq!(state.bitboards[Piece::BRook as usize], 0x8100000000000000u64);
 
         assert_eq!(state.side_to_move, Color::White);
         assert_eq!(state.castling, Castling::ALL.bits());
@@ -319,10 +263,10 @@ mod tests {
     fn test_from_fen() {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         let state = FenState::from_fen(fen).unwrap();
-        assert_eq!(state.white_pawn, 0x000000000000FF00u64);
-        assert_eq!(state.black_pawn, 0x00FF000000000000u64);
-        assert_eq!(state.white_rook, 0x0000000000000081u64);
-        assert_eq!(state.black_rook, 0x8100000000000000u64);
+        assert_eq!(state.bitboards[Piece::WPawn as usize], 0x000000000000FF00u64);
+        assert_eq!(state.bitboards[Piece::BPawn as usize], 0x00FF000000000000u64);
+        assert_eq!(state.bitboards[Piece::WRook as usize], 0x0000000000000081u64);
+        assert_eq!(state.bitboards[Piece::BRook as usize], 0x8100000000000000u64);
 
         assert_eq!(state.side_to_move, Color::White);
         assert_eq!(state.castling, Castling::ALL.bits());
