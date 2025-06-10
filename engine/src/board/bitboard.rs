@@ -22,6 +22,10 @@ impl BitBoard {
         self.val == 0
     }
 
+    pub const fn has_any(&self) -> bool {
+        self.val != 0
+    }
+
     pub const fn get(&self) -> u64 {
         self.val
     }

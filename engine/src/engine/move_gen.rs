@@ -72,12 +72,12 @@ fn move_sliding<const START: u8, const END: u8>(pos: &Position, file: u8, rank: 
     for i in START..END {
         let mut new_pos = SHIFT_FUNCS[i as usize](bb);
 
-        while !new_pos.is_empty() {
-            if !(new_pos & pos.occupancies[color as usize]).is_empty() {
+        while new_pos.has_any() {
+            if (new_pos & pos.occupancies[color as usize]).has_any() {
                 break;
             }
 
-            if !(new_pos & pos.occupancies[opposite_color as usize]).is_empty() {
+            if (new_pos & pos.occupancies[opposite_color as usize]).has_any() {
                 moves |= new_pos;
                 break;
             }
@@ -171,7 +171,7 @@ fn move_pawn<const IS_WHITE: bool, const ATTACK_ONLY: bool>(pos: &Position, file
             moves |= new_pos_1;
         }
 
-        if (IS_WHITE && rank == RANK_2 || !IS_WHITE && rank == RANK_7) && !moves.is_empty() {
+        if (IS_WHITE && rank == RANK_2 || !IS_WHITE && rank == RANK_7) && moves.has_any() {
             let new_pos_2 = if IS_WHITE { shift_north(new_pos_1) } else { shift_south(new_pos_1) };
             if (new_pos_2 & pos.occupancies[Color::Both as usize]).is_empty() {
                 moves |= new_pos_2;
@@ -181,11 +181,11 @@ fn move_pawn<const IS_WHITE: bool, const ATTACK_ONLY: bool>(pos: &Position, file
 
     // Attack
     let attack_left = if IS_WHITE { shift_nw(bb) } else { shift_sw(bb) };
-    if ATTACK_ONLY || !(attack_left & pos.occupancies[opposite_color as usize]).is_empty() {
+    if ATTACK_ONLY || (attack_left & pos.occupancies[opposite_color as usize]).has_any() {
         moves |= attack_left;
     }
     let attack_right = if IS_WHITE { shift_ne(bb) } else { shift_se(bb) };
-    if ATTACK_ONLY || !(attack_right & pos.occupancies[opposite_color as usize]).is_empty() {
+    if ATTACK_ONLY || (attack_right & pos.occupancies[opposite_color as usize]).has_any() {
         moves |= attack_right;
     }
 
