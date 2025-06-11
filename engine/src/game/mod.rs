@@ -1,7 +1,5 @@
-use crate::board::bitboard::BitBoard;
 use crate::board::moves;
 use crate::board::position::Position;
-use crate::board::types::*;
 use crate::engine::move_gen;
 use wasm_bindgen::prelude::*;
 
@@ -35,19 +33,13 @@ impl Game {
 
     // @TODO: move to moves.rs
     pub fn apply_move(&mut self, from: u8, to: u8) -> bool {
-        if (move_gen::gen_moves(&self.pos, from) & BitBoard::from_bit(to)).is_empty() {
-            return false;
-        }
-
-        let m = match moves::create_move(&self.pos, from, to) {
-            Some(m) => m,
+        match moves::apply_move(&mut self.pos, from, to) {
             None => return false,
-        };
-
-        moves::do_move(&mut self.pos, &m);
-        self.history.push(m);
-
-        true
+            Some(m) => {
+                self.history.push(m);
+                true
+            }
+        }
     }
 
     pub fn undo_move(&mut self) -> bool {
@@ -59,8 +51,14 @@ impl Game {
         false
     }
 
-    pub fn apply_move_str(&mut self, input: &str) -> bool {
-        if let Some((from, to)) = parse_move(input) { self.apply_move(from, to) } else { false }
+    pub fn apply_move_str(&mut self, move_str: &str) -> bool {
+        match moves::apply_move_str(&mut self.pos, move_str) {
+            None => return false,
+            Some(m) => {
+                self.history.push(m);
+                true
+            }
+        }
     }
 
     pub fn gen_moves(&self, square: u8) -> u64 {
@@ -68,26 +66,10 @@ impl Game {
     }
 }
 
-fn parse_move(input: &str) -> Option<(u8, u8)> {
-    if input.len() != 4 {
-        return None;
-    }
-
-    let from_file = input.chars().nth(0)? as u8 - b'a';
-    let from_rank = input.chars().nth(1)? as u8 - b'1';
-    let to_file = input.chars().nth(2)? as u8 - b'a';
-    let to_rank = input.chars().nth(3)? as u8 - b'1';
-
-    if from_file > 7 || from_rank > 7 || to_file > 7 || to_rank > 7 {
-        return None;
-    }
-
-    Some((make_square(from_file, from_rank), make_square(to_file, to_rank)))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::board::types::*;
 
     #[test]
     fn test_game_creation() {

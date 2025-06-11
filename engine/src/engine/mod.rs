@@ -1,7 +1,4 @@
-use crate::{
-    board::{bitboard::BitBoard, moves, moves::parse_move, position::Position},
-    engine::move_gen::gen_moves,
-};
+use crate::board::{moves, position::Position};
 use std::io::{self, Write};
 
 pub mod move_gen;
@@ -72,23 +69,12 @@ impl Engine {
             match parts.as_slice() {
                 ["moves", moves @ ..] => {
                     for move_str in moves {
-                        match parse_move(move_str) {
+                        match moves::apply_move_str(&mut self.pos, move_str) {
                             None => {
-                                eprintln!("Error: Invalid move format '{}'", move_str);
+                                eprintln!("Error: Invalid move '{}'", move_str);
+                                break;
                             }
-                            // @TODO: refactor this
-                            Some((from, to)) => {
-                                eprintln!("from: {}, to: {}", from, to);
-                                if (gen_moves(&self.pos, from) & BitBoard::from_bit(to)).is_empty() {
-                                    eprintln!("Error: Invalid move '{}'", move_str);
-                                    break;
-                                }
-                                let m = match moves::create_move(&self.pos, from, to) {
-                                    Some(m) => m,
-                                    None => break,
-                                };
-
-                                moves::do_move(&mut self.pos, &m);
+                            Some(_m) => {
                                 println!("{}", self.pos.state.to_string(true));
                             }
                         }
