@@ -63,8 +63,6 @@ impl Engine {
             }
         }
 
-        println!("{}", self.pos.state.to_string(true));
-
         if !parts.is_empty() {
             match parts.as_slice() {
                 ["moves", moves @ ..] => {
@@ -74,9 +72,7 @@ impl Engine {
                                 eprintln!("Error: Invalid move '{}'", move_str);
                                 break;
                             }
-                            Some(_m) => {
-                                println!("{}", self.pos.state.to_string(true));
-                            }
+                            Some(_m) => {}
                         }
                     }
                 }
@@ -85,7 +81,8 @@ impl Engine {
                 }
             }
         }
-        // check if there are any moves
+
+        println!("{}", self.pos.state.to_string(true));
     }
 
     pub fn cmd_go(&self, out: &mut io::Stdout, args: &str) {
