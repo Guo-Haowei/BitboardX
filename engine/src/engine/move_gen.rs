@@ -1,4 +1,5 @@
 use crate::board::bitboard::BitBoard;
+use crate::board::moves::MoveFlags;
 use crate::board::position::*;
 use crate::board::types::*;
 
@@ -103,18 +104,16 @@ fn castling_helper<const IS_WHITE: bool, const ROOK_SQ: u8, const BLOCK: u64, co
         return false;
     }
 
-    let has_right = if ROOK_SQ == SQ_H1 {
-        pos.state.castling & Castling::WK.bits() != 0
-    } else if ROOK_SQ == SQ_H8 {
-        pos.state.castling & Castling::BK.bits() != 0
-    } else if ROOK_SQ == SQ_A1 {
-        pos.state.castling & Castling::WQ.bits() != 0
-    } else if ROOK_SQ == SQ_A8 {
-        pos.state.castling & Castling::BQ.bits() != 0
-    } else {
-        panic!("Invalid castling square: {}", ROOK_SQ);
+    // @TODO: bitset
+    let can_castle = match ROOK_SQ {
+        SQ_H1 => pos.state.castling & MoveFlags::K != 0,
+        SQ_H8 => pos.state.castling & MoveFlags::k != 0,
+        SQ_A1 => pos.state.castling & MoveFlags::Q != 0,
+        SQ_A8 => pos.state.castling & MoveFlags::q != 0,
+        _ => panic!("Invalid castling square: {}", ROOK_SQ),
     };
-    if !has_right {
+
+    if !can_castle {
         return false;
     }
 

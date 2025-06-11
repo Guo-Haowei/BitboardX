@@ -1,7 +1,8 @@
 use crate::board::types::get_opposite_color;
 
 use super::bitboard::BitBoard;
-use super::types::{Castling, Color, NB_PIECES, Piece};
+use super::moves::MoveFlags;
+use super::types::{Color, NB_PIECES, Piece};
 
 pub struct FenState {
     pub bitboards: [BitBoard; NB_PIECES],
@@ -30,13 +31,7 @@ impl FenState {
             BitBoard::from(0x1000000000000000), // Black King
         ];
 
-        Self {
-            bitboards,
-            side_to_move: Color::White,
-            castling: Castling::ALL.bits(),
-            halfmove_clock: 0,
-            fullmove_number: 1,
-        }
+        Self { bitboards, side_to_move: Color::White, castling: MoveFlags::KQkq, halfmove_clock: 0, fullmove_number: 1 }
     }
 
     pub fn from(
@@ -219,10 +214,10 @@ fn parse_castling(input: &str) -> Result<u8, String> {
     let mut castling = 0;
     for c in input.chars() {
         match c {
-            'K' => castling |= Castling::WK.bits(),
-            'Q' => castling |= Castling::WQ.bits(),
-            'k' => castling |= Castling::BK.bits(),
-            'q' => castling |= Castling::BQ.bits(),
+            'K' => castling |= MoveFlags::K,
+            'Q' => castling |= MoveFlags::Q,
+            'k' => castling |= MoveFlags::k,
+            'q' => castling |= MoveFlags::q,
             _ => return Err("Invalid castling rights in FEN".to_string()),
         }
     }
@@ -259,7 +254,7 @@ mod tests {
         assert!(state.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
 
         assert_eq!(state.side_to_move, Color::White);
-        assert_eq!(state.castling, Castling::ALL.bits());
+        assert_eq!(state.castling, MoveFlags::KQkq);
         assert_eq!(state.halfmove_clock, 0);
         assert_eq!(state.fullmove_number, 1);
     }
@@ -273,7 +268,7 @@ mod tests {
         assert!(state.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
 
         assert_eq!(state.side_to_move, Color::White);
-        assert_eq!(state.castling, Castling::ALL.bits());
+        assert_eq!(state.castling, MoveFlags::KQkq);
         assert_eq!(state.halfmove_clock, 0);
         assert_eq!(state.fullmove_number, 1);
     }
@@ -288,12 +283,9 @@ mod tests {
 
     #[test]
     fn test_parse_castling() {
-        assert_eq!(
-            parse_castling("KQkq").unwrap(),
-            Castling::WK.bits() | Castling::WQ.bits() | Castling::BK.bits() | Castling::BQ.bits()
-        );
-        assert_eq!(parse_castling("KQ").unwrap(), Castling::WK.bits() | Castling::WQ.bits());
-        assert_eq!(parse_castling("kq").unwrap(), Castling::BK.bits() | Castling::BQ.bits());
+        assert_eq!(parse_castling("KQkq").unwrap(), MoveFlags::KQkq);
+        assert_eq!(parse_castling("KQ").unwrap(), MoveFlags::KQ);
+        assert_eq!(parse_castling("kq").unwrap(), MoveFlags::kq);
         assert_eq!(parse_castling("-").unwrap(), 0);
         assert!(parse_castling("X").is_err());
     }

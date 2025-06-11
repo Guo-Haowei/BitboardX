@@ -1,6 +1,20 @@
 use super::position::Position;
 use super::types::*;
 
+// castling rights
+pub struct MoveFlags;
+
+#[allow(non_upper_case_globals)]
+impl MoveFlags {
+    pub const K: u8 = 0b0001;
+    pub const Q: u8 = 0b0010;
+    pub const k: u8 = 0b0100;
+    pub const q: u8 = 0b1000;
+    pub const KQ: u8 = Self::K | Self::Q;
+    pub const kq: u8 = Self::k | Self::q;
+    pub const KQkq: u8 = Self::KQ | Self::kq;
+}
+
 pub struct Move {
     pub from_sq: u8,
     pub to_sq: u8,
@@ -68,10 +82,12 @@ pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
 
     assert!(from != Piece::None, "No piece found on 'from' square");
 
-    // check if castling
-    if from_sq == SQ_E1 && to_sq == SQ_G1 { // White kingside castling
-        //
-    }
+    // if from == Piece::WKing && pos.state.castling & Castling::WK.bits() != 0 {}
+
+    // // check if castling
+    // if from_sq == SQ_E1 && to_sq == SQ_G1 { // White kingside castling
+    //     //
+    // }
 
     Some(Move::new(from_sq, to_sq, from, to))
 }

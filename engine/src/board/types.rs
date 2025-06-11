@@ -1,5 +1,4 @@
 use super::bitboard::BitBoard;
-use bitflags::bitflags;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
@@ -47,17 +46,6 @@ pub const W_START: u8 = Piece::WPawn as u8;
 pub const W_END: u8 = Piece::WKing as u8 + 1;
 pub const B_START: u8 = Piece::BPawn as u8;
 pub const B_END: u8 = Piece::BKing as u8 + 1;
-
-// castling rights
-bitflags! {
-    pub struct Castling: u8 {
-        const WK = 0b0001;
-        const WQ = 0b0010;
-        const BK = 0b0100;
-        const BQ = 0b1000;
-        const ALL = Self::WK.bits | Self::WQ.bits | Self::BK.bits | Self::BQ.bits;
-    }
-}
 
 // Constants for files
 pub const FILE_A: u8 = 0;
