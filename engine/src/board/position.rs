@@ -2,42 +2,13 @@ use crate::engine::move_gen;
 
 use super::bitboard::BitBoard;
 use super::fen_state::FenState;
+use super::moves::Move;
 use super::{fen_state, types::*};
-
-pub struct Move {
-    pub from_sq: u8,
-    pub to_sq: u8,
-    pub pieces: u8, // encode from piece and to piece,
-                    // @TODO: promotion, en passant, castling
-}
 
 pub struct Position {
     pub state: FenState,
     pub occupancies: [BitBoard; 3],
     pub attack_map: [BitBoard; NB_COLORS],
-}
-
-impl Move {
-    const PIECE_MASK: u8 = 0xF;
-    const CAPTURE_MASK: u8 = 0xF0;
-
-    pub fn new(from_sq: u8, to_sq: u8, piece: Piece, capture: Piece) -> Self {
-        assert!(from_sq < 64 && to_sq < 64);
-        assert!(piece != Piece::None);
-
-        let pieces = (piece as u8) & Self::PIECE_MASK | ((capture as u8) << 4) & Self::CAPTURE_MASK;
-        Self { from_sq, to_sq, pieces }
-    }
-
-    pub fn piece(&self) -> Piece {
-        let flag = unsafe { std::mem::transmute(self.pieces & 0b1111) };
-        flag
-    }
-
-    pub fn capture(&self) -> Piece {
-        let flag = (self.pieces & Self::CAPTURE_MASK) >> 4;
-        unsafe { std::mem::transmute(flag) }
-    }
 }
 
 impl Position {
@@ -146,28 +117,6 @@ impl Position {
 
         self.state.change_side();
         self.update_cache();
-    }
-
-    pub fn create_move(&self, from_sq: u8, to_sq: u8) -> Option<Move> {
-        if !self.occupancies[self.state.side_to_move as usize].has_bit(from_sq) {
-            return None;
-        }
-
-        let mut from = Piece::None;
-        let mut to = Piece::None;
-        for i in 0..self.state.bitboards.len() {
-            let bb = &self.state.bitboards[i];
-            if bb.has_bit(from_sq) {
-                from = unsafe { std::mem::transmute(i as u8) };
-            }
-            if bb.has_bit(to_sq) {
-                to = unsafe { std::mem::transmute(i as u8) };
-            }
-        }
-
-        assert!(from != Piece::None, "No piece found on 'from' square");
-
-        Some(Move::new(from_sq, to_sq, from, to))
     }
 }
 
