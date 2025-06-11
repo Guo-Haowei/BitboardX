@@ -19,6 +19,8 @@ export class Game {
   set board(value) {
     this._board = value;
     console.log(this.engine.to_string(false));
+    document.getElementById('undoButton').disabled = !this.engine.can_undo();
+    document.getElementById('redoButton').disabled = !this.engine.can_redo();
   }
 
   init(fen) {
@@ -81,15 +83,12 @@ export class Game {
 
     let file = this.selected % BOARD_SIZE;
     let rank = Math.floor(this.selected / BOARD_SIZE);
-    const from = `${String.fromCharCode(97 + file)}${rank + 1}`;
-    rank = 7 - y;
-    file = x;
-    const to = `${String.fromCharCode(97 + file)}${rank + 1}`;
-    const square = file + rank * BOARD_SIZE;
+    let rank2 = 7 - y;
+    let file2 = x;
 
-    if (this.engine.apply_move(this.selected, square)) {
-      // Update the board status here
-      console.log(`${from}${to}`);
+    const move =  `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}`;
+    console.log(move);
+    if (this.engine.execute(move)) {
       this.board = this.engine.to_board_string();
     }
 
@@ -97,12 +96,14 @@ export class Game {
   }
 
   undo() {
-    if (this.engine.undo_move()) {
+    if (this.engine.undo()) {
       this.board = this.engine.to_board_string();
     }
   }
 
   redo() {
-    console.warn('Redo is not implemented yet');
+    if (this.engine.redo()) {
+      this.board = this.engine.to_board_string();
+    }
   }
 }

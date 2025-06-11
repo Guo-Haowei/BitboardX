@@ -31,7 +31,7 @@ fn game_main() {
                 return;
             }
 
-            if game.apply_move_str(input) {
+            if game.execute(input) {
                 break;
             }
 

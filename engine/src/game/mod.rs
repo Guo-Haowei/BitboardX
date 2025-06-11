@@ -1,75 +1,98 @@
+pub mod undo_redo;
+
 use crate::board::moves;
 use crate::board::position::Position;
 use crate::engine::move_gen;
+use std::cell::RefCell;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Game {
-    pos: Position,
-    history: Vec<moves::Move>,
+    pos: Rc<RefCell<Position>>,
+    manager: undo_redo::CommandManager,
+}
+
+struct MoveCommand {
+    pos: Rc<RefCell<Position>>,
+    move_: moves::Move,
+}
+
+impl undo_redo::Command for MoveCommand {
+    fn execute(&mut self) {
+        moves::do_move(&mut self.pos.borrow_mut(), &self.move_);
+    }
+
+    fn undo(&mut self) {
+        moves::undo_move(&mut self.pos.borrow_mut(), &self.move_);
+    }
 }
 
 #[wasm_bindgen]
 impl Game {
     #[wasm_bindgen(constructor)]
     pub fn new(fen: &str) -> Self {
-        let position = match Position::from_fen(fen) {
+        let pos = match Position::from_fen(fen) {
             Ok(pos) => pos,
             Err(err) => {
                 eprintln!("Error parsing FEN: {}", err);
                 Position::new()
             }
         };
-        Self { pos: position, history: Vec::new() }
+
+        Self { pos: Rc::new(RefCell::new(pos)), manager: undo_redo::CommandManager::new() }
     }
 
     pub fn to_string(&self, pad: bool) -> String {
-        self.pos.state.to_string(pad)
+        self.pos.borrow().state.to_string(pad)
     }
 
     pub fn to_board_string(&self) -> String {
-        self.pos.state.to_board_string()
+        self.pos.borrow().state.to_board_string()
     }
 
-    // @TODO: move to moves.rs
-    pub fn apply_move(&mut self, from: u8, to: u8) -> bool {
-        match moves::apply_move(&mut self.pos, from, to) {
-            None => return false,
-            Some(m) => {
-                self.history.push(m);
-                true
-            }
-        }
+    pub fn can_undo(&self) -> bool {
+        self.manager.can_undo()
     }
 
-    pub fn undo_move(&mut self) -> bool {
-        if let Some(last_move) = self.history.pop() {
-            moves::undo_move(&mut self.pos, &last_move);
-            return true;
-        }
-
-        false
+    pub fn can_redo(&self) -> bool {
+        self.manager.can_redo()
     }
 
-    pub fn apply_move_str(&mut self, move_str: &str) -> bool {
-        match moves::apply_move_str(&mut self.pos, move_str) {
-            None => return false,
-            Some(m) => {
-                self.history.push(m);
-                true
-            }
+    pub fn undo(&mut self) -> bool {
+        self.manager.undo()
+    }
+
+    pub fn redo(&mut self) -> bool {
+        self.manager.redo()
+    }
+
+    pub fn execute(&mut self, move_str: &str) -> bool {
+        let squares = moves::parse_move(move_str);
+        if squares.is_none() {
+            return false;
         }
+
+        let (from, to) = squares.unwrap();
+        let move_ = moves::create_move_verified(&mut self.pos.borrow_mut(), from, to);
+        if move_.is_none() {
+            return false;
+        }
+
+        let cmd = Box::new(MoveCommand { pos: Rc::clone(&self.pos), move_: move_.unwrap() });
+        self.manager.execute(cmd);
+
+        true
     }
 
     pub fn gen_moves(&self, square: u8) -> u64 {
-        move_gen::gen_moves(&self.pos, square).get()
+        move_gen::gen_moves(&self.pos.borrow(), square).get()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::types::*;
 
     #[test]
     fn test_game_creation() {
@@ -80,9 +103,11 @@ mod tests {
     #[test]
     fn test_apply_move() {
         let mut game = Game::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        assert!(game.apply_move(SQ_E2, SQ_E4)); // e2 to e4
+        assert!(game.execute("e2e4")); // e2 to e4
         assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp....................P...........PPPP.PPPRNBQKBNR");
-        game.undo_move();
+        game.undo();
         assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
+        game.redo();
+        assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp....................P...........PPPP.PPPRNBQKBNR");
     }
 }

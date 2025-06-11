@@ -231,22 +231,15 @@ pub fn undo_move(pos: &mut Position, m: &Move) {
     post_move(pos);
 }
 
-pub fn apply_move(pos: &mut Position, from_sq: u8, to_sq: u8) -> Option<Move> {
-    // @TODO: provide verify and unverify methods
+pub fn create_move_verified(pos: &mut Position, from_sq: u8, to_sq: u8) -> Option<Move> {
     if (move_gen::gen_moves(pos, from_sq) & BitBoard::from_bit(to_sq)).is_empty() {
         return None;
     }
 
-    match create_move(pos, from_sq, to_sq) {
-        None => None,
-        Some(m) => {
-            do_move(pos, &m);
-            Some(m)
-        }
-    }
+    create_move(pos, from_sq, to_sq)
 }
 
-fn parse_move(input: &str) -> Option<(u8, u8)> {
+pub fn parse_move(input: &str) -> Option<(u8, u8)> {
     if input.len() != 4 {
         return None;
     }
@@ -263,16 +256,16 @@ fn parse_move(input: &str) -> Option<(u8, u8)> {
     Some((make_square(from_file, from_rank), make_square(to_file, to_rank)))
 }
 
-pub fn apply_move_str(pos: &mut Position, move_str: &str) -> Option<Move> {
+pub fn apply_move_str(pos: &mut Position, move_str: &str) -> bool {
     match parse_move(move_str) {
-        None => None,
-        Some((from, to)) => {
-            if let Some(m) = apply_move(pos, from, to) {
-                Some(m)
-            } else {
-                None
+        None => false,
+        Some((from, to)) => match create_move_verified(pos, from, to) {
+            None => false,
+            Some(m) => {
+                do_move(pos, &m);
+                true
             }
-        }
+        },
     }
 }
 
