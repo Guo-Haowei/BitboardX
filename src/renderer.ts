@@ -1,28 +1,51 @@
 import { BOARD_SIZE, COLORS, PIECE_SYMBOLS, TILE_SIZE } from './constants.js';
-import { isLowerCase } from './utility.js';
+import { isLowerCase } from './utils.js';
+
+export type SelectedPiece = {
+  piece: string;
+  x: number;
+  y: number;
+  moves: bigint;
+};
 
 class Renderer {
-  constructor() {
+  private ctx: CanvasRenderingContext2D | null;
+  private selectedPiece: SelectedPiece | null;
+
+  public constructor() {
     this.ctx = null;
     this.selectedPiece = null;
   }
 
-  init(canvas) {
-    this.ctx = canvas.getContext('2d');
+  public init(canvas: HTMLCanvasElement): boolean {
+    this.ctx = canvas.getContext('2d')!;
+    if (!this.ctx) {
+      return false;
+    }
+
     this.ctx.font = '40px Arial';
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
+    return true;
   }
 
-  setSelectedPiece(piece) {
+  public getSelectedPiece() {
+    return this.selectedPiece;
+  }
+
+  public setSelectedPiece(piece: SelectedPiece) {
     this.selectedPiece = piece;
   }
 
-  unsetSelectedPiece() {
+  public unsetSelectedPiece() {
     this.selectedPiece = null;
   }
 
-  drawBoard() {
+  private drawBoard() {
+    if (!this.ctx) {
+      return;
+    }
+
     const moves = this.selectedPiece ? this.selectedPiece.moves : 0n;
 
     for (let row = 0; row < BOARD_SIZE; row++) {
@@ -54,7 +77,11 @@ class Renderer {
     }
   }
 
-  drawPieces(board) {
+  private drawPieces(board: string) {
+    if (!this.ctx) {
+      return;
+    }
+
     for (let row = 0; row < BOARD_SIZE; ++row) {
       for (let col = 0; col < BOARD_SIZE; ++col) {
         const c = board[row * BOARD_SIZE + col];
@@ -76,8 +103,7 @@ class Renderer {
     }
   }
 
-  draw(context) {
-    const { board } = context;
+  public draw(board: string) {
     this.drawBoard();
     this.drawPieces(board);
   }
