@@ -1,4 +1,5 @@
 use crate::board::bitboard::BitBoard;
+use crate::board::moves::MoveFlags;
 use crate::board::position::*;
 use crate::board::types::*;
 
@@ -90,6 +91,43 @@ fn move_sliding<const START: u8, const END: u8>(pos: &Position, file: u8, rank: 
     moves
 }
 
+fn castling_helper<const IS_WHITE: bool, const ROOK_SQ: u8, const BLOCK: u64, const ATTACK: u64>(
+    pos: &Position,
+) -> bool {
+    let opposite_color = if !IS_WHITE { Color::White } else { Color::Black };
+    let occupancy = pos.occupancies[Color::Both as usize];
+
+    // check if rook is taken out
+    if IS_WHITE && !pos.state.bitboards[Piece::WRook as usize].has_bit(ROOK_SQ) {
+        return false;
+    } else if !IS_WHITE && !pos.state.bitboards[Piece::BRook as usize].has_bit(ROOK_SQ) {
+        return false;
+    }
+
+    // @TODO: bitset
+    let can_castle = match ROOK_SQ {
+        SQ_H1 => pos.state.castling & MoveFlags::K != 0,
+        SQ_H8 => pos.state.castling & MoveFlags::k != 0,
+        SQ_A1 => pos.state.castling & MoveFlags::Q != 0,
+        SQ_A8 => pos.state.castling & MoveFlags::q != 0,
+        _ => panic!("Invalid castling square: {}", ROOK_SQ),
+    };
+
+    if !can_castle {
+        return false;
+    }
+
+    if (BitBoard::from(BLOCK) & occupancy).has_any() {
+        return false;
+    }
+
+    if (BitBoard::from(ATTACK) & pos.attack_map[opposite_color as usize]).has_any() {
+        return false;
+    }
+
+    true
+}
+
 fn move_king<const IS_WHITE: bool, const ATTACK_ONLY: bool>(pos: &Position, file: u8, rank: u8) -> BitBoard {
     let color = if IS_WHITE { Color::White } else { Color::Black };
     let opposite_color = if !IS_WHITE { Color::White } else { Color::Black };
@@ -110,25 +148,31 @@ fn move_king<const IS_WHITE: bool, const ATTACK_ONLY: bool>(pos: &Position, file
     }
 
     // Castling
-    if false {
-        if IS_WHITE {
-            // King side castling, G1, F1 must be empty, G1, F1, H1 must not be attacked
-            if (pos.state.castling & Castling::WK.bits()) != 0 {
-                moves |= BitBoard::from_bit(SQ_G1) & occupancy;
-            }
-            // Queen side castling, B1, C1, D1 must be empty, B1, C1, D1, E1 must not be attacked
-            if (pos.state.castling & Castling::WQ.bits()) != 0 {
-                moves |= BitBoard::from_bit(SQ_C1) & occupancy;
-            }
-        } else {
-            // King side castling
-            if (pos.state.castling & Castling::BK.bits()) != 0 {
-                moves |= BitBoard::from_bit(SQ_G8) & occupancy;
-            }
-            // Queen side castling
-            if (pos.state.castling & Castling::BQ.bits()) != 0 {
-                moves |= BitBoard::from_bit(SQ_C8) & occupancy;
-            }
+    if IS_WHITE {
+        const BLOCK_KS: u64 = (1u64 << SQ_F1) | (1u64 << SQ_G1);
+        const ATTACK_KS: u64 = (1u64 << SQ_E1) | (1u64 << SQ_F1) | (1u64 << SQ_G1);
+        let king_side = castling_helper::<true, SQ_H1, BLOCK_KS, ATTACK_KS>(pos);
+        if king_side {
+            moves |= BB_G1;
+        }
+        const BLOCK_QS: u64 = (1u64 << SQ_B1) | (1u64 << SQ_C1) | (1u64 << SQ_D1);
+        const ATTACK_QS: u64 = (1u64 << SQ_C1) | (1u64 << SQ_D1) | (1u64 << SQ_E1);
+        let queen_side = castling_helper::<true, SQ_A1, BLOCK_QS, ATTACK_QS>(pos);
+        if queen_side {
+            moves |= BB_C1;
+        }
+    } else {
+        const BLOCK_KS: u64 = (1u64 << SQ_F8) | (1u64 << SQ_G8);
+        const ATTACK_KS: u64 = (1u64 << SQ_E8) | BLOCK_KS;
+        let king_side = castling_helper::<false, SQ_H8, BLOCK_KS, ATTACK_KS>(pos);
+        if king_side {
+            moves |= BB_G8;
+        }
+        const BLOCK_QS: u64 = (1u64 << SQ_B8) | (1u64 << SQ_C8) | (1u64 << SQ_D8);
+        const ATTACK_QS: u64 = (1u64 << SQ_E8) | BLOCK_QS;
+        let queen_side = castling_helper::<false, SQ_A8, BLOCK_QS, ATTACK_QS>(pos);
+        if queen_side {
+            moves |= BB_C8;
         }
     }
 
@@ -239,7 +283,7 @@ mod tests {
         assert_eq!(pos.state.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
 
         let moves = gen_moves(&pos, SQ_E2);
-        assert_eq!(moves, BitBoard::from_bit(SQ_E3) | BitBoard::from_bit(SQ_E4));
+        assert_eq!(moves, BB_E3 | BB_E4);
     }
 
     #[test]
@@ -248,7 +292,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_D7);
-        assert_eq!(moves, BitBoard::from_bit(SQ_D6) | BitBoard::from_bit(SQ_D5));
+        assert_eq!(moves, BB_D6 | BB_D5);
     }
 
     #[test]
@@ -257,7 +301,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_E4);
-        assert_eq!(moves, BitBoard::from_bit(SQ_D5) | BitBoard::from_bit(SQ_E5));
+        assert_eq!(moves, BB_D5 | BB_E5);
     }
 
     #[test]
@@ -266,7 +310,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_D5);
-        assert_eq!(moves, BitBoard::from_bit(SQ_D4) | BitBoard::from_bit(SQ_E4));
+        assert_eq!(moves, BB_D4 | BB_E4);
     }
 
     #[test]
@@ -275,14 +319,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_E6);
-        assert_eq!(
-            moves,
-            BitBoard::from_bit(SQ_C8)
-                | BitBoard::from_bit(SQ_D7)
-                | BitBoard::from_bit(SQ_F5)
-                | BitBoard::from_bit(SQ_G4)
-                | BitBoard::from_bit(SQ_H3)
-        );
+        assert_eq!(moves, BB_C8 | BB_D7 | BB_F5 | BB_G4 | BB_H3);
     }
 
     #[test]
@@ -291,7 +328,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_H7);
-        assert_eq!(moves, BitBoard::from_bit(SQ_H8) | BitBoard::from_bit(SQ_G7));
+        assert_eq!(moves, BB_H8 | BB_G7);
     }
 
     #[test]
@@ -300,7 +337,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_B1);
-        assert_eq!(moves, BitBoard::from_bit(SQ_A3) | BitBoard::from_bit(SQ_C3));
+        assert_eq!(moves, BB_A3 | BB_C3);
     }
 
     #[test]
@@ -309,6 +346,25 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
 
         let moves = gen_moves(&pos, SQ_F6);
-        assert_eq!(moves, BitBoard::from_bit(SQ_E4) | BitBoard::from_bit(SQ_G8) | BitBoard::from_bit(SQ_H7));
+        assert_eq!(moves, BB_E4 | BB_G8 | BB_H7);
+    }
+
+    #[test]
+    fn test_castling() {
+        let fen = "r3k2r/ppp1bppp/2n1pn2/3p4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 b kq - 0 10";
+        let pos = Position::from_fen(fen).unwrap();
+
+        let moves = gen_moves(&pos, SQ_E8);
+        let expected_moves = BB_C8 | BB_D8 | BB_F8 | BB_G8 | BB_D7;
+        assert_eq!(moves, expected_moves);
+    }
+
+    #[test]
+    fn test_castling_2() {
+        let fen = "8/4k3/8/8/8/8/r6R/R3K3 w Q - 0 1";
+        let pos = Position::from_fen(fen).unwrap();
+
+        let moves = gen_moves(&pos, SQ_E1);
+        assert!(moves.has_bit(SQ_C1))
     }
 }

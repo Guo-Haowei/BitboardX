@@ -32,8 +32,8 @@ function processEvents() {
 }
 
 function render() {
-  const {boardString} = game;
-  renderer.draw({ boardString });
+  const {board} = game;
+  renderer.draw({ board });
 }
 
 function gameLoop() {

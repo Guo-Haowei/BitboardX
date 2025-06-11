@@ -1,5 +1,6 @@
 use crate::board::bitboard::BitBoard;
-use crate::board::position::{Move, Position};
+use crate::board::moves;
+use crate::board::position::Position;
 use crate::board::types::*;
 use crate::engine::move_gen;
 use wasm_bindgen::prelude::*;
@@ -7,7 +8,7 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub struct Game {
     pos: Position,
-    history: Vec<Move>,
+    history: Vec<moves::Move>,
 }
 
 #[wasm_bindgen]
@@ -37,12 +38,12 @@ impl Game {
             return false;
         }
 
-        let m = match self.pos.create_move(from, to) {
+        let m = match moves::create_move(&self.pos, from, to) {
             Some(m) => m,
             None => return false,
         };
 
-        self.pos.do_move(&m);
+        moves::do_move(&mut self.pos, &m);
         self.history.push(m);
 
         true
@@ -50,7 +51,7 @@ impl Game {
 
     pub fn undo_move(&mut self) -> bool {
         if let Some(last_move) = self.history.pop() {
-            self.pos.undo_move(&last_move);
+            moves::undo_move(&mut self.pos, &last_move);
             return true;
         }
 

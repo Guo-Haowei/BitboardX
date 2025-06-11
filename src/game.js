@@ -7,8 +7,18 @@ export class Game {
   constructor() {
     this.engine = null;
     this.selected = null;
-    this.boardString = '';
     this.canvas = document.getElementById(CANVAS_ID);
+
+    this._board = '';
+  }
+
+  get board() {
+    return this._board;
+  }
+
+  set board(value) {
+    this._board = value;
+    console.log(this.engine.to_string(false));
   }
 
   init(fen) {
@@ -16,8 +26,7 @@ export class Game {
     console.log(`Initializing game with FEN: ${fen}`);
     try {
       this.engine = new Engine.Game(fen);
-      console.log(this.engine.to_string(false));
-      this.boardString = this.engine.to_board_string();
+      this.board = this.engine.to_board_string();
       return true;
     } catch (e) {
       console.error(`Error parsing FEN '${fen}': ${e}`);
@@ -34,7 +43,7 @@ export class Game {
 
     const index = x + y * BOARD_SIZE;
 
-    const piece = this.boardString[index];
+    const piece = this.board[index];
     if (piece === '.') {
       return;
     }
@@ -81,7 +90,7 @@ export class Game {
     if (this.engine.apply_move(this.selected, square)) {
       // Update the board status here
       console.log(`${from}${to}`);
-      this.boardString = this.engine.to_board_string();
+      this.board = this.engine.to_board_string();
     }
 
     this.selected = null;
@@ -89,7 +98,7 @@ export class Game {
 
   undo() {
     if (this.engine.undo_move()) {
-      this.boardString = this.engine.to_board_string();
+      this.board = this.engine.to_board_string();
     }
   }
 

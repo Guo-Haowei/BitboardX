@@ -1,7 +1,8 @@
 use crate::board::types::get_opposite_color;
 
 use super::bitboard::BitBoard;
-use super::types::{Castling, Color, NB_PIECES, Piece};
+use super::moves::MoveFlags;
+use super::types::{Color, NB_PIECES, Piece};
 
 pub struct FenState {
     pub bitboards: [BitBoard; NB_PIECES],
@@ -30,29 +31,25 @@ impl FenState {
             BitBoard::from(0x1000000000000000), // Black King
         ];
 
-        Self {
-            bitboards,
-            side_to_move: Color::White,
-            castling: Castling::ALL.bits(),
-            halfmove_clock: 0,
-            fullmove_number: 1,
-        }
+        Self { bitboards, side_to_move: Color::White, castling: MoveFlags::KQkq, halfmove_clock: 0, fullmove_number: 1 }
     }
 
-    pub fn from_fen(fen: &str) -> Result<Self, String> {
-        let parts: Vec<&str> = fen.trim().split_whitespace().collect();
-        if parts.len() != 6 {
-            return Err("Invalid FEN: must have 6 fields".to_string());
-        }
-
-        let side_to_move = parse_side_to_move(parts[1])?;
-        let castling = parse_castling(parts[2])?;
+    pub fn from(
+        board: &str,
+        side_to_move: &str,
+        castling: &str,
+        _en_passant: &str,
+        _half: &str,
+        _full: &str,
+    ) -> Result<Self, String> {
+        let side_to_move = parse_side_to_move(side_to_move)?;
+        let castling = parse_castling(castling)?;
         let halfmove_clock = 0;
         let fullmove_number = 1;
 
         let mut state =
             Self { bitboards: [BitBoard::new(); NB_PIECES], side_to_move, castling, halfmove_clock, fullmove_number };
-        parse_board(parts[0], &mut state)?;
+        parse_board(board, &mut state)?;
         Ok(state)
     }
 
@@ -217,10 +214,10 @@ fn parse_castling(input: &str) -> Result<u8, String> {
     let mut castling = 0;
     for c in input.chars() {
         match c {
-            'K' => castling |= Castling::WK.bits(),
-            'Q' => castling |= Castling::WQ.bits(),
-            'k' => castling |= Castling::BK.bits(),
-            'q' => castling |= Castling::BQ.bits(),
+            'K' => castling |= MoveFlags::K,
+            'Q' => castling |= MoveFlags::Q,
+            'k' => castling |= MoveFlags::k,
+            'q' => castling |= MoveFlags::q,
             _ => return Err("Invalid castling rights in FEN".to_string()),
         }
     }
@@ -257,22 +254,21 @@ mod tests {
         assert!(state.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
 
         assert_eq!(state.side_to_move, Color::White);
-        assert_eq!(state.castling, Castling::ALL.bits());
+        assert_eq!(state.castling, MoveFlags::KQkq);
         assert_eq!(state.halfmove_clock, 0);
         assert_eq!(state.fullmove_number, 1);
     }
 
     #[test]
     fn test_from_fen() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let state = FenState::from_fen(fen).unwrap();
+        let state = FenState::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", "w", "KQkq", "-", "0", "1").unwrap();
         assert!(state.bitboards[Piece::WPawn as usize].equal(0x000000000000FF00u64));
         assert!(state.bitboards[Piece::BPawn as usize].equal(0x00FF000000000000u64));
         assert!(state.bitboards[Piece::WRook as usize].equal(0x0000000000000081u64));
         assert!(state.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
 
         assert_eq!(state.side_to_move, Color::White);
-        assert_eq!(state.castling, Castling::ALL.bits());
+        assert_eq!(state.castling, MoveFlags::KQkq);
         assert_eq!(state.halfmove_clock, 0);
         assert_eq!(state.fullmove_number, 1);
     }
@@ -287,12 +283,9 @@ mod tests {
 
     #[test]
     fn test_parse_castling() {
-        assert_eq!(
-            parse_castling("KQkq").unwrap(),
-            Castling::WK.bits() | Castling::WQ.bits() | Castling::BK.bits() | Castling::BQ.bits()
-        );
-        assert_eq!(parse_castling("KQ").unwrap(), Castling::WK.bits() | Castling::WQ.bits());
-        assert_eq!(parse_castling("kq").unwrap(), Castling::BK.bits() | Castling::BQ.bits());
+        assert_eq!(parse_castling("KQkq").unwrap(), MoveFlags::KQkq);
+        assert_eq!(parse_castling("KQ").unwrap(), MoveFlags::KQ);
+        assert_eq!(parse_castling("kq").unwrap(), MoveFlags::kq);
         assert_eq!(parse_castling("-").unwrap(), 0);
         assert!(parse_castling("X").is_err());
     }
@@ -305,23 +298,22 @@ mod tests {
 
     #[test]
     fn parse_fen_test1() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let state = FenState::from_fen(fen).unwrap();
+        let state = FenState::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", "w", "KQkq", "-", "0", "1").unwrap();
         assert_eq!(state.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
     }
 
     #[test]
     fn parse_fen_test2() {
-        let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 w - - 0 10";
-        let state = FenState::from_fen(fen).unwrap();
+        let state =
+            FenState::from("r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1", "w", "-", "-", "0", "10").unwrap();
 
         assert_eq!(state.to_board_string(), "r..q.rk.pp..bppp..n.pn....bp........P.....NP.N..PPQ..PPPR.B..RK.");
     }
 
     #[test]
     fn parse_fen_test3() {
-        let fen = "r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w KQkq - 6 7";
-        let state = FenState::from_fen(fen).unwrap();
+        let state =
+            FenState::from("r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R", "w", "KQkq", "-", "6", "7").unwrap();
 
         assert_eq!(state.to_board_string(), "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R");
     }
