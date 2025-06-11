@@ -2,7 +2,7 @@ pub mod board;
 pub mod engine;
 pub mod game;
 
-use engine::{Engine, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH};
+use engine::Engine;
 use std::env;
 use std::io::{self, BufRead, Write};
 
@@ -41,29 +41,29 @@ fn game_main() {
 }
 
 fn uci_main() {
-    eprintln!("UCI Protocol Engine: {}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+    eprintln!("UCI Protocol Engine: {}", engine::version());
+    let mut engine = Engine::new();
 
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
-    let mut engine = Engine::new();
-
-    // @TODO: better pattern matching for commands
     for line in stdin.lock().lines() {
-        let input = line.unwrap();
-        if input == "uci" {
-            engine.cmd_uci(&mut stdout);
-        } else if input == "isready" {
-            engine.cmd_isready(&mut stdout);
-        } else if input.starts_with("position") {
-            engine.cmd_position(&mut stdout, &input);
-        } else if input.starts_with("go") {
-            engine.cmd_go(&mut stdout);
-        } else if input == "quit" {
-            engine.shutdown();
-            break;
-        } else {
-            eprintln!("Unknown command: {}", input);
+        let input = line.unwrap_or("".to_string());
+        let input = input.trim();
+        let mut parts = input.splitn(2, ' ');
+        let cmd = parts.next().unwrap();
+        let args = parts.next().unwrap_or("");
+
+        match cmd {
+            "uci" => engine.cmd_uci(&mut stdout),
+            "isready" => engine.cmd_isready(&mut stdout),
+            "position" => engine.cmd_position(&mut stdout, args),
+            "go" => engine.cmd_go(&mut stdout, args),
+            "quit" => {
+                engine.shutdown();
+                break;
+            }
+            _ => eprintln!("Unknown command: '{}'. Type help for more information.", input),
         }
 
         stdout.flush().unwrap();
@@ -79,7 +79,7 @@ fn print_usage() {
 }
 
 fn print_version() {
-    println!("Engine version {}.{}.{}", engine::VERSION_MAJOR, engine::VERSION_MINOR, engine::VERSION_PATCH);
+    println!("Engine version {}", engine::version());
 }
 
 fn main() {

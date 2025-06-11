@@ -33,6 +33,7 @@ impl Game {
         self.pos.state.to_board_string()
     }
 
+    // @TODO: move to moves.rs
     pub fn apply_move(&mut self, from: u8, to: u8) -> bool {
         if (move_gen::gen_moves(&self.pos, from) & BitBoard::from_bit(to)).is_empty() {
             return false;
