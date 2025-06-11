@@ -67,12 +67,9 @@ impl Engine {
             match parts.as_slice() {
                 ["moves", moves @ ..] => {
                     for move_str in moves {
-                        match moves::apply_move_str(&mut self.pos, move_str) {
-                            None => {
-                                eprintln!("Error: Invalid move '{}'", move_str);
-                                break;
-                            }
-                            Some(_m) => {}
+                        if !moves::apply_move_str(&mut self.pos, move_str) {
+                            eprintln!("Error: Invalid move '{}'", move_str);
+                            break;
                         }
                     }
                 }
