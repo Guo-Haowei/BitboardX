@@ -93,6 +93,8 @@ impl Position {
         let from = m.piece();
         let to = m.capture();
 
+        // @TODO: check to piece is rook, if so, disable castling rights
+
         let bb_attack = &mut self.state.bitboards[from as usize];
 
         bb_attack.unset_bit(m.from_sq); // Clear the 'from' square

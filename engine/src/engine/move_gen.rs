@@ -90,20 +90,29 @@ fn move_sliding<const START: u8, const END: u8>(pos: &Position, file: u8, rank: 
     moves
 }
 
-fn castling_helper<const IS_WHITE: bool, const TO: u8, const BLOCK: u64, const ATTACK: u64>(pos: &Position) -> bool {
+fn castling_helper<const IS_WHITE: bool, const ROOK_SQ: u8, const BLOCK: u64, const ATTACK: u64>(
+    pos: &Position,
+) -> bool {
     let opposite_color = if !IS_WHITE { Color::White } else { Color::Black };
     let occupancy = pos.occupancies[Color::Both as usize];
 
-    let has_right = if TO == SQ_G1 {
+    // check if rook is taken out
+    if IS_WHITE && !pos.state.bitboards[Piece::WRook as usize].has_bit(ROOK_SQ) {
+        return false;
+    } else if !IS_WHITE && !pos.state.bitboards[Piece::BRook as usize].has_bit(ROOK_SQ) {
+        return false;
+    }
+
+    let has_right = if ROOK_SQ == SQ_H1 {
         pos.state.castling & Castling::WK.bits() != 0
-    } else if TO == SQ_G8 {
+    } else if ROOK_SQ == SQ_H8 {
         pos.state.castling & Castling::BK.bits() != 0
-    } else if TO == SQ_C1 {
+    } else if ROOK_SQ == SQ_A1 {
         pos.state.castling & Castling::WQ.bits() != 0
-    } else if TO == SQ_C8 {
+    } else if ROOK_SQ == SQ_A8 {
         pos.state.castling & Castling::BQ.bits() != 0
     } else {
-        panic!("Invalid castling square: {}", TO);
+        panic!("Invalid castling square: {}", ROOK_SQ);
     };
     if !has_right {
         return false;
@@ -142,27 +151,27 @@ fn move_king<const IS_WHITE: bool, const ATTACK_ONLY: bool>(pos: &Position, file
     // Castling
     if IS_WHITE {
         const BLOCK_KS: u64 = (1u64 << SQ_F1) | (1u64 << SQ_G1);
-        const ATTACK_KS: u64 = (1u64 << SQ_E1) | BLOCK_KS;
-        let king_side = castling_helper::<true, SQ_G1, BLOCK_KS, ATTACK_KS>(pos);
+        const ATTACK_KS: u64 = (1u64 << SQ_E1) | (1u64 << SQ_F1) | (1u64 << SQ_G1);
+        let king_side = castling_helper::<true, SQ_H1, BLOCK_KS, ATTACK_KS>(pos);
         if king_side {
             moves |= BB_G1;
         }
         const BLOCK_QS: u64 = (1u64 << SQ_B1) | (1u64 << SQ_C1) | (1u64 << SQ_D1);
-        const ATTACK_QS: u64 = (1u64 << SQ_E1) | BLOCK_QS;
-        let queen_side = castling_helper::<true, SQ_C1, BLOCK_QS, ATTACK_QS>(pos);
+        const ATTACK_QS: u64 = (1u64 << SQ_C1) | (1u64 << SQ_D1) | (1u64 << SQ_E1);
+        let queen_side = castling_helper::<true, SQ_A1, BLOCK_QS, ATTACK_QS>(pos);
         if queen_side {
             moves |= BB_C1;
         }
     } else {
         const BLOCK_KS: u64 = (1u64 << SQ_F8) | (1u64 << SQ_G8);
         const ATTACK_KS: u64 = (1u64 << SQ_E8) | BLOCK_KS;
-        let king_side = castling_helper::<false, SQ_G8, BLOCK_KS, ATTACK_KS>(pos);
+        let king_side = castling_helper::<false, SQ_H8, BLOCK_KS, ATTACK_KS>(pos);
         if king_side {
             moves |= BB_G8;
         }
         const BLOCK_QS: u64 = (1u64 << SQ_B8) | (1u64 << SQ_C8) | (1u64 << SQ_D8);
         const ATTACK_QS: u64 = (1u64 << SQ_E8) | BLOCK_QS;
-        let queen_side = castling_helper::<false, SQ_C8, BLOCK_QS, ATTACK_QS>(pos);
+        let queen_side = castling_helper::<false, SQ_A8, BLOCK_QS, ATTACK_QS>(pos);
         if queen_side {
             moves |= BB_C8;
         }
@@ -349,5 +358,14 @@ mod tests {
         let moves = gen_moves(&pos, SQ_E8);
         let expected_moves = BB_C8 | BB_D8 | BB_F8 | BB_G8 | BB_D7;
         assert_eq!(moves, expected_moves);
+    }
+
+    #[test]
+    fn test_castling_2() {
+        let fen = "8/4k3/8/8/8/8/r6R/R3K3 w Q - 0 1";
+        let pos = Position::from_fen(fen).unwrap();
+
+        let moves = gen_moves(&pos, SQ_E1);
+        assert!(moves.has_bit(SQ_C1))
     }
 }
