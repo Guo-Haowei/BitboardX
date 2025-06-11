@@ -1,0 +1,8 @@
+stages:
+  - test
+
+test-engine:
+  stage: test
+  script:
+    - cd engine
+    - cargo test -- --nocapture
