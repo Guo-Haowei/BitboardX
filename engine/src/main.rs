@@ -2,9 +2,10 @@ pub mod board;
 pub mod engine;
 pub mod game;
 
-use engine::{Engine, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH};
+use engine::Engine;
+use rustyline::{DefaultEditor, Result, error::ReadlineError};
 use std::env;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 
 fn game_main() {
     let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -40,34 +41,51 @@ fn game_main() {
     }
 }
 
-fn uci_main() {
-    eprintln!("UCI Protocol Engine: {}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
-
-    let stdin = io::stdin();
+fn uci_main() -> Result<()> {
+    eprintln!("UCI Protocol Engine: {}", engine::version());
     let mut stdout = io::stdout();
-
     let mut engine = Engine::new();
+    let mut rl = DefaultEditor::new()?;
 
-    // @TODO: better pattern matching for commands
-    for line in stdin.lock().lines() {
-        let input = line.unwrap();
-        if input == "uci" {
-            engine.cmd_uci(&mut stdout);
-        } else if input == "isready" {
-            engine.cmd_isready(&mut stdout);
-        } else if input.starts_with("position") {
-            engine.cmd_position(&mut stdout, &input);
-        } else if input.starts_with("go") {
-            engine.cmd_go(&mut stdout);
-        } else if input == "quit" {
-            engine.shutdown();
-            break;
-        } else {
-            eprintln!("Unknown command: {}", input);
+    loop {
+        let readline = rl.readline(">> ");
+        match readline {
+            Ok(line) => {
+                let input = line.trim();
+                let mut parts = input.splitn(2, ' ');
+                let cmd = parts.next().unwrap();
+                let args = parts.next().unwrap_or("");
+
+                rl.add_history_entry(line.as_str())?;
+
+                match cmd {
+                    "uci" => engine.cmd_uci(&mut stdout),
+                    "isready" => engine.cmd_isready(&mut stdout),
+                    "position" => engine.cmd_position(&mut stdout, args),
+                    "go" => engine.cmd_go(&mut stdout, args),
+                    "exit" | "quit" => {
+                        engine.shutdown();
+                        break;
+                    }
+                    _ => eprintln!("Unknown command: '{}'. Type help for more information.", input),
+                }
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                eprintln!("Error: {:?}", err);
+                break;
+            }
         }
-
-        stdout.flush().unwrap();
     }
+
+    Ok(())
 }
 
 fn print_usage() {
@@ -79,15 +97,14 @@ fn print_usage() {
 }
 
 fn print_version() {
-    println!("Engine version {}.{}.{}", engine::VERSION_MAJOR, engine::VERSION_MINOR, engine::VERSION_PATCH);
+    println!("Engine version {}", engine::version());
 }
 
-fn main() {
+fn main() -> Result<()> {
     let argv: Vec<String> = env::args().collect();
     let argc = argv.len();
     if argc == 1 {
-        uci_main();
-        return;
+        return uci_main();
     }
 
     let command = argv[1].as_str();
@@ -106,4 +123,5 @@ fn main() {
             print_usage();
         }
     }
+    Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::board::position::Position;
+use crate::board::{moves, position::Position};
 use std::io::{self, Write};
 
 pub mod move_gen;
@@ -6,6 +6,10 @@ pub mod move_gen;
 pub const VERSION_MAJOR: u32 = 0;
 pub const VERSION_MINOR: u32 = 1;
 pub const VERSION_PATCH: u32 = 0;
+
+pub fn version() -> String {
+    format!("{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
+}
 
 pub struct Engine {
     pos: Position,
@@ -30,12 +34,9 @@ impl Engine {
         writeln!(out, "readyok").unwrap();
     }
 
-    pub fn cmd_position(&mut self, _out: &mut io::Stdout, fen: &String) {
-        let mut parts = fen.split_whitespace().collect::<Vec<&str>>();
-        debug_assert!(parts[0] == "position");
+    pub fn cmd_position(&mut self, _out: &mut io::Stdout, args: &str) {
+        let mut parts: Vec<&str> = args.split_whitespace().collect();
 
-        let command = parts.remove(0); // pop "position" command
-        debug_assert!(command == "position");
         if parts.is_empty() {
             eprintln!("Error: No position command provided"); // @TODO: usage
             return;
@@ -49,7 +50,7 @@ impl Engine {
             ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => match Position::from(p1, p2, p3, p4, p5, p6) {
                 Ok(pos) => {
                     self.pos = pos;
-                    parts.drain(0..6); // remove the FEN parts
+                    parts.drain(0..=6); // remove the FEN parts
                 }
                 Err(err) => {
                     eprintln!("Error: {}", err);
@@ -63,13 +64,29 @@ impl Engine {
         }
 
         if !parts.is_empty() {
-            eprintln!("Warning: Unrecognized parts in position command: {:?}", parts);
+            match parts.as_slice() {
+                ["moves", moves @ ..] => {
+                    for move_str in moves {
+                        match moves::apply_move_str(&mut self.pos, move_str) {
+                            None => {
+                                eprintln!("Error: Invalid move '{}'", move_str);
+                                break;
+                            }
+                            Some(_m) => {}
+                        }
+                    }
+                }
+                _ => {
+                    eprintln!("Warning: Unrecognized position command parts: {:?}", parts);
+                }
+            }
         }
-        // check if there are any moves
+
+        println!("{}", self.pos.state.to_string(true));
     }
 
-    pub fn cmd_go(&self, out: &mut io::Stdout) {
+    pub fn cmd_go(&self, out: &mut io::Stdout, args: &str) {
         // Placeholder for search logic
-        writeln!(out, "searching for best move...").unwrap();
+        writeln!(out, "TODO: go {}", args).unwrap();
     }
 }

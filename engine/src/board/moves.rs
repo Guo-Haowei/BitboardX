@@ -1,5 +1,7 @@
+use super::bitboard::BitBoard;
 use super::position::Position;
 use super::types::*;
+use crate::engine::move_gen;
 
 #[repr(u8)]
 pub enum Castling {
@@ -68,23 +70,6 @@ impl Move {
     }
 }
 
-pub fn parse_move(input: &str) -> Option<(u8, u8)> {
-    if input.len() != 4 {
-        return None;
-    }
-
-    let from_file = input.chars().nth(0)? as u8 - b'a';
-    let from_rank = input.chars().nth(1)? as u8 - b'1';
-    let to_file = input.chars().nth(2)? as u8 - b'a';
-    let to_rank = input.chars().nth(3)? as u8 - b'1';
-
-    if from_file > 7 || from_rank > 7 || to_file > 7 || to_rank > 7 {
-        return None;
-    }
-
-    Some((make_square(from_file, from_rank), make_square(to_file, to_rank)))
-}
-
 // if castling rights are already disabled, return
 // if king moved, disable castling rights, return
 // if rook moved, disable castling rights, return
@@ -120,8 +105,6 @@ fn move_disable_castling<const BIT: u8>(pos: &Position, from: Piece, to: Piece, 
 
     0
 }
-
-// @TODO: restore castling rights if the move is undone
 
 pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
     if !pos.occupancies[pos.state.side_to_move as usize].has_bit(from_sq) {
@@ -246,6 +229,51 @@ pub fn undo_move(pos: &mut Position, m: &Move) {
     undo_move_generic(pos, m);
     undo_castling(pos, m);
     post_move(pos);
+}
+
+pub fn apply_move(pos: &mut Position, from_sq: u8, to_sq: u8) -> Option<Move> {
+    // @TODO: provide verify and unverify methods
+    if (move_gen::gen_moves(pos, from_sq) & BitBoard::from_bit(to_sq)).is_empty() {
+        return None;
+    }
+
+    match create_move(pos, from_sq, to_sq) {
+        None => None,
+        Some(m) => {
+            do_move(pos, &m);
+            Some(m)
+        }
+    }
+}
+
+fn parse_move(input: &str) -> Option<(u8, u8)> {
+    if input.len() != 4 {
+        return None;
+    }
+
+    let from_file = input.chars().nth(0)? as u8 - b'a';
+    let from_rank = input.chars().nth(1)? as u8 - b'1';
+    let to_file = input.chars().nth(2)? as u8 - b'a';
+    let to_rank = input.chars().nth(3)? as u8 - b'1';
+
+    if from_file > 7 || from_rank > 7 || to_file > 7 || to_rank > 7 {
+        return None;
+    }
+
+    Some((make_square(from_file, from_rank), make_square(to_file, to_rank)))
+}
+
+pub fn apply_move_str(pos: &mut Position, move_str: &str) -> Option<Move> {
+    match parse_move(move_str) {
+        None => None,
+        Some((from, to)) => {
+            if let Some(m) = apply_move(pos, from, to) {
+                Some(m)
+            } else {
+                None
+            }
+        }
+    }
 }
 
 #[cfg(test)]
