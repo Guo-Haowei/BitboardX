@@ -43,7 +43,7 @@ impl Game {
             None => return false,
         };
 
-        self.pos.do_move(&m);
+        moves::do_move(&mut self.pos, &m);
         self.history.push(m);
 
         true
@@ -51,7 +51,7 @@ impl Game {
 
     pub fn undo_move(&mut self) -> bool {
         if let Some(last_move) = self.history.pop() {
-            self.pos.undo_move(&last_move);
+            moves::undo_move(&mut self.pos, &last_move);
             return true;
         }
 

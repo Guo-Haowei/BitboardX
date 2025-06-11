@@ -32,10 +32,10 @@ impl Engine {
 
     pub fn cmd_position(&mut self, _out: &mut io::Stdout, fen: &String) {
         let mut parts = fen.split_whitespace().collect::<Vec<&str>>();
-        assert!(parts[0] == "position");
+        debug_assert!(parts[0] == "position");
 
         let command = parts.remove(0); // pop "position" command
-        assert!(command == "position");
+        debug_assert!(command == "position");
         if parts.is_empty() {
             eprintln!("Error: No position command provided"); // @TODO: usage
             return;

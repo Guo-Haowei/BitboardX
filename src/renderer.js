@@ -54,10 +54,10 @@ class Renderer {
     }
   }
 
-  drawPieces(boardString) {
+  drawPieces(board) {
     for (let row = 0; row < BOARD_SIZE; ++row) {
       for (let col = 0; col < BOARD_SIZE; ++col) {
-        const c = boardString[row * BOARD_SIZE + col];
+        const c = board[row * BOARD_SIZE + col];
         if (c === '.') {
           continue;
         }
@@ -77,9 +77,9 @@ class Renderer {
   }
 
   draw(context) {
-    const { boardString } = context;
+    const { board } = context;
     this.drawBoard();
-    this.drawPieces(boardString);
+    this.drawPieces(board);
   }
 }
 

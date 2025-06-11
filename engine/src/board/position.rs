@@ -2,7 +2,6 @@ use crate::engine::move_gen;
 
 use super::bitboard::BitBoard;
 use super::fen_state::FenState;
-use super::moves::Move;
 use super::{fen_state, types::*};
 
 pub struct Position {
@@ -71,69 +70,18 @@ impl Position {
         attack_map
     }
 
-    fn update_cache(&mut self) {
+    pub fn update_cache(&mut self) {
         self.occupancies = fen_state::occupancies(&self.state);
 
         // maybe only need to update the attack map for the inactive side
         self.attack_map[Color::White as usize] = self.attack_map::<true, W_START, W_END>();
         self.attack_map[Color::Black as usize] = self.attack_map::<false, B_START, B_END>();
     }
-
-    pub fn do_move(&mut self, m: &Move) -> bool {
-        if !self.occupancies[self.state.side_to_move as usize].has_bit(m.from_sq) {
-            panic!("Invalid move: 'from' square does not contain a piece of the current side");
-        }
-
-        let from = m.piece();
-        let to = m.capture();
-
-        // @TODO: check to piece is rook, if so, disable castling rights
-
-        let bb_attack = &mut self.state.bitboards[from as usize];
-
-        bb_attack.unset_bit(m.from_sq); // Clear the 'from' square
-        bb_attack.set_bit(m.to_sq); // Place piece on 'to' square
-        if to != Piece::None {
-            self.state.bitboards[to as usize].unset_bit(m.to_sq); // Clear the 'to' square for the captured piece
-        }
-
-        self.state.change_side();
-        self.update_cache();
-
-        true
-    }
-
-    pub fn undo_move(&mut self, m: &Move) {
-        let from = m.piece();
-        let to = m.capture();
-
-        let bb_attack = &mut self.state.bitboards[from as usize];
-        bb_attack.set_bit(m.from_sq); // Place piece back on 'from' square
-        bb_attack.unset_bit(m.to_sq); // Clear the 'to' square
-
-        if to != Piece::None {
-            self.state.bitboards[to as usize].set_bit(m.to_sq); // Place captured piece back on 'to' square
-        }
-
-        self.state.change_side();
-        self.update_cache();
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_move_creation() {
-        let m = Move::new(SQ_E7, SQ_E8, Piece::WQueen, Piece::BKnight);
-        assert_eq!(m.piece(), Piece::WQueen);
-        assert_eq!(m.capture(), Piece::BKnight);
-
-        let m = Move::new(SQ_E7, SQ_E8, Piece::BQueen, Piece::None);
-        assert_eq!(m.piece(), Piece::BQueen);
-        assert_eq!(m.capture(), Piece::None);
-    }
 
     #[test]
     fn test_attack_map() {
