@@ -41,14 +41,14 @@ fn game_main() {
 }
 
 fn uci_main() {
-    println!("UCI Protocol Engine: {}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+    eprintln!("UCI Protocol Engine: {}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
     let mut engine = Engine::new();
 
-    // @TODO: move this to engine
+    // @TODO: better pattern matching for commands
     for line in stdin.lock().lines() {
         let input = line.unwrap();
         if input == "uci" {
@@ -62,6 +62,8 @@ fn uci_main() {
         } else if input == "quit" {
             engine.shutdown();
             break;
+        } else {
+            eprintln!("Unknown command: {}", input);
         }
 
         stdout.flush().unwrap();

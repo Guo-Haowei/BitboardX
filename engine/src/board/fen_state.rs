@@ -39,20 +39,22 @@ impl FenState {
         }
     }
 
-    pub fn from_fen(fen: &str) -> Result<Self, String> {
-        let parts: Vec<&str> = fen.trim().split_whitespace().collect();
-        if parts.len() != 6 {
-            return Err("Invalid FEN: must have 6 fields".to_string());
-        }
-
-        let side_to_move = parse_side_to_move(parts[1])?;
-        let castling = parse_castling(parts[2])?;
+    pub fn from(
+        board: &str,
+        side_to_move: &str,
+        castling: &str,
+        _en_passant: &str,
+        _half: &str,
+        _full: &str,
+    ) -> Result<Self, String> {
+        let side_to_move = parse_side_to_move(side_to_move)?;
+        let castling = parse_castling(castling)?;
         let halfmove_clock = 0;
         let fullmove_number = 1;
 
         let mut state =
             Self { bitboards: [BitBoard::new(); NB_PIECES], side_to_move, castling, halfmove_clock, fullmove_number };
-        parse_board(parts[0], &mut state)?;
+        parse_board(board, &mut state)?;
         Ok(state)
     }
 
@@ -264,8 +266,7 @@ mod tests {
 
     #[test]
     fn test_from_fen() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let state = FenState::from_fen(fen).unwrap();
+        let state = FenState::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", "w", "KQkq", "-", "0", "1").unwrap();
         assert!(state.bitboards[Piece::WPawn as usize].equal(0x000000000000FF00u64));
         assert!(state.bitboards[Piece::BPawn as usize].equal(0x00FF000000000000u64));
         assert!(state.bitboards[Piece::WRook as usize].equal(0x0000000000000081u64));
@@ -305,23 +306,22 @@ mod tests {
 
     #[test]
     fn parse_fen_test1() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let state = FenState::from_fen(fen).unwrap();
+        let state = FenState::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR", "w", "KQkq", "-", "0", "1").unwrap();
         assert_eq!(state.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
     }
 
     #[test]
     fn parse_fen_test2() {
-        let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 w - - 0 10";
-        let state = FenState::from_fen(fen).unwrap();
+        let state =
+            FenState::from("r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1", "w", "-", "-", "0", "10").unwrap();
 
         assert_eq!(state.to_board_string(), "r..q.rk.pp..bppp..n.pn....bp........P.....NP.N..PPQ..PPPR.B..RK.");
     }
 
     #[test]
     fn parse_fen_test3() {
-        let fen = "r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w KQkq - 6 7";
-        let state = FenState::from_fen(fen).unwrap();
+        let state =
+            FenState::from("r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R", "w", "KQkq", "-", "6", "7").unwrap();
 
         assert_eq!(state.to_board_string(), "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R");
     }

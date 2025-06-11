@@ -49,12 +49,35 @@ impl Position {
         pos
     }
 
-    pub fn from_fen(fen: &str) -> Result<Self, String> {
-        let state = FenState::from_fen(fen)?;
+    pub fn from(
+        piece_placement: &str,
+        side_to_move: &str,
+        castling_rights: &str,
+        en_passant_target: &str,
+        halfmove_clock: &str,
+        fullmove_number: &str,
+    ) -> Result<Self, String> {
+        let state = FenState::from(
+            piece_placement,
+            side_to_move,
+            castling_rights,
+            en_passant_target,
+            halfmove_clock,
+            fullmove_number,
+        )?;
         let mut pos = Self { state, occupancies: [BitBoard::new(); 3], attack_map: [BitBoard::new(); NB_COLORS] };
 
         pos.update_cache();
         Ok(pos)
+    }
+
+    pub fn from_fen(fen: &str) -> Result<Self, String> {
+        let parts: Vec<&str> = fen.trim().split_whitespace().collect();
+        if parts.len() != 6 {
+            return Err("Invalid FEN: must have 6 fields".to_string());
+        }
+
+        Self::from(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
     }
 
     fn attack_map<const IS_WHITE: bool, const START: u8, const END: u8>(&self) -> BitBoard {

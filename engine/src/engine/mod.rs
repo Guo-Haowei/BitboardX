@@ -30,11 +30,42 @@ impl Engine {
         writeln!(out, "readyok").unwrap();
     }
 
-    pub fn cmd_position(&mut self, out: &mut io::Stdout, fen: &String) {
-        match Position::from_fen(fen) {
-            Ok(pos) => self.pos = pos,
-            Err(err) => eprintln!("Error parsing FEN: {}", err),
+    pub fn cmd_position(&mut self, _out: &mut io::Stdout, fen: &String) {
+        let mut parts = fen.split_whitespace().collect::<Vec<&str>>();
+        assert!(parts[0] == "position");
+
+        let command = parts.remove(0); // pop "position" command
+        assert!(command == "position");
+        if parts.is_empty() {
+            eprintln!("Error: No position command provided"); // @TODO: usage
+            return;
         }
+
+        match parts.as_slice() {
+            ["startpos", _rest @ ..] => {
+                self.pos = Position::new();
+                parts.remove(0);
+            }
+            ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => match Position::from(p1, p2, p3, p4, p5, p6) {
+                Ok(pos) => {
+                    self.pos = pos;
+                    parts.drain(0..6); // remove the FEN parts
+                }
+                Err(err) => {
+                    eprintln!("Error: {}", err);
+                    return;
+                }
+            },
+            _ => {
+                eprintln!("Error: Invalid position command");
+                return;
+            }
+        }
+
+        if !parts.is_empty() {
+            eprintln!("Warning: Unrecognized parts in position command: {:?}", parts);
+        }
+        // check if there are any moves
     }
 
     pub fn cmd_go(&self, out: &mut io::Stdout) {
