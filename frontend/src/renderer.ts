@@ -1,5 +1,6 @@
-import { BOARD_SIZE, COLORS, PIECE_SYMBOLS, TILE_SIZE } from './constants.js';
-import { isLowerCase } from './utils.js';
+import { BOARD_SIZE, COLORS, PIECE_SYMBOLS, TILE_SIZE } from './constants';
+import { isLowerCase } from './utils';
+import { RuntimeModule, runtime } from './runtime';
 
 export type SelectedPiece = {
   piece: string;
@@ -8,7 +9,7 @@ export type SelectedPiece = {
   moves: bigint;
 };
 
-class Renderer {
+export class Renderer implements RuntimeModule {
   private ctx: CanvasRenderingContext2D | null;
   private selectedPiece: SelectedPiece | null;
 
@@ -17,8 +18,12 @@ class Renderer {
     this.selectedPiece = null;
   }
 
-  public init(canvas: HTMLCanvasElement): boolean {
-    this.ctx = canvas.getContext('2d')!;
+  public getName(): string {
+    return 'Renderer';
+  }
+
+  public init(): boolean {
+    this.ctx = runtime.display.canvas.getContext('2d')!;
     if (!this.ctx) {
       return false;
     }
@@ -27,6 +32,11 @@ class Renderer {
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     return true;
+  }
+
+  public tick() {
+    this.drawBoard();
+    this.drawPieces(runtime.game.board);
   }
 
   public getSelectedPiece() {
@@ -102,11 +112,4 @@ class Renderer {
       this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
     }
   }
-
-  public draw(board: string) {
-    this.drawBoard();
-    this.drawPieces(board);
-  }
 }
-
-export const renderer = new Renderer();

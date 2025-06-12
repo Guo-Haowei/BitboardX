@@ -14,5 +14,3 @@ export const PIECE_SYMBOLS: { [key: string]: string } = {
   'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
   'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙',
 };
-
-export const CANVAS_ID: string = 'chessboard';

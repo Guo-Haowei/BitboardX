@@ -2,17 +2,20 @@ stages:
   - build
   - test
 
+build-wasm:
+  stage: build
+  script:
+    - wasm-pack build --target web
+
 unit-test:
   stage: test
   script:
-    - cd engine
-    - cargo test -- --nocapture
+    - cargo test
 
 functional-test:
   stage: test
   script:
-    - cd engine
     - cargo build
-    - cd ..
+    - cd frontend
     - npm install
     - npx mocha

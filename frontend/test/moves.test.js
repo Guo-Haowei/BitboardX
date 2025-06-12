@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { expect } = require('chai');
 const { exec } = require('child_process');
-const castlingTestCases = require('../test/castling.json');
+const castlingTestCases = require('./castling.json');
 
 function runTests(testCases) {
-  const enginePath = '"./engine/target/debug/BitboardX.exe"';
+  const enginePath = '"../target/debug/BitboardX.exe"';
   describe(testCases.name, () => {
     testCases.tests.forEach(testCase => {
       it(testCase.description, (done) => {
