@@ -2,6 +2,12 @@ stages:
   - build
   - test
 
+build-cli:
+  stage: build
+  script:
+    - cargo build
+    - cargo build --release
+
 build-wasm:
   stage: build
   script:

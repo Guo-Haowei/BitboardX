@@ -4,9 +4,18 @@ import * as BitboardX from '../../pkg/bitboard_x';
 import { Point2D } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 
+export type SelectedPiece = {
+  piece: string;
+  x: number;
+  y: number;
+  moves: bigint;
+  file: number; // from file
+  rank: number; // from rank
+};
+
 export class Game implements EventListener, RuntimeModule {
   private game: BitboardX.Game | null;
-  private selected: number;
+  private _selected: SelectedPiece | null;
   private canvas: HTMLCanvasElement | null;
   private _board: string;
 
@@ -36,6 +45,10 @@ export class Game implements EventListener, RuntimeModule {
     return 'Game';
   }
 
+  public get selectedPiece() {
+    return this._selected;
+  }
+
   public init(): boolean {
     this.reset();
     runtime.eventManager.addListener(this);
@@ -47,8 +60,7 @@ export class Game implements EventListener, RuntimeModule {
 
   private reset() {
     this.game = null;
-    this.game = null;
-    this.selected = -1;
+    this._selected = null;
     this.canvas = null;
     this._board = '';
   }
@@ -84,27 +96,28 @@ export class Game implements EventListener, RuntimeModule {
 
     const rank = 7 - y;
     const file = x;
-    this.selected = file + rank * BOARD_SIZE;
+    const square = file + rank * BOARD_SIZE;
+
     this.canvas!.style.cursor = 'grabbing';
 
-    const moves = this.game!.gen_moves(this.selected);
-    runtime.renderer.setSelectedPiece({ piece, ...event, moves });
+    const moves = this.game!.legal_move(square);
+    this._selected = { piece, ...event, moves, rank, file };
   }
 
   private onMouseMove(event: Point2D) {
     const { x, y } = event;
-    const { renderer } = runtime;
 
-    const selectedPiece = renderer.getSelectedPiece();
-    if (selectedPiece) {
-      const { piece, moves } = selectedPiece;
-      renderer.setSelectedPiece({piece, x, y, moves});
+    if (this._selected !== null) {
+      this._selected.x = x;
+      this._selected.y = y;
     }
   }
 
   private onMouseUp(event: Point2D) {
-    runtime.renderer.unsetSelectedPiece();
     this.canvas!.style.cursor = 'grab';
+
+    const selected = this._selected;
+    this._selected = null;
 
     const x = Math.floor(event.x / TILE_SIZE);
     const y = Math.floor(event.y / TILE_SIZE);
@@ -112,21 +125,22 @@ export class Game implements EventListener, RuntimeModule {
     if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) {
       return;
     }
-    if (this.selected === -1) {
+    if (selected === null) {
       return;
     }
 
-    const file = this.selected % BOARD_SIZE;
-    const rank = Math.floor(this.selected / BOARD_SIZE);
-    const rank2 = 7 - y;
+    const { file, rank, moves } = selected;
+
     const file2 = x;
+    const rank2 = 7 - y;
 
-    const move =  `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}`;
-    if (this.game!.execute(move)) {
-      this.board = this.game!.to_board_string();
+    const dest = 1n << BigInt(file2 + rank2 * BOARD_SIZE);
+    const move = `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}`;
+    if (moves & dest) {
+      if (this.game!.execute(move)) {
+        this.board = this.game!.to_board_string();
+      }
     }
-
-    this.selected = -1;
   }
 
   private undo() {

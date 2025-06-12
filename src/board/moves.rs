@@ -1,7 +1,7 @@
 use super::bitboard::BitBoard;
 use super::position::Position;
 use super::types::*;
-use crate::engine::move_gen;
+use crate::board::move_generator;
 
 #[repr(u8)]
 pub enum Castling {
@@ -31,6 +31,68 @@ pub struct Move {
     pub pieces: u8, // encode from piece and to piece,
     pub flags: u8,  // reserved for castling, en passant, promotion
 }
+
+// A move needs 16 bits to be stored
+//
+// bit  0- 5: destination square (from 0 to 63)
+// bit  6-11: origin square (from 0 to 63)
+// bit 12-13: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
+// bit 14-15: special move flag: promotion (1), en passant (2), castling (3)
+// NOTE: en passant bit is set only when a pawn can be captured
+//
+// Special cases are Move::none() and Move::null(). We can sneak these in because
+// in any normal move the destination square and origin square are always different,
+// but Move::none() and Move::null() have the same origin and destination square.
+
+// class Move {
+//    public:
+//     Move() = default;
+//     constexpr explicit Move(std::uint16_t d) :
+//         data(d) {}
+
+//     constexpr Move(Square from, Square to) :
+//         data((from << 6) + to) {}
+
+//     template<MoveType T>
+//     static constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
+//         return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
+//     }
+
+//     constexpr Square from_sq() const {
+//         assert(is_ok());
+//         return Square((data >> 6) & 0x3F);
+//     }
+
+//     constexpr Square to_sq() const {
+//         assert(is_ok());
+//         return Square(data & 0x3F);
+//     }
+
+//     constexpr int from_to() const { return data & 0xFFF; }
+
+//     constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
+
+//     constexpr PieceType promotion_type() const { return PieceType(((data >> 12) & 3) + KNIGHT); }
+
+//     constexpr bool is_ok() const { return none().data != data && null().data != data; }
+
+//     static constexpr Move null() { return Move(65); }
+//     static constexpr Move none() { return Move(0); }
+
+//     constexpr bool operator==(const Move& m) const { return data == m.data; }
+//     constexpr bool operator!=(const Move& m) const { return data != m.data; }
+
+//     constexpr explicit operator bool() const { return data != 0; }
+
+//     constexpr std::uint16_t raw() const { return data; }
+
+//     struct MoveHash {
+//         std::size_t operator()(const Move& m) const { return make_key(m.data); }
+//     };
+
+//    protected:
+//     std::uint16_t data;
+// };
 
 impl Move {
     const PIECE_MASK: u8 = 0xF;
@@ -74,8 +136,14 @@ impl Move {
 // if king moved, disable castling rights, return
 // if rook moved, disable castling rights, return
 // if rook taken out, disable castling rights, return
-fn move_disable_castling<const BIT: u8>(pos: &Position, from: Piece, to: Piece, from_sq: u8, to_sq: u8) -> u8 {
-    if pos.state.castling & BIT == 0 {
+fn move_disable_castling<const BIT: u8>(
+    pos: &Position,
+    from: Piece,
+    to: Piece,
+    from_sq: u8,
+    to_sq: u8,
+) -> u8 {
+    if pos.castling & BIT == 0 {
         return 0;
     }
 
@@ -106,19 +174,20 @@ fn move_disable_castling<const BIT: u8>(pos: &Position, from: Piece, to: Piece, 
     0
 }
 
+// @TODO: make this function a psuedo-legal move generator
 pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
-    if !pos.occupancies[pos.state.side_to_move as usize].has_bit(from_sq) {
+    if !pos.occupancies[pos.side_to_move as usize].test(from_sq) {
         return None;
     }
 
     let mut from = Piece::None;
     let mut to = Piece::None;
-    for i in 0..pos.state.bitboards.len() {
-        let bb = &pos.state.bitboards[i];
-        if bb.has_bit(from_sq) {
+    for i in 0..pos.bitboards.len() {
+        let bb = &pos.bitboards[i];
+        if bb.test(from_sq) {
             from = unsafe { std::mem::transmute(i as u8) };
         }
-        if bb.has_bit(to_sq) {
+        if bb.test(to_sq) {
             to = unsafe { std::mem::transmute(i as u8) };
         }
     }
@@ -133,18 +202,34 @@ pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
     Some(Move::new(from_sq, to_sq, from, to, flags))
 }
 
+pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
+    let our_side = pos.side_to_move;
+    let their_side = get_opposite_color(our_side);
+    let piece: Piece = unsafe { std::mem::transmute(our_side * 6 + Piece::WKing as u8) };
+    debug_assert!(piece == Piece::WKing || piece == Piece::BKing);
+    debug_assert!(get_color(piece) == our_side);
+
+    do_move(pos, m);
+
+    let legal = (pos.bitboards[piece as usize] & pos.attack_map[their_side as usize]).none();
+
+    undo_move(pos, m);
+
+    legal
+}
+
 fn do_move_generic(pos: &mut Position, m: &Move) {
-    debug_assert!(pos.occupancies[pos.state.side_to_move as usize].has_bit(m.from_sq));
+    debug_assert!(pos.occupancies[pos.side_to_move as usize].test(m.from_sq));
 
     let from = m.piece();
     let to = m.capture();
 
-    let bb_from = &mut pos.state.bitboards[from as usize];
+    let bb_from = &mut pos.bitboards[from as usize];
 
-    bb_from.unset_bit(m.from_sq); // Clear the 'from' square
-    bb_from.set_bit(m.to_sq); // Place piece on 'to' square
+    bb_from.unset(m.from_sq); // Clear the 'from' square
+    bb_from.set(m.to_sq); // Place piece on 'to' square
     if to != Piece::None {
-        pos.state.bitboards[to as usize].unset_bit(m.to_sq); // Clear the 'to' square for the captured piece
+        pos.bitboards[to as usize].unset(m.to_sq); // Clear the 'to' square for the captured piece
     }
 }
 
@@ -152,36 +237,36 @@ fn undo_move_generic(pos: &mut Position, m: &Move) {
     let from = m.piece();
     let to = m.capture();
 
-    let bb_from = &mut pos.state.bitboards[from as usize];
-    bb_from.set_bit(m.from_sq); // Place piece back on 'from' square
-    bb_from.unset_bit(m.to_sq); // Clear the 'to' square
+    let bb_from = &mut pos.bitboards[from as usize];
+    bb_from.set(m.from_sq); // Place piece back on 'from' square
+    bb_from.unset(m.to_sq); // Clear the 'to' square
 
     if to != Piece::None {
-        pos.state.bitboards[to as usize].set_bit(m.to_sq); // Place captured piece back on 'to' square
+        pos.bitboards[to as usize].set(m.to_sq); // Place captured piece back on 'to' square
     }
 }
 
 fn do_castling(pos: &mut Position, m: &Move) {
     // Update castling rights if necessary
-    pos.state.castling &= !m.castling_mask();
+    pos.castling &= !m.castling_mask();
 
     // Move rook to its new position
     match m.castling_type() {
         Castling::WhiteKingSide => {
-            pos.state.bitboards[Piece::WRook as usize].unset_bit(SQ_H1);
-            pos.state.bitboards[Piece::WRook as usize].set_bit(SQ_F1);
+            pos.bitboards[Piece::WRook as usize].unset(SQ_H1);
+            pos.bitboards[Piece::WRook as usize].set(SQ_F1);
         }
         Castling::WhiteQueenSide => {
-            pos.state.bitboards[Piece::WRook as usize].unset_bit(SQ_A1);
-            pos.state.bitboards[Piece::WRook as usize].set_bit(SQ_D1);
+            pos.bitboards[Piece::WRook as usize].unset(SQ_A1);
+            pos.bitboards[Piece::WRook as usize].set(SQ_D1);
         }
         Castling::BlackKingSide => {
-            pos.state.bitboards[Piece::BRook as usize].unset_bit(SQ_H8);
-            pos.state.bitboards[Piece::BRook as usize].set_bit(SQ_F8);
+            pos.bitboards[Piece::BRook as usize].unset(SQ_H8);
+            pos.bitboards[Piece::BRook as usize].set(SQ_F8);
         }
         Castling::BlackQueenSide => {
-            pos.state.bitboards[Piece::BRook as usize].unset_bit(SQ_A8);
-            pos.state.bitboards[Piece::BRook as usize].set_bit(SQ_D8);
+            pos.bitboards[Piece::BRook as usize].unset(SQ_A8);
+            pos.bitboards[Piece::BRook as usize].set(SQ_D8);
         }
         Castling::None => {}
     }
@@ -189,32 +274,32 @@ fn do_castling(pos: &mut Position, m: &Move) {
 
 fn undo_castling(pos: &mut Position, m: &Move) {
     // Restore castling rights if necessary
-    pos.state.castling |= m.castling_mask();
+    pos.castling |= m.castling_mask();
 
     // Move rook back to its original position
     match m.castling_type() {
         Castling::WhiteKingSide => {
-            pos.state.bitboards[Piece::WRook as usize].unset_bit(SQ_F1);
-            pos.state.bitboards[Piece::WRook as usize].set_bit(SQ_H1);
+            pos.bitboards[Piece::WRook as usize].unset(SQ_F1);
+            pos.bitboards[Piece::WRook as usize].set(SQ_H1);
         }
         Castling::WhiteQueenSide => {
-            pos.state.bitboards[Piece::WRook as usize].unset_bit(SQ_D1);
-            pos.state.bitboards[Piece::WRook as usize].set_bit(SQ_A1);
+            pos.bitboards[Piece::WRook as usize].unset(SQ_D1);
+            pos.bitboards[Piece::WRook as usize].set(SQ_A1);
         }
         Castling::BlackKingSide => {
-            pos.state.bitboards[Piece::BRook as usize].unset_bit(SQ_F8);
-            pos.state.bitboards[Piece::BRook as usize].set_bit(SQ_H8);
+            pos.bitboards[Piece::BRook as usize].unset(SQ_F8);
+            pos.bitboards[Piece::BRook as usize].set(SQ_H8);
         }
         Castling::BlackQueenSide => {
-            pos.state.bitboards[Piece::BRook as usize].unset_bit(SQ_D8);
-            pos.state.bitboards[Piece::BRook as usize].set_bit(SQ_A8);
+            pos.bitboards[Piece::BRook as usize].unset(SQ_D8);
+            pos.bitboards[Piece::BRook as usize].set(SQ_A8);
         }
         Castling::None => {}
     }
 }
 
 fn post_move(pos: &mut Position) {
-    pos.state.change_side();
+    pos.change_side();
     pos.update_cache();
 }
 
@@ -232,7 +317,7 @@ pub fn undo_move(pos: &mut Position, m: &Move) {
 }
 
 pub fn create_move_verified(pos: &mut Position, from_sq: u8, to_sq: u8) -> Option<Move> {
-    if (move_gen::gen_moves(pos, from_sq) & BitBoard::from_bit(to_sq)).is_empty() {
+    if (move_generator::pseudo_legal_move(pos, from_sq) & BitBoard::from_bit(to_sq)).none() {
         return None;
     }
 
@@ -293,5 +378,22 @@ mod tests {
         assert_eq!(parse_move("z1z2"), None);
         assert_eq!(parse_move("e9e4"), None);
         assert_eq!(parse_move("e2e"), None);
+    }
+
+    #[test]
+    fn test_move_validation() {
+        // 2 . . . . . . . k
+        // 1 K B . . . . . r
+        //   a b c d e f g h
+        let mut pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
+
+        assert_eq!(
+            pos.attack_map[COLOR_BLACK as usize],
+            BitBoard::from(0b11000000_01000000_01111110)
+        );
+
+        let m = create_move(&pos, SQ_B1, SQ_A2).unwrap();
+
+        assert!(!validate_move(&mut pos, &m), "Move bishop to A2 exposes king to check");
     }
 }

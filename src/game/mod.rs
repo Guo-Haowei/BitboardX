@@ -2,7 +2,6 @@ pub mod undo_redo;
 
 use crate::board::moves;
 use crate::board::position::Position;
-use crate::engine::move_gen;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -32,7 +31,7 @@ impl undo_redo::Command for MoveCommand {
 impl Game {
     #[wasm_bindgen(constructor)]
     pub fn new(fen: &str) -> Self {
-        let pos = match Position::from_fen(fen) {
+        let pos = match Position::from(fen) {
             Ok(pos) => pos,
             Err(err) => {
                 eprintln!("Error parsing FEN: {}", err);
@@ -44,11 +43,11 @@ impl Game {
     }
 
     pub fn to_string(&self, pad: bool) -> String {
-        self.pos.borrow().state.to_string(pad)
+        self.pos.borrow().to_string(pad)
     }
 
     pub fn to_board_string(&self) -> String {
-        self.pos.borrow().state.to_board_string()
+        self.pos.borrow().to_board_string()
     }
 
     pub fn can_undo(&self) -> bool {
@@ -85,8 +84,9 @@ impl Game {
         true
     }
 
-    pub fn gen_moves(&self, square: u8) -> u64 {
-        move_gen::gen_moves(&self.pos.borrow(), square).get()
+    pub fn legal_move(&self, sq: u8) -> u64 {
+        // self.pos.borrow_mut().pseudo_legal_move(square).get()
+        self.pos.borrow_mut().legal_move(sq).get()
     }
 }
 
@@ -97,17 +97,29 @@ mod tests {
     #[test]
     fn test_game_creation() {
         let game = Game::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
+        assert_eq!(
+            game.to_board_string(),
+            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
+        );
     }
 
     #[test]
     fn test_apply_move() {
         let mut game = Game::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         assert!(game.execute("e2e4")); // e2 to e4
-        assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp....................P...........PPPP.PPPRNBQKBNR");
+        assert_eq!(
+            game.to_board_string(),
+            "rnbqkbnrpppppppp....................P...........PPPP.PPPRNBQKBNR"
+        );
         game.undo();
-        assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR");
+        assert_eq!(
+            game.to_board_string(),
+            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
+        );
         game.redo();
-        assert_eq!(game.to_board_string(), "rnbqkbnrpppppppp....................P...........PPPP.PPPRNBQKBNR");
+        assert_eq!(
+            game.to_board_string(),
+            "rnbqkbnrpppppppp....................P...........PPPP.PPPRNBQKBNR"
+        );
     }
 }

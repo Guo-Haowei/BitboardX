@@ -1,67 +1,155 @@
-use crate::engine::move_gen;
-
 use super::bitboard::BitBoard;
-use super::fen_state::FenState;
-use super::{fen_state, types::*};
+use super::types::*;
+use super::utils::fen::*;
+use crate::board::move_generator;
+use crate::board::moves::{Move, MoveFlags, create_move, validate_move};
 
 pub struct Position {
-    pub state: FenState,
+    /// Data used to serialize/deserialize FEN.
+    pub bitboards: [BitBoard; NB_PIECES],
+
+    pub side_to_move: u8,
+    pub castling: u8,
+    // @TODO: en passant
+    pub halfmove_clock: u32,
+    pub fullmove_number: u32,
+
+    /// Data can be computed from the FEN state.
     pub occupancies: [BitBoard; 3],
     pub attack_map: [BitBoard; NB_COLORS],
 }
 
 impl Position {
     pub fn new() -> Self {
-        let state = FenState::new();
-        let mut pos = Self { state, occupancies: [BitBoard::new(); 3], attack_map: [BitBoard::new(); NB_COLORS] };
+        let bitboards = [
+            BitBoard::from(0x000000000000FF00), // White Pawns
+            BitBoard::from(0x0000000000000042), // White Knights
+            BitBoard::from(0x0000000000000024), // White Bishops
+            BitBoard::from(0x0000000000000081), // White Rooks
+            BitBoard::from(0x0000000000000008), // White Queens
+            BitBoard::from(0x0000000000000010), // White King
+            BitBoard::from(0x00FF000000000000), // Black Pawns
+            BitBoard::from(0x4200000000000000), // Black Knights
+            BitBoard::from(0x2400000000000000), // Black Bishops
+            BitBoard::from(0x8100000000000000), // Black Rooks
+            BitBoard::from(0x0800000000000000), // Black Queens
+            BitBoard::from(0x1000000000000000), // Black King
+        ];
 
-        pos.update_cache();
-        pos
+        let occupancies = calc_occupancies(&bitboards);
+        let attack_map = [BitBoard::from(0x0000000000FF0000), BitBoard::from(0x0000FF0000000000)];
+
+        Self {
+            bitboards,
+            side_to_move: COLOR_WHITE,
+            castling: MoveFlags::KQkq,
+            halfmove_clock: 0,
+            fullmove_number: 1,
+            occupancies,
+            attack_map,
+        }
     }
 
-    pub fn from(
+    pub fn from_parts(
         piece_placement: &str,
         side_to_move: &str,
         castling_rights: &str,
-        en_passant_target: &str,
+        _en_passant_target: &str,
         halfmove_clock: &str,
         fullmove_number: &str,
-    ) -> Result<Self, String> {
-        let state = FenState::from(
-            piece_placement,
+    ) -> Result<Self, &'static str> {
+        let bitboards = parse_board(piece_placement)?;
+        let side_to_move = parse_side_to_move(side_to_move)?;
+        let castling = parse_castling(castling_rights)?;
+        let halfmove_clock = parse_halfmove_clock(halfmove_clock)?;
+        let fullmove_number = parse_fullmove_number(fullmove_number)?;
+
+        let occupancies = calc_occupancies(&bitboards);
+
+        let mut pos = Self {
+            bitboards,
             side_to_move,
-            castling_rights,
-            en_passant_target,
+            castling,
             halfmove_clock,
             fullmove_number,
-        )?;
-        let mut pos = Self { state, occupancies: [BitBoard::new(); 3], attack_map: [BitBoard::new(); NB_COLORS] };
+            occupancies,
+            attack_map: [BitBoard::new(); 2],
+        };
 
-        pos.update_cache();
+        pos.attack_map = pos.calc_attack_map();
         Ok(pos)
     }
 
-    pub fn from_fen(fen: &str) -> Result<Self, String> {
+    pub fn from(fen: &str) -> Result<Self, &'static str> {
         let parts: Vec<&str> = fen.trim().split_whitespace().collect();
         if parts.len() != 6 {
-            return Err("Invalid FEN: must have 6 fields".to_string());
+            return Err("Invalid FEN: must have 6 fields");
         }
 
-        Self::from(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+        Self::from_parts(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
     }
 
-    fn attack_map<const IS_WHITE: bool, const START: u8, const END: u8>(&self) -> BitBoard {
+    pub fn update_cache(&mut self) {
+        self.occupancies = calc_occupancies(&self.bitboards);
+        self.attack_map = self.calc_attack_map();
+    }
+
+    pub fn change_side(&mut self) {
+        self.side_to_move = get_opposite_color(self.side_to_move);
+    }
+
+    pub fn get_piece(&self, sq: u8) -> Piece {
+        for i in 0..NB_PIECES {
+            if self.bitboards[i].test(sq) {
+                return unsafe { std::mem::transmute(i as u8) };
+            }
+        }
+
+        Piece::None
+    }
+
+    pub fn is_legal_move(&mut self, m: &Move) -> bool {
+        validate_move(self, &m)
+    }
+
+    pub fn pseudo_legal_move(&self, sq: u8) -> BitBoard {
+        if self.occupancies[self.side_to_move as usize].test(sq) {
+            return move_generator::pseudo_legal_move(self, sq);
+        }
+        BitBoard::new()
+    }
+
+    pub fn legal_move(&mut self, sq: u8) -> BitBoard {
+        let mut pseudo_legal = self.pseudo_legal_move(sq);
+
+        let mut bits = pseudo_legal.get();
+
+        while bits != 0 {
+            let dst_sq = bits.trailing_zeros();
+
+            if let Some(m) = create_move(self, sq, dst_sq as u8) {
+                if !self.is_legal_move(&m) {
+                    pseudo_legal.unset(dst_sq as u8);
+                }
+            }
+
+            bits &= bits - 1;
+        }
+
+        pseudo_legal
+    }
+
+    fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(&self) -> BitBoard {
         let mut attack_map = BitBoard::new();
-        let color = if IS_WHITE { Color::White } else { Color::Black };
 
         for i in START..END {
             // pieces from W to B
-            let bb = self.state.bitboards[i as usize].get();
+            let bb = self.bitboards[i as usize].get();
             for f in 0..8 {
                 for r in 0..8 {
                     let sq = make_square(f, r);
                     if bb & (1u64 << sq) != 0 {
-                        attack_map |= move_gen::gen_attack_moves(self, sq, color);
+                        attack_map |= move_generator::pseudo_legal_attack(self, sq, COLOR);
                     }
                 }
             }
@@ -70,13 +158,118 @@ impl Position {
         attack_map
     }
 
-    pub fn update_cache(&mut self) {
-        self.occupancies = fen_state::occupancies(&self.state);
-
-        // maybe only need to update the attack map for the inactive side
-        self.attack_map[Color::White as usize] = self.attack_map::<true, W_START, W_END>();
-        self.attack_map[Color::Black as usize] = self.attack_map::<false, B_START, B_END>();
+    pub fn calc_attack_map(&self) -> [BitBoard; NB_COLORS] {
+        [
+            self.calc_attack_map_impl::<COLOR_WHITE, W_START, W_END>(),
+            self.calc_attack_map_impl::<COLOR_BLACK, B_START, B_END>(),
+        ]
     }
+
+    pub fn to_string(&self, pad: bool) -> String {
+        let mut s = String::new();
+        for rank in (0..8).rev() {
+            s.push((rank as u8 + b'1') as char);
+            s.push(' ');
+            for file in 0..8 {
+                let sq = rank * 8 + file;
+                let piece_char = if self.bitboards[Piece::WPawn as usize].test(sq) {
+                    '♙'
+                } else if self.bitboards[Piece::WKnight as usize].test(sq) {
+                    '♘'
+                } else if self.bitboards[Piece::WBishop as usize].test(sq) {
+                    '♗'
+                } else if self.bitboards[Piece::WRook as usize].test(sq) {
+                    '♖'
+                } else if self.bitboards[Piece::WQueen as usize].test(sq) {
+                    '♕'
+                } else if self.bitboards[Piece::WKing as usize].test(sq) {
+                    '♔'
+                } else if self.bitboards[Piece::BPawn as usize].test(sq) {
+                    '♟'
+                } else if self.bitboards[Piece::BKnight as usize].test(sq) {
+                    '♞'
+                } else if self.bitboards[Piece::BBishop as usize].test(sq) {
+                    '♝'
+                } else if self.bitboards[Piece::BRook as usize].test(sq) {
+                    '♜'
+                } else if self.bitboards[Piece::BQueen as usize].test(sq) {
+                    '♛'
+                } else if self.bitboards[Piece::BKing as usize].test(sq) {
+                    '♚'
+                } else {
+                    '.'
+                };
+
+                if piece_char == '.' {
+                    s.push('・');
+                } else {
+                    s.push(piece_char);
+                    if pad {
+                        s.push(' ');
+                    }
+                }
+            }
+            s.push('\n');
+        }
+        s.push_str("  ａｂｃｄｅｆｇｈ\n");
+        s.push_str(
+            format!("Side: {}\n", if self.side_to_move == COLOR_WHITE { "White" } else { "Black" })
+                .as_str(),
+        );
+        s.push_str(format!("Castling: {}\n", &castling_to_string(self.castling)).as_str());
+        s.push_str(format!("Halfmove clock: {}\n", self.halfmove_clock).as_str());
+        s.push_str(format!("Fullmove number: {}\n", self.fullmove_number).as_str());
+
+        s
+    }
+
+    pub fn to_board_string(&self) -> String {
+        let mut s = String::new();
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let sq = rank * 8 + file;
+                let c = if self.bitboards[Piece::WBishop as usize].test(sq) {
+                    'B'
+                } else if self.bitboards[Piece::WKnight as usize].test(sq) {
+                    'N'
+                } else if self.bitboards[Piece::WPawn as usize].test(sq) {
+                    'P'
+                } else if self.bitboards[Piece::WRook as usize].test(sq) {
+                    'R'
+                } else if self.bitboards[Piece::WQueen as usize].test(sq) {
+                    'Q'
+                } else if self.bitboards[Piece::WKing as usize].test(sq) {
+                    'K'
+                } else if self.bitboards[Piece::BBishop as usize].test(sq) {
+                    'b'
+                } else if self.bitboards[Piece::BKnight as usize].test(sq) {
+                    'n'
+                } else if self.bitboards[Piece::BPawn as usize].test(sq) {
+                    'p'
+                } else if self.bitboards[Piece::BRook as usize].test(sq) {
+                    'r'
+                } else if self.bitboards[Piece::BQueen as usize].test(sq) {
+                    'q'
+                } else if self.bitboards[Piece::BKing as usize].test(sq) {
+                    'k'
+                } else {
+                    '.'
+                };
+                s.push(c);
+            }
+        }
+        s
+    }
+}
+
+fn castling_to_string(castling: u8) -> String {
+    let mut result = String::new();
+    for (i, c) in ['K', 'Q', 'k', 'q'].iter().enumerate() {
+        if castling & (1 << i) != 0 {
+            result.push(*c);
+        }
+    }
+    if result.is_empty() { "-".to_string() } else { result }
 }
 
 #[cfg(test)]
@@ -84,12 +277,86 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_attack_map() {
+    fn test_constructor_new() {
         let pos = Position::new();
-        let white_attack_map = pos.attack_map::<true, W_START, W_END>();
-        let black_attack_map = pos.attack_map::<false, B_START, B_END>();
+        assert!(pos.bitboards[Piece::WPawn as usize].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::BPawn as usize].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::WRook as usize].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
 
-        assert_eq!(white_attack_map.get(), 0x0000000000FF0000);
-        assert_eq!(black_attack_map.get(), 0x0000FF0000000000);
+        assert_eq!(pos.side_to_move, COLOR_WHITE);
+        assert_eq!(pos.castling, MoveFlags::KQkq);
+        assert_eq!(pos.halfmove_clock, 0);
+        assert_eq!(pos.fullmove_number, 1);
+        assert_eq!(
+            pos.to_board_string(),
+            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
+        );
+    }
+
+    #[test]
+    fn test_constructor_from_parts() {
+        let pos = Position::from_parts(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",
+            "w",
+            "KQkq",
+            "-",
+            "0",
+            "1",
+        )
+        .unwrap();
+        assert!(pos.bitboards[Piece::WPawn as usize].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::BPawn as usize].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::WRook as usize].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
+
+        assert_eq!(pos.side_to_move, COLOR_WHITE);
+        assert_eq!(pos.castling, MoveFlags::KQkq);
+        assert_eq!(pos.halfmove_clock, 0);
+        assert_eq!(pos.fullmove_number, 1);
+        assert_eq!(
+            pos.to_board_string(),
+            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
+        );
+    }
+
+    #[test]
+    fn test_constructor_from() {
+        let pos = Position::from("r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7")
+            .unwrap();
+
+        assert_eq!(pos.side_to_move, COLOR_WHITE);
+        assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
+        assert_eq!(pos.halfmove_clock, 6);
+        assert_eq!(pos.fullmove_number, 7);
+        assert_eq!(
+            pos.to_board_string(),
+            "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R"
+        );
+    }
+
+    #[test]
+    fn test_calc_attack_map() {
+        let pos =
+            Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+
+        let attack_maps = pos.calc_attack_map();
+
+        assert_eq!(attack_maps[COLOR_WHITE as usize].get(), 0x0000000000FF0000);
+        assert_eq!(attack_maps[COLOR_BLACK as usize].get(), 0x0000FF0000000000);
+    }
+
+    #[test]
+    fn test_trailing_zeros() {
+        let mut bits: u64 = 0b10101000;
+        let mut count = 0;
+        let expect = [3, 5, 7];
+        while bits != 0 {
+            let tz = bits.trailing_zeros();
+            bits &= bits - 1;
+            assert_eq!(tz, expect[count]);
+            count += 1;
+        }
+        assert_eq!(count, expect.len());
     }
 }

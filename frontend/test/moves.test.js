@@ -1,28 +1,41 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { expect } = require('chai');
 const { exec } = require('child_process');
-const castlingTestCases = require('./castling.json');
+const moveTests = require('./moves.test.json');
 
-function runTests(testCases) {
-  const enginePath = '"../target/debug/BitboardX.exe"';
-  describe(testCases.name, () => {
-    testCases.tests.forEach(testCase => {
-      it(testCase.description, (done) => {
-        const child = exec(`${enginePath}`, (err, stdout, stderr) => {
-          if (err) {
-            expect.fail(`Error: ${err}`);
-            return done(err);
-          }
+const enginePath = '"../target/debug/BitboardX.exe"';
 
-          const isInvalidMove = stderr.startsWith('Error: Invalid move');
-          expect(testCase.expect).to.equal(!isInvalidMove);
-          done(err);
-        });
-        child.stdin.write(`${testCase.command}\n`);
-        child.stdin.end();
-      });
+function testMove(testCase, fen) {
+  fen = fen || testCase.fen;
+  it(testCase.description, (done) => {
+    const child = exec(`${enginePath}`, (err, stdout, stderr) => {
+      if (err) {
+        throw new Error(`Error executing engine: ${err.message}`);
+      }
+
+      const isInvalidMove = stderr.startsWith('Error: Invalid move');
+      expect(testCase.expect).to.equal(!isInvalidMove);
+      // console.log(`error: ${isInvalidMove ? stderr : 'No error'}`);
+      // console.log(`stdout: ${stdout}`);
+      // console.log(`stderr: ${stderr}`);
+      done(err);
     });
+    child.stdin.write(`position fen ${fen} moves ${testCase.moves}\n`);
+    child.stdin.end();
   });
 }
 
-runTests(castlingTestCases);
+for (const [key, value] of Object.entries(moveTests)) {
+  describe(key, () => {
+    value.forEach(testCase => {
+      if (Array.isArray(testCase)) {
+        const fen = testCase.shift();
+        testCase.forEach(tc => {
+          testMove(tc, fen);
+        });
+      } else if (typeof testCase === 'object') {
+        testMove(testCase);
+      }
+    });
+  });
+}

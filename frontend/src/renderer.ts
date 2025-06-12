@@ -2,20 +2,11 @@ import { BOARD_SIZE, COLORS, PIECE_SYMBOLS, TILE_SIZE } from './constants';
 import { isLowerCase } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 
-export type SelectedPiece = {
-  piece: string;
-  x: number;
-  y: number;
-  moves: bigint;
-};
-
 export class Renderer implements RuntimeModule {
   private ctx: CanvasRenderingContext2D | null;
-  private selectedPiece: SelectedPiece | null;
 
   public constructor() {
     this.ctx = null;
-    this.selectedPiece = null;
   }
 
   public getName(): string {
@@ -39,24 +30,13 @@ export class Renderer implements RuntimeModule {
     this.drawPieces(runtime.game.board);
   }
 
-  public getSelectedPiece() {
-    return this.selectedPiece;
-  }
-
-  public setSelectedPiece(piece: SelectedPiece) {
-    this.selectedPiece = piece;
-  }
-
-  public unsetSelectedPiece() {
-    this.selectedPiece = null;
-  }
-
   private drawBoard() {
     if (!this.ctx) {
       return;
     }
 
-    const moves = this.selectedPiece ? this.selectedPiece.moves : 0n;
+    const { selectedPiece } = runtime.game;
+    const moves = selectedPiece ? selectedPiece.moves : 0n;
 
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
@@ -106,8 +86,9 @@ export class Renderer implements RuntimeModule {
       }
     }
 
-    if (this.selectedPiece) {
-      const { piece, x, y } = this.selectedPiece;
+    const { selectedPiece } = runtime.game;
+    if (selectedPiece) {
+      const { piece, x, y } = selectedPiece;
       this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
       this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
     }

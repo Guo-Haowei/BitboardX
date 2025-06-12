@@ -1,17 +1,17 @@
 use crate::board::{moves, position::Position};
 use std::io::{self, Write};
-
-pub mod move_gen;
+use wasm_bindgen::prelude::*;
 
 pub const NAME: &str = "BitboardX";
 pub const VERSION_MAJOR: u32 = 0;
 pub const VERSION_MINOR: u32 = 1;
-pub const VERSION_PATCH: u32 = 0;
+pub const VERSION_PATCH: u32 = 3;
 
 pub fn version() -> String {
     format!("{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
 }
 
+#[wasm_bindgen]
 pub fn name() -> String {
     format!("{} {}", NAME, version())
 }
@@ -52,16 +52,18 @@ impl Engine {
                 self.pos = Position::new();
                 parts.remove(0);
             }
-            ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => match Position::from(p1, p2, p3, p4, p5, p6) {
-                Ok(pos) => {
-                    self.pos = pos;
-                    parts.drain(0..=6); // remove the FEN parts
+            ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => {
+                match Position::from_parts(p1, p2, p3, p4, p5, p6) {
+                    Ok(pos) => {
+                        self.pos = pos;
+                        parts.drain(0..=6); // remove the FEN parts
+                    }
+                    Err(err) => {
+                        eprintln!("Error: {}", err);
+                        return;
+                    }
                 }
-                Err(err) => {
-                    eprintln!("Error: {}", err);
-                    return;
-                }
-            },
+            }
             _ => {
                 eprintln!("Error: Invalid position command");
                 return;
