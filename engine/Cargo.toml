@@ -10,7 +10,7 @@ debug = true
 crate-type = ["cdylib"]
 
 [[bin]]
-name = "engine-cli"
+name = "BitboardX"
 path = "src/main.rs"
 
 [dependencies]

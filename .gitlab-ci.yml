@@ -1,8 +1,18 @@
 stages:
+  - build
   - test
 
-test-engine:
+unit-test:
   stage: test
   script:
     - cd engine
     - cargo test -- --nocapture
+
+functional-test:
+  stage: test
+  script:
+    - cd engine
+    - cargo build
+    - cd ..
+    - npm install
+    - npx mocha

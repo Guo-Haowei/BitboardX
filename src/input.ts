@@ -1,6 +1,6 @@
 import { Point2D } from "./utils";
 
-type InputEvent = {
+export type InputEvent = {
   type: string;
   payload?: Point2D | undefined;
 };

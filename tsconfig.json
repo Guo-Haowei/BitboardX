@@ -10,11 +10,7 @@
     "skipLibCheck": true
   },
   "files": [
-    "src/constants.ts",
-    "src/game.ts",
-    "src/input.ts",
-    "src/index.ts",
-    "src/renderer.ts",
-    "src/utils.ts",
+    "/**/*.ts",
+    "/**/*.js",
   ],
 }

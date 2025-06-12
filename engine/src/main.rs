@@ -3,7 +3,7 @@ pub mod engine;
 pub mod game;
 
 use engine::Engine;
-use rustyline::{DefaultEditor, Result, error::ReadlineError};
+use rustyline::{DefaultEditor, Result};
 use std::env;
 use std::io::{self, Write};
 
@@ -42,7 +42,7 @@ fn game_main() {
 }
 
 fn uci_main() -> Result<()> {
-    eprintln!("UCI Protocol Engine: {}", engine::version());
+    println!("{}", engine::name());
     let mut stdout = io::stdout();
     let mut engine = Engine::new();
     let mut rl = DefaultEditor::new()?;
@@ -70,16 +70,7 @@ fn uci_main() -> Result<()> {
                     _ => eprintln!("Unknown command: '{}'. Type help for more information.", input),
                 }
             }
-            Err(ReadlineError::Interrupted) => {
-                println!("CTRL-C");
-                break;
-            }
-            Err(ReadlineError::Eof) => {
-                println!("CTRL-D");
-                break;
-            }
-            Err(err) => {
-                eprintln!("Error: {:?}", err);
+            _ => {
                 break;
             }
         }
@@ -89,7 +80,7 @@ fn uci_main() -> Result<()> {
 }
 
 fn print_usage() {
-    println!("Usage: engine [--help] [--version] [--game]");
+    println!("Usage: {} [--help] [--version] [--game]", engine::NAME);
     println!("Options:");
     println!("  --help     Show this help message");
     println!("  --version  Show version information");

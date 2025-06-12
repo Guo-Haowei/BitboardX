@@ -1,7 +1,7 @@
 import { BOARD_SIZE, CANVAS_ID, DEFAULT_FEN, TILE_SIZE } from './constants.js';
 import { Game } from './game.js';
 import { renderer } from './renderer.js';
-import { inputManager } from './input.js';
+import { inputManager, InputEvent } from './input.js';
 import init from '../engine/pkg/engine.js';
 
 let game: Game = new Game();
@@ -17,8 +17,8 @@ function updateBoard(fen: string) {
 
 function processEvents() {
   const { eventQueue } = inputManager;
-  let event = null;
-  while ((event = eventQueue.shift()) !== undefined) {
+  let event : InputEvent | undefined = undefined;
+  while ((event = eventQueue.shift())) {
     switch (event.type) {
     case 'mousedown': game.onMouseDown(event.payload!); break;
     case 'mousemove': game.onMouseMove(event.payload!); break;

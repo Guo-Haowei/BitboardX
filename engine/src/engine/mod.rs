@@ -3,12 +3,17 @@ use std::io::{self, Write};
 
 pub mod move_gen;
 
+pub const NAME: &str = "BitboardX";
 pub const VERSION_MAJOR: u32 = 0;
 pub const VERSION_MINOR: u32 = 1;
 pub const VERSION_PATCH: u32 = 0;
 
 pub fn version() -> String {
     format!("{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
+}
+
+pub fn name() -> String {
+    format!("{} {}", NAME, version())
 }
 
 pub struct Engine {
@@ -25,8 +30,8 @@ impl Engine {
     }
 
     pub fn cmd_uci(&self, out: &mut io::Stdout) {
-        writeln!(out, "id name MyEngine").unwrap();
-        writeln!(out, "id author You").unwrap();
+        writeln!(out, "id name {}", name()).unwrap();
+        writeln!(out, "id author haguo").unwrap();
         writeln!(out, "uciok").unwrap();
     }
 
@@ -78,8 +83,6 @@ impl Engine {
                 }
             }
         }
-
-        println!("{}", self.pos.state.to_string(true));
     }
 
     pub fn cmd_go(&self, out: &mut io::Stdout, args: &str) {
