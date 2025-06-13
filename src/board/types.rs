@@ -1,5 +1,4 @@
 use super::bitboard::BitBoard;
-use super::piece::{COLOR_BOTH, PieceType};
 
 pub const fn make_square(file: u8, rank: u8) -> u8 {
     (rank << 3) + file
@@ -11,9 +10,6 @@ pub fn get_file_rank(square: u8) -> (u8, u8) {
     let rank = square >> 3;
     (file, rank)
 }
-
-pub const NB_COLORS: usize = COLOR_BOTH as usize;
-pub const NB_PIECE_TYPES: usize = PieceType::None as usize;
 
 // Constants for files
 pub const FILE_A: u8 = 0;

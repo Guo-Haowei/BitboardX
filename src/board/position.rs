@@ -1,5 +1,5 @@
 use super::bitboard::BitBoard;
-use super::piece::*;
+use super::piece::{Color, Piece};
 use super::types::*;
 use super::utils::fen::*;
 use crate::board::move_generator;
@@ -9,7 +9,7 @@ pub struct Position {
     /// Data used to serialize/deserialize FEN.
     pub bitboards: [BitBoard; Piece::COUNT],
 
-    pub side_to_move: u8,
+    pub side_to_move: Color,
     pub castling: u8,
     // @TODO: en passant
     pub halfmove_clock: u32,
@@ -17,7 +17,7 @@ pub struct Position {
 
     /// Data can be computed from the FEN state.
     pub occupancies: [BitBoard; 3],
-    pub attack_map: [BitBoard; NB_COLORS],
+    pub attack_map: [BitBoard; Color::COUNT],
 }
 
 impl Position {
@@ -42,7 +42,7 @@ impl Position {
 
         Self {
             bitboards,
-            side_to_move: COLOR_WHITE,
+            side_to_move: Color::WHITE,
             castling: MoveFlags::KQkq,
             halfmove_clock: 0,
             fullmove_number: 1,
@@ -60,7 +60,10 @@ impl Position {
         fullmove_number: &str,
     ) -> Result<Self, &'static str> {
         let bitboards = parse_board(piece_placement)?;
-        let side_to_move = parse_side_to_move(side_to_move)?;
+        let side_to_move = match Color::parse(side_to_move) {
+            Some(color) => color,
+            None => return Err("Invalid side to move in FEN"),
+        };
         let castling = parse_castling(castling_rights)?;
         let halfmove_clock = parse_halfmove_clock(halfmove_clock)?;
         let fullmove_number = parse_fullmove_number(fullmove_number)?;
@@ -96,7 +99,7 @@ impl Position {
     }
 
     pub fn change_side(&mut self) {
-        self.side_to_move = get_opposite_color(self.side_to_move);
+        self.side_to_move = self.side_to_move.opponent()
     }
 
     pub fn get_piece(&self, sq: u8) -> Piece {
@@ -114,7 +117,7 @@ impl Position {
     }
 
     pub fn pseudo_legal_move(&self, sq: u8) -> BitBoard {
-        if self.occupancies[self.side_to_move as usize].test(sq) {
+        if self.occupancies[self.side_to_move.as_usize()].test(sq) {
             return move_generator::pseudo_legal_move(self, sq);
         }
         BitBoard::new()
@@ -150,7 +153,8 @@ impl Position {
                 for r in 0..8 {
                     let sq = make_square(f, r);
                     if bb & (1u64 << sq) != 0 {
-                        attack_map |= move_generator::pseudo_legal_attack(self, sq, COLOR);
+                        attack_map |=
+                            move_generator::pseudo_legal_attack(self, sq, Color::from(COLOR));
                     }
                 }
             }
@@ -159,10 +163,10 @@ impl Position {
         attack_map
     }
 
-    pub fn calc_attack_map(&self) -> [BitBoard; NB_COLORS] {
+    pub fn calc_attack_map(&self) -> [BitBoard; Color::COUNT] {
         [
-            self.calc_attack_map_impl::<COLOR_WHITE, { Piece::W_START }, { Piece::W_END }>(),
-            self.calc_attack_map_impl::<COLOR_BLACK, { Piece::B_START }, { Piece::B_END }>(),
+            self.calc_attack_map_impl::<{ Color::WHITE.as_u8() }, { Piece::W_START }, { Piece::W_END }>(),
+            self.calc_attack_map_impl::<{ Color::BLACK.as_u8() }, { Piece::B_START }, { Piece::B_END }>(),
         ]
     }
 
@@ -213,10 +217,7 @@ impl Position {
             s.push('\n');
         }
         s.push_str("  ａｂｃｄｅｆｇｈ\n");
-        s.push_str(
-            format!("Side: {}\n", if self.side_to_move == COLOR_WHITE { "White" } else { "Black" })
-                .as_str(),
-        );
+        s.push_str(format!("Side: {}\n", self.side_to_move).as_str());
         s.push_str(format!("Castling: {}\n", &castling_to_string(self.castling)).as_str());
         s.push_str(format!("Halfmove clock: {}\n", self.halfmove_clock).as_str());
         s.push_str(format!("Fullmove number: {}\n", self.fullmove_number).as_str());
@@ -285,7 +286,7 @@ mod tests {
         assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
         assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
 
-        assert_eq!(pos.side_to_move, COLOR_WHITE);
+        assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
@@ -311,7 +312,7 @@ mod tests {
         assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
         assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
 
-        assert_eq!(pos.side_to_move, COLOR_WHITE);
+        assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
@@ -326,7 +327,7 @@ mod tests {
         let pos = Position::from("r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7")
             .unwrap();
 
-        assert_eq!(pos.side_to_move, COLOR_WHITE);
+        assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
         assert_eq!(pos.halfmove_clock, 6);
         assert_eq!(pos.fullmove_number, 7);
@@ -343,8 +344,8 @@ mod tests {
 
         let attack_maps = pos.calc_attack_map();
 
-        assert_eq!(attack_maps[COLOR_WHITE as usize].get(), 0x0000000000FF0000);
-        assert_eq!(attack_maps[COLOR_BLACK as usize].get(), 0x0000FF0000000000);
+        assert_eq!(attack_maps[Color::WHITE.as_usize()].get(), 0x0000000000FF0000);
+        assert_eq!(attack_maps[Color::BLACK.as_usize()].get(), 0x0000FF0000000000);
     }
 
     #[test]

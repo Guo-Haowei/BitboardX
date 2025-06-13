@@ -39,14 +39,6 @@ pub mod fen {
         Ok(bitboards)
     }
 
-    pub fn parse_side_to_move(input: &str) -> Result<u8, &'static str> {
-        match input {
-            "w" => Ok(COLOR_WHITE),
-            "b" => Ok(COLOR_BLACK),
-            _ => Err("Invalid side to move in FEN"),
-        }
-    }
-
     pub fn parse_castling(input: &str) -> Result<u8, &'static str> {
         if input == "-" {
             return Ok(0);
@@ -96,14 +88,6 @@ pub mod fen {
     #[cfg(test)]
     mod test {
         use super::*;
-
-        #[test]
-        fn test_parse_side_to_move() {
-            assert_eq!(parse_side_to_move("w").unwrap(), COLOR_WHITE);
-            assert_eq!(parse_side_to_move("b").unwrap(), COLOR_BLACK);
-            assert!(parse_side_to_move("-").is_err());
-            assert!(parse_side_to_move("??").is_err());
-        }
 
         #[test]
         fn test_parse_castling() {

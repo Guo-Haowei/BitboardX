@@ -1,6 +1,6 @@
 use super::bitboard::BitBoard;
 use super::moves::*;
-use super::piece::*;
+use super::piece::{Color, Piece, PieceType};
 use super::position::Position;
 use super::types::*;
 
@@ -67,18 +67,18 @@ const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
     [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
 
 /// Pseudo-legal move generation for a square
-fn pseudo_legal_impl<const ATTACK_ONLY: bool>(pos: &Position, sq: u8, color: u8) -> BitBoard {
+fn pseudo_legal_impl<const ATTACK_ONLY: bool>(pos: &Position, sq: u8, color: Color) -> BitBoard {
     let piece = pos.get_piece(sq);
 
     match piece {
-        Piece::W_PAWN => move_pawn::<COLOR_WHITE, ATTACK_ONLY>(pos, sq),
-        Piece::B_PAWN => move_pawn::<COLOR_BLACK, ATTACK_ONLY>(pos, sq),
+        Piece::W_PAWN => move_pawn::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(pos, sq),
+        Piece::B_PAWN => move_pawn::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(pos, sq),
         Piece::W_ROOK | Piece::B_ROOK => move_sliding::<0, 4>(pos, sq, color),
         Piece::W_BISHOP | Piece::B_BISHOP => move_sliding::<4, 8>(pos, sq, color),
         Piece::W_QUEEN | Piece::B_QUEEN => move_sliding::<0, 8>(pos, sq, color),
         Piece::W_KNIGHT | Piece::B_KNIGHT => move_knight(pos, sq, color),
-        Piece::W_KING => move_king::<COLOR_WHITE, ATTACK_ONLY>(pos, sq),
-        Piece::B_KING => move_king::<COLOR_BLACK, ATTACK_ONLY>(pos, sq),
+        Piece::W_KING => move_king::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(pos, sq),
+        Piece::B_KING => move_king::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(pos, sq),
         Piece::NONE => BitBoard::new(),
         _ => {
             panic!("Invalid piece type: {:?}", piece);
@@ -90,7 +90,7 @@ pub fn pseudo_legal_move(pos: &Position, sq: u8) -> BitBoard {
     pseudo_legal_impl::<false>(pos, sq, pos.side_to_move)
 }
 
-pub fn pseudo_legal_attack(pos: &Position, sq: u8, color: u8) -> BitBoard {
+pub fn pseudo_legal_attack(pos: &Position, sq: u8, color: Color) -> BitBoard {
     pseudo_legal_impl::<true>(pos, sq, color)
 }
 
@@ -100,22 +100,22 @@ pub fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: u
     let bb = BitBoard::from_bit(sq);
     let mut moves = BitBoard::new();
 
-    let opposite_color = get_opposite_color(COLOR);
+    let opponent = COLOR ^ 1;
 
-    let is_white = COLOR == COLOR_WHITE;
-    let is_black = COLOR != COLOR_WHITE;
+    let is_white = COLOR == Color::WHITE.as_u8();
+    let is_black = COLOR != Color::WHITE.as_u8();
 
     // Handle forward moves
     if !ATTACK_ONLY {
         let next_bb = if is_white { shift_north(bb) } else { shift_south(bb) };
 
-        if (next_bb & pos.occupancies[COLOR_BOTH as usize]).none() {
+        if (next_bb & pos.occupancies[Color::BOTH.as_usize()]).none() {
             moves |= next_bb;
         }
 
         if (is_white && rank == RANK_2 || is_black && rank == RANK_7) && moves.any() {
             let next_bb = if is_white { shift_north(next_bb) } else { shift_south(next_bb) };
-            if (next_bb & pos.occupancies[COLOR_BOTH as usize]).none() {
+            if (next_bb & pos.occupancies[Color::BOTH.as_usize()]).none() {
                 moves |= next_bb;
             }
         }
@@ -123,11 +123,11 @@ pub fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: u
 
     // Handle attacks moves
     let attack_left = if is_white { shift_nw(bb) } else { shift_sw(bb) };
-    if ATTACK_ONLY || (attack_left & pos.occupancies[opposite_color as usize]).any() {
+    if ATTACK_ONLY || (attack_left & pos.occupancies[opponent as usize]).any() {
         moves |= attack_left;
     }
     let attack_right = if is_white { shift_ne(bb) } else { shift_se(bb) };
-    if ATTACK_ONLY || (attack_right & pos.occupancies[opposite_color as usize]).any() {
+    if ATTACK_ONLY || (attack_right & pos.occupancies[opponent as usize]).any() {
         moves |= attack_right;
     }
 
@@ -156,20 +156,24 @@ pub fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: u
 }
 
 /// Pseudo-legal move generation for a sliding piece (rook, bishop, queen)
-pub fn move_sliding<const START: u8, const END: u8>(pos: &Position, sq: u8, color: u8) -> BitBoard {
+pub fn move_sliding<const START: u8, const END: u8>(
+    pos: &Position,
+    sq: u8,
+    color: Color,
+) -> BitBoard {
     let mut moves = BitBoard::new();
     let bb = BitBoard::from_bit(sq);
-    let opposite_color = get_opposite_color(color);
+    let opponent = color.opponent();
 
     for i in START..END {
         let mut next_bb = SHIFT_FUNCS[i as usize](bb);
 
         while next_bb.any() {
-            if (next_bb & pos.occupancies[color as usize]).any() {
+            if (next_bb & pos.occupancies[color.as_usize()]).any() {
                 break;
             }
 
-            if (next_bb & pos.occupancies[opposite_color as usize]).any() {
+            if (next_bb & pos.occupancies[opponent.as_usize()]).any() {
                 moves |= next_bb;
                 break;
             }
@@ -184,10 +188,10 @@ pub fn move_sliding<const START: u8, const END: u8>(pos: &Position, sq: u8, colo
 }
 
 /// Pseudo-legal move generation for a knight
-pub fn move_knight(pos: &Position, sq: u8, color: u8) -> BitBoard {
+pub fn move_knight(pos: &Position, sq: u8, color: Color) -> BitBoard {
     let mut moves = BitBoard::new();
     let bb = BitBoard::from_bit(sq);
-    let occupancy = !pos.occupancies[color as usize];
+    let occupancy = !pos.occupancies[color.as_usize()];
 
     moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & occupancy;
     moves |= shift(bb & !(BOUND_AB | BOUND_8), NW + WEST) & occupancy;
@@ -206,10 +210,11 @@ pub fn move_knight(pos: &Position, sq: u8, color: u8) -> BitBoard {
 fn castling_check<const COLOR: u8>(pos: &Position, sq: u8, dst_sq: u8, rook_sq: u8) -> bool {
     // r . . . k . . r
     // a b c d e f g h
-    let opponent = get_opposite_color(COLOR);
+    let color = Color::from(COLOR);
+    let opponent = color.opponent();
 
     // check if the rook is in the right place
-    let rook_type = Piece::get_piece(COLOR, PieceType::Rook);
+    let rook_type = Piece::get_piece(color, PieceType::Rook);
     if pos.bitboards[rook_type.as_usize()].test(rook_sq) == false {
         return false;
     }
@@ -218,7 +223,7 @@ fn castling_check<const COLOR: u8>(pos: &Position, sq: u8, dst_sq: u8, rook_sq: 
     let start = sq.min(dst_sq);
     let end = sq.max(dst_sq);
     for i in start..=end {
-        if pos.attack_map[opponent as usize].test(i) {
+        if pos.attack_map[opponent.as_usize()].test(i) {
             return false;
         }
     }
@@ -227,7 +232,7 @@ fn castling_check<const COLOR: u8>(pos: &Position, sq: u8, dst_sq: u8, rook_sq: 
     let start = sq.min(rook_sq);
     let end = sq.max(rook_sq);
     for i in start + 1..end {
-        if (pos.occupancies[COLOR_BOTH as usize]).test(i) {
+        if (pos.occupancies[Color::BOTH.as_usize()]).test(i) {
             return false;
         }
     }
@@ -236,7 +241,8 @@ fn castling_check<const COLOR: u8>(pos: &Position, sq: u8, dst_sq: u8, rook_sq: 
 }
 
 pub fn move_king<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: u8) -> BitBoard {
-    let is_white = COLOR == COLOR_WHITE;
+    let color = Color::from(COLOR);
+    let is_white = color.is_white();
 
     let bb = BitBoard::from_bit(sq);
     let mut moves = BitBoard::new();
@@ -251,7 +257,7 @@ pub fn move_king<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: u
     moves |= shift_sw(bb) & occupancy;
     if !ATTACK_ONLY {
         // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
-        moves &= !pos.attack_map[get_opposite_color(COLOR) as usize];
+        moves &= !pos.attack_map[color.opponent().as_usize()];
 
         // Castling doesn't form attack
         if is_white {

@@ -178,7 +178,7 @@ fn move_disable_castling<const BIT: u8>(
 
 // @TODO: make this function a psuedo-legal move generator
 pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
-    if !pos.occupancies[pos.side_to_move as usize].test(from_sq) {
+    if !pos.occupancies[pos.side_to_move.as_usize()].test(from_sq) {
         return None;
     }
 
@@ -205,15 +205,15 @@ pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
 }
 
 pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
-    let our_side = pos.side_to_move;
-    let their_side = get_opposite_color(our_side);
-    let piece: Piece = unsafe { std::mem::transmute(our_side * 6 + Piece::W_KING.as_u8()) };
+    let us = pos.side_to_move;
+    let opponent = us.opponent();
+    let piece: Piece = Piece::get_piece(us, PieceType::King);
     debug_assert!(piece == Piece::W_KING || piece == Piece::B_KING);
-    debug_assert!(piece.color() == our_side);
+    debug_assert!(piece.color() == us);
 
     do_move(pos, m);
 
-    let legal = (pos.bitboards[piece.as_usize()] & pos.attack_map[their_side as usize]).none();
+    let legal = (pos.bitboards[piece.as_usize()] & pos.attack_map[opponent.as_usize()]).none();
 
     undo_move(pos, m);
 
@@ -221,7 +221,7 @@ pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
 }
 
 fn do_move_generic(pos: &mut Position, m: &Move) {
-    debug_assert!(pos.occupancies[pos.side_to_move as usize].test(m.from_sq));
+    debug_assert!(pos.occupancies[pos.side_to_move.as_usize()].test(m.from_sq));
 
     let from = m.piece();
     let to = m.capture();
@@ -391,7 +391,7 @@ mod tests {
         let mut pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
 
         assert_eq!(
-            pos.attack_map[COLOR_BLACK as usize],
+            pos.attack_map[Color::BLACK.as_usize()],
             BitBoard::from(0b11000000_01000000_01111110)
         );
 
