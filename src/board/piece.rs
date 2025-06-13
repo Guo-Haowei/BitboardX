@@ -48,19 +48,12 @@ impl Piece {
     pub const B_END: u8 = Self::B_KING.0;
 
     pub const fn color(&self) -> u8 {
+        debug_assert!(true);
         match self.0 {
             Self::W_START..=Self::W_END => COLOR_WHITE,
             Self::B_START..=Self::B_END => COLOR_BLACK,
             _ => 2, // None
         }
-    }
-
-    pub const fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-
-    pub const fn as_u8(&self) -> u8 {
-        self.0
     }
 
     pub const fn piece_type(&self) -> PieceType {
@@ -77,6 +70,14 @@ impl Piece {
         debug_assert!(color < COLOR_BOTH);
         debug_assert!(piece_type != PieceType::None);
         unsafe { std::mem::transmute((color * NB_PIECE_TYPES as u8) + piece_type as u8) }
+    }
+
+    pub const fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    pub const fn as_u8(&self) -> u8 {
+        self.0
     }
 }
 
@@ -98,5 +99,13 @@ mod tests {
         assert_eq!(Piece::B_ROOK.color(), COLOR_BLACK);
         assert_eq!(Piece::B_QUEEN.color(), COLOR_BLACK);
         assert_eq!(Piece::B_KING.color(), COLOR_BLACK);
+    }
+
+    #[test]
+    fn test_get_piece() {
+        assert_eq!(Piece::get_piece(COLOR_WHITE, PieceType::Pawn), Piece::W_PAWN);
+        assert_eq!(Piece::get_piece(COLOR_WHITE, PieceType::Knight), Piece::W_KNIGHT);
+        assert_eq!(Piece::get_piece(COLOR_BLACK, PieceType::Pawn), Piece::B_PAWN);
+        assert_eq!(Piece::get_piece(COLOR_BLACK, PieceType::Knight), Piece::B_KNIGHT);
     }
 }
