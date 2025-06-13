@@ -1,5 +1,4 @@
 use super::board::{BitBoard, Square};
-use super::move_generator;
 use super::piece::*;
 use super::position::Position;
 
@@ -132,92 +131,6 @@ impl Move {
     }
 }
 
-// if castling rights are already disabled, return
-// if king moved, disable castling rights, return
-// if rook moved, disable castling rights, return
-// if rook taken out, disable castling rights, return
-fn move_disable_castling<const BIT: u8>(
-    pos: &Position,
-    from: Piece,
-    to: Piece,
-    from_sq: Square,
-    to_sq: Square,
-) -> u8 {
-    if pos.castling & BIT == 0 {
-        return 0;
-    }
-
-    if from == Piece::W_KING && (BIT & MoveFlags::KQ) != 0 {
-        return BIT;
-    }
-
-    if from == Piece::B_KING && (BIT & MoveFlags::kq) != 0 {
-        return BIT;
-    }
-
-    match (from, from_sq) {
-        (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-        (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-        (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-        (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
-        _ => {}
-    }
-
-    match (to, to_sq) {
-        (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-        (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-        (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-        (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
-        _ => {}
-    }
-
-    0
-}
-
-// @TODO: make this function a psuedo-legal move generator
-pub fn create_move(pos: &Position, from_sq: Square, to_sq: Square) -> Option<Move> {
-    if !pos.occupancies[pos.side_to_move.as_usize()].test(from_sq.as_u8()) {
-        return None;
-    }
-
-    let mut from = Piece::NONE;
-    let mut to = Piece::NONE;
-    for i in 0..pos.bitboards.len() {
-        let bb = &pos.bitboards[i];
-        if bb.test(from_sq.as_u8()) {
-            from = unsafe { std::mem::transmute(i as u8) };
-        }
-        if bb.test(to_sq.as_u8()) {
-            to = unsafe { std::mem::transmute(i as u8) };
-        }
-    }
-
-    debug_assert!(from != Piece::NONE, "No piece found on 'from' square");
-    let mut flags = 0u8;
-    flags |= move_disable_castling::<{ MoveFlags::K }>(pos, from, to, from_sq, to_sq);
-    flags |= move_disable_castling::<{ MoveFlags::Q }>(pos, from, to, from_sq, to_sq);
-    flags |= move_disable_castling::<{ MoveFlags::k }>(pos, from, to, from_sq, to_sq);
-    flags |= move_disable_castling::<{ MoveFlags::q }>(pos, from, to, from_sq, to_sq);
-
-    Some(Move::new(from_sq, to_sq, from, to, flags))
-}
-
-pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
-    let us = pos.side_to_move;
-    let opponent = us.opponent();
-    let piece: Piece = Piece::get_piece(us, PieceType::King);
-    debug_assert!(piece == Piece::W_KING || piece == Piece::B_KING);
-    debug_assert!(piece.color() == us);
-
-    do_move(pos, m);
-
-    let legal = (pos.bitboards[piece.as_usize()] & pos.attack_map[opponent.as_usize()]).none();
-
-    undo_move(pos, m);
-
-    legal
-}
-
 fn do_move_generic(pos: &mut Position, m: &Move) {
     debug_assert!(pos.occupancies[pos.side_to_move.as_usize()].test(m.from_sq.as_u8()));
 
@@ -304,14 +217,6 @@ pub fn undo_move(pos: &mut Position, m: &Move) {
     post_move(pos);
 }
 
-pub fn create_move_verified(pos: &mut Position, from_sq: Square, to_sq: Square) -> Option<Move> {
-    if !move_generator::pseudo_legal_move(pos, from_sq).test(to_sq.as_u8()) {
-        return None;
-    }
-
-    create_move(pos, from_sq, to_sq)
-}
-
 pub fn parse_move(input: &str) -> Option<(Square, Square)> {
     if input.len() != 4 {
         return None;
@@ -327,19 +232,6 @@ pub fn parse_move(input: &str) -> Option<(Square, Square)> {
     }
 
     Some((Square::make(from_file, from_rank), Square::make(to_file, to_rank)))
-}
-
-pub fn apply_move_str(pos: &mut Position, move_str: &str) -> bool {
-    match parse_move(move_str) {
-        None => false,
-        Some((from, to)) => match create_move_verified(pos, from, to) {
-            None => false,
-            Some(m) => {
-                do_move(pos, &m);
-                true
-            }
-        },
-    }
 }
 
 #[cfg(test)]
@@ -366,22 +258,5 @@ mod tests {
         assert_eq!(parse_move("z1z2"), None);
         assert_eq!(parse_move("e9e4"), None);
         assert_eq!(parse_move("e2e"), None);
-    }
-
-    #[test]
-    fn test_move_validation() {
-        // 2 . . . . . . . k
-        // 1 K B . . . . . r
-        //   a b c d e f g h
-        let mut pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
-
-        assert_eq!(
-            pos.attack_map[Color::BLACK.as_usize()],
-            BitBoard::from(0b11000000_01000000_01111110)
-        );
-
-        let m = create_move(&pos, Square::B1, Square::A2).unwrap();
-
-        assert!(!validate_move(&mut pos, &m), "Move bishop to A2 exposes king to check");
     }
 }

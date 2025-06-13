@@ -1,8 +1,10 @@
 use super::board::{BitBoard, Square};
-use super::move_generator;
-use super::moves::{Move, MoveFlags, create_move, validate_move};
+use super::moves::{Move, MoveFlags};
 use super::piece::{Color, Piece};
 use super::utils::fen::*;
+
+// mod internal;
+mod internal;
 
 pub struct Position {
     /// Data used to serialize/deserialize FEN.
@@ -112,12 +114,16 @@ impl Position {
     }
 
     pub fn is_legal_move(&mut self, m: &Move) -> bool {
-        validate_move(self, &m)
+        internal::validate_move(self, &m)
+    }
+
+    pub fn legal_move_from_to(&mut self, from_sq: Square, to_sq: Square) -> Option<Move> {
+        internal::legal_move_from_to(self, from_sq, to_sq)
     }
 
     pub fn pseudo_legal_move(&self, sq: Square) -> BitBoard {
         if self.occupancies[self.side_to_move.as_usize()].test(sq.as_u8()) {
-            return move_generator::pseudo_legal_move(self, sq);
+            return internal::pseudo_legal_move_from(self, sq);
         }
         BitBoard::new()
     }
@@ -130,10 +136,9 @@ impl Position {
         while bits != 0 {
             let dst_sq = bits.trailing_zeros();
 
-            if let Some(m) = create_move(self, sq, Square(dst_sq as u8)) {
-                if !self.is_legal_move(&m) {
-                    pseudo_legal.unset(dst_sq as u8);
-                }
+            let m = internal::pseudo_legal_move_from_to(self, sq, Square(dst_sq as u8));
+            if !self.is_legal_move(&m) {
+                pseudo_legal.unset(dst_sq as u8);
             }
 
             bits &= bits - 1;
@@ -151,7 +156,7 @@ impl Position {
             for sq in 0..64 {
                 if bb.test(sq) {
                     attack_map |=
-                        move_generator::pseudo_legal_attack(self, Square(sq), Color::from(COLOR));
+                        internal::pseudo_legal_attack_from(self, Square(sq), Color::from(COLOR));
                 }
             }
         }
@@ -164,6 +169,10 @@ impl Position {
             self.calc_attack_map_impl::<{ Color::WHITE.as_u8() }, { Piece::W_START }, { Piece::W_END }>(),
             self.calc_attack_map_impl::<{ Color::BLACK.as_u8() }, { Piece::B_START }, { Piece::B_END }>(),
         ]
+    }
+
+    pub fn apply_move_str(&mut self, move_str: &str) -> bool {
+        internal::apply_move_str(self, move_str)
     }
 
     pub fn to_string(&self, pad: bool) -> String {

@@ -1,4 +1,3 @@
-use super::moves;
 use super::position::Position;
 use std::io::{self, Write};
 use wasm_bindgen::prelude::*;
@@ -75,7 +74,7 @@ impl Engine {
             match parts.as_slice() {
                 ["moves", moves @ ..] => {
                     for move_str in moves {
-                        if !moves::apply_move_str(&mut self.pos, move_str) {
+                        if !self.pos.apply_move_str(move_str) {
                             eprintln!("Error: Invalid move '{}'", move_str);
                             break;
                         }

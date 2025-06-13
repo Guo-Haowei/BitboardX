@@ -74,7 +74,7 @@ impl Game {
         }
 
         let (from, to) = squares.unwrap();
-        let move_ = moves::create_move_verified(&mut self.pos.borrow_mut(), from, to);
+        let move_ = self.pos.borrow_mut().legal_move_from_to(from, to);
         if move_.is_none() {
             return false;
         }
