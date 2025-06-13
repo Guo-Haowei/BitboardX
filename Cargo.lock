@@ -6,7 +6,6 @@ version = 4
 name = "bitboard_x"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "rustyline",
  "wasm-bindgen",
 ]
@@ -85,12 +84,6 @@ checksum = "589533453244b0995c858700322199b2becb13b627df2851f64a2775d024abcf"
 dependencies = [
  "windows-sys",
 ]
-
-[[package]]
-name = "lazy_static"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"

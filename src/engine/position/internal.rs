@@ -98,6 +98,30 @@ pub fn pseudo_legal_attack_from(pos: &Position, sq: Square, color: Color) -> Bit
 }
 
 /// Pseudo-legal move generation for pawns
+fn move_pawn_enpassant<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
+    // Handle en passant
+    let (file, rank) = sq.file_rank();
+    let is_white = COLOR == Color::WHITE.as_u8();
+    let is_black = COLOR != Color::WHITE.as_u8();
+
+    if let Some(ep_sq) = pos.ep_sq {
+        debug_assert!(pos.get_piece(ep_sq) == Piece::NONE, "En passant square must be empty");
+        let (ep_file, ep_rank) = ep_sq.file_rank();
+        if (file as i32 - ep_file as i32).abs() == 1 {
+            if is_white && rank == RANK_5 && ep_rank == RANK_6 {
+                debug_assert!(pos.get_piece(Square(ep_sq.0 - 8)) == Piece::B_PAWN);
+                return ep_sq.to_bitboard();
+            }
+            if is_black && rank == RANK_4 && ep_rank == RANK_3 {
+                debug_assert!(pos.get_piece(Square(ep_sq.0 + 8)) == Piece::W_PAWN);
+                ep_sq.to_bitboard();
+            }
+        }
+    }
+
+    return BitBoard::new();
+}
+
 fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Square) -> BitBoard {
     let (_file, rank) = sq.file_rank();
     let bb = sq.to_bitboard();
@@ -108,8 +132,8 @@ fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
     let is_white = COLOR == Color::WHITE.as_u8();
     let is_black = COLOR != Color::WHITE.as_u8();
 
-    // Handle forward moves
     if !ATTACK_ONLY {
+        // Handle forward moves
         let next_bb = if is_white { shift_north(bb) } else { shift_south(bb) };
 
         if (next_bb & pos.occupancies[Color::BOTH.as_usize()]).none() {
@@ -122,6 +146,9 @@ fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
                 moves |= next_bb;
             }
         }
+
+        // Handle en passant
+        moves |= move_pawn_enpassant::<COLOR>(pos, sq);
     }
 
     // Handle attacks moves
@@ -404,19 +431,6 @@ fn move_disable_castling<const BIT: u8>(
     }
 
     0
-}
-
-pub fn apply_move_str(pos: &mut Position, move_str: &str) -> bool {
-    match parse_move(move_str) {
-        None => false,
-        Some((from, to)) => match legal_move_from_to(pos, from, to) {
-            None => false,
-            Some(m) => {
-                do_move(pos, &m);
-                true
-            }
-        },
-    }
 }
 
 #[cfg(test)]

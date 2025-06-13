@@ -217,23 +217,6 @@ pub fn undo_move(pos: &mut Position, m: &Move) {
     post_move(pos);
 }
 
-pub fn parse_move(input: &str) -> Option<(Square, Square)> {
-    if input.len() != 4 {
-        return None;
-    }
-
-    let from_file = input.chars().nth(0)? as u8 - b'a';
-    let from_rank = input.chars().nth(1)? as u8 - b'1';
-    let to_file = input.chars().nth(2)? as u8 - b'a';
-    let to_rank = input.chars().nth(3)? as u8 - b'1';
-
-    if from_file > 7 || from_rank > 7 || to_file > 7 || to_rank > 7 {
-        return None;
-    }
-
-    Some((Square::make(from_file, from_rank), Square::make(to_file, to_rank)))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -247,16 +230,5 @@ mod tests {
         let m = Move::new(Square::E7, Square::E8, Piece::B_QUEEN, Piece::NONE, 0);
         assert_eq!(m.piece(), Piece::B_QUEEN);
         assert_eq!(m.capture(), Piece::NONE);
-    }
-
-    #[test]
-    fn test_parse_move() {
-        assert_eq!(parse_move("e2e4"), Some((Square::E2, Square::E4)));
-        assert_eq!(parse_move("a7a8"), Some((Square::A7, Square::A8)));
-        assert_eq!(parse_move("h1h2"), Some((Square::H1, Square::H2)));
-        assert_eq!(parse_move("d4d5"), Some((Square::D4, Square::D5)));
-        assert_eq!(parse_move("z1z2"), None);
-        assert_eq!(parse_move("e9e4"), None);
-        assert_eq!(parse_move("e2e"), None);
     }
 }

@@ -1,9 +1,8 @@
 use super::board::{BitBoard, Square};
-use super::moves::{Move, MoveFlags};
+use super::moves::{Move, MoveFlags, do_move};
 use super::piece::{Color, Piece};
-use super::utils::fen::*;
+use super::utils;
 
-// mod internal;
 mod internal;
 
 pub struct Position {
@@ -12,7 +11,7 @@ pub struct Position {
 
     pub side_to_move: Color,
     pub castling: u8,
-    // @TODO: en passant
+    pub ep_sq: Option<Square>,
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
 
@@ -38,13 +37,14 @@ impl Position {
             BitBoard::from(0x1000000000000000), // Black King
         ];
 
-        let occupancies = calc_occupancies(&bitboards);
+        let occupancies = utils::calc_occupancies(&bitboards);
         let attack_map = [BitBoard::from(0x0000000000FF0000), BitBoard::from(0x0000FF0000000000)];
 
         Self {
             bitboards,
             side_to_move: Color::WHITE,
             castling: MoveFlags::KQkq,
+            ep_sq: None,
             halfmove_clock: 0,
             fullmove_number: 1,
             occupancies,
@@ -56,25 +56,28 @@ impl Position {
         piece_placement: &str,
         side_to_move: &str,
         castling_rights: &str,
-        _en_passant_target: &str,
+        en_passant_target: &str,
         halfmove_clock: &str,
         fullmove_number: &str,
     ) -> Result<Self, &'static str> {
-        let bitboards = parse_board(piece_placement)?;
+        let bitboards = utils::parse_board(piece_placement)?;
         let side_to_move = match Color::parse(side_to_move) {
             Some(color) => color,
             None => return Err("Invalid side to move in FEN"),
         };
-        let castling = parse_castling(castling_rights)?;
-        let halfmove_clock = parse_halfmove_clock(halfmove_clock)?;
-        let fullmove_number = parse_fullmove_number(fullmove_number)?;
+        let castling = utils::parse_castling(castling_rights)?;
+        let halfmove_clock = utils::parse_halfmove_clock(halfmove_clock)?;
+        let fullmove_number = utils::parse_fullmove_number(fullmove_number)?;
 
-        let occupancies = calc_occupancies(&bitboards);
+        let occupancies = utils::calc_occupancies(&bitboards);
+
+        let en_passant = utils::parse_en_passant(en_passant_target)?;
 
         let mut pos = Self {
             bitboards,
             side_to_move,
             castling,
+            ep_sq: en_passant,
             halfmove_clock,
             fullmove_number,
             occupancies,
@@ -95,7 +98,7 @@ impl Position {
     }
 
     pub fn update_cache(&mut self) {
-        self.occupancies = calc_occupancies(&self.bitboards);
+        self.occupancies = utils::calc_occupancies(&self.bitboards);
         self.attack_map = self.calc_attack_map();
     }
 
@@ -172,7 +175,16 @@ impl Position {
     }
 
     pub fn apply_move_str(&mut self, move_str: &str) -> bool {
-        internal::apply_move_str(self, move_str)
+        match utils::parse_move(move_str) {
+            None => false,
+            Some((from, to)) => match self.legal_move_from_to(from, to) {
+                None => false,
+                Some(m) => {
+                    do_move(self, &m);
+                    true
+                }
+            },
+        }
     }
 
     pub fn to_string(&self, pad: bool) -> String {
@@ -293,6 +305,7 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
+        assert!(pos.ep_sq.is_none());
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
         assert_eq!(
@@ -319,11 +332,27 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
+        assert!(pos.ep_sq.is_none());
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
         assert_eq!(
             pos.to_board_string(),
             "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
+        );
+    }
+
+    #[test]
+    fn test_constructor_from_invalid_fen() {
+        let pos = Position::from("4k3/8/8/4Pp2/8/8/8/4K3 w - f6 2 4").unwrap();
+
+        assert_eq!(pos.side_to_move, Color::WHITE);
+        assert_eq!(pos.castling, 0);
+        assert_eq!(pos.ep_sq.unwrap(), Square::F6);
+        assert_eq!(pos.halfmove_clock, 2);
+        assert_eq!(pos.fullmove_number, 4);
+        assert_eq!(
+            pos.to_board_string(),
+            "....k.......................Pp..............................K..."
         );
     }
 
@@ -334,6 +363,7 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
+        assert!(pos.ep_sq.is_none());
         assert_eq!(pos.halfmove_clock, 6);
         assert_eq!(pos.fullmove_number, 7);
         assert_eq!(
