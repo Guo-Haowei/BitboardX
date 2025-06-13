@@ -299,7 +299,6 @@ pub fn move_king<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: S
         }
     }
 
-    println!("bitboard:\n{}", moves);
     moves
 }
 
