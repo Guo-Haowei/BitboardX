@@ -52,6 +52,11 @@ pub enum SpecialMove {
 #[bitfield]
 #[derive(Debug, Clone, Copy)]
 struct PackedData {
+    // @TODO: rename to
+    // is_ep_mv
+    // add_ep_sq
+    // drop_ep_sq
+    // drop_castling
     from_sq: B6,
     to_sq: B6,
     color: B1,
@@ -172,6 +177,7 @@ fn do_ep_move(pos: &mut Position, m: &Move, from: Piece) {
         return;
     }
 
+    // check if it's a move could possibly create an en passant square
     debug_assert!(from.piece_type() == PieceType::Pawn, "En passant move must be a pawn move");
     let (file, rank) = m.to_sq().file_rank();
     match (rank, from.color()) {
@@ -183,6 +189,8 @@ fn do_ep_move(pos: &mut Position, m: &Move, from: Piece) {
         }
         _ => {}
     }
+
+    // check if it's an en passant capture
 }
 
 fn undo_ep_move(pos: &mut Position, m: &Move, from: Piece) {

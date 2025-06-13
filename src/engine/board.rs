@@ -244,7 +244,7 @@ impl Square {
 impl fmt::Display for Square {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (file, rank) = self.file_rank();
-        write!(f, "(f: {}, r: {})", file, rank)
+        write!(f, "{}{}", (b'a' + file) as char, rank + 1)
     }
 }
 /* #endregion Square */
@@ -267,14 +267,14 @@ mod tests {
 
     #[test]
     fn get_file_rank_test() {
-        assert_eq!(Square::A8.file_rank(), (0, RANK_8));
-        assert_eq!(Square::B7.file_rank(), (1, RANK_7));
-        assert_eq!(Square::C6.file_rank(), (2, RANK_6));
-        assert_eq!(Square::D5.file_rank(), (3, RANK_5));
-        assert_eq!(Square::E4.file_rank(), (4, RANK_4));
-        assert_eq!(Square::F3.file_rank(), (5, RANK_3));
-        assert_eq!(Square::G2.file_rank(), (6, RANK_2));
-        assert_eq!(Square::H1.file_rank(), (7, RANK_1));
+        assert_eq!(Square::A8.file_rank(), (FILE_A, RANK_8));
+        assert_eq!(Square::B7.file_rank(), (FILE_B, RANK_7));
+        assert_eq!(Square::C6.file_rank(), (FILE_C, RANK_6));
+        assert_eq!(Square::D5.file_rank(), (FILE_D, RANK_5));
+        assert_eq!(Square::E4.file_rank(), (FILE_E, RANK_4));
+        assert_eq!(Square::F3.file_rank(), (FILE_F, RANK_3));
+        assert_eq!(Square::G2.file_rank(), (FILE_G, RANK_2));
+        assert_eq!(Square::H1.file_rank(), (FILE_H, RANK_1));
     }
 
     #[test]

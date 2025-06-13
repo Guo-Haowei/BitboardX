@@ -148,6 +148,24 @@ impl Piece {
             _ => None,
         }
     }
+
+    pub fn to_char(&self) -> char {
+        match self.0 {
+            0 => 'P',  // White Pawn
+            1 => 'N',  // White Knight
+            2 => 'B',  // White Bishop
+            3 => 'R',  // White Rook
+            4 => 'Q',  // White Queen
+            5 => 'K',  // White King
+            6 => 'p',  // Black Pawn
+            7 => 'n',  // Black Knight
+            8 => 'b',  // Black Bishop
+            9 => 'r',  // Black Rook
+            10 => 'q', // Black Queen
+            11 => 'k', // Black King
+            _ => '.',  // None
+        }
+    }
 }
 
 impl fmt::Display for Color {
@@ -157,6 +175,12 @@ impl fmt::Display for Color {
             COLOR_BLACK => write!(f, "Black"),
             _ => write!(f, "-"),
         }
+    }
+}
+
+impl fmt::Display for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_char())
     }
 }
 

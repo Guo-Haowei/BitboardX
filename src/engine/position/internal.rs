@@ -381,6 +381,8 @@ pub fn pseudo_legal_move_from_to(pos: &Position, from_sq: Square, to_sq: Square)
     // check if move creates en passant right
     let create_ep_right = check_if_move_creates_ep_right(pos, from_sq, to_sq, from);
 
+    // panic!("Check if it's an en passant move is not implemented yet");
+
     Move::new(from_sq, to_sq, from, to, flags, pos.ep_sq, create_ep_right)
 }
 
@@ -394,21 +396,27 @@ fn check_if_move_creates_ep_right(
         return false;
     }
 
-    let (from_rank, file) = from_sq.file_rank();
-    let (to_rank, to_file) = to_sq.file_rank();
+    let (file, from_rank) = from_sq.file_rank();
+    let (_file, to_rank) = to_sq.file_rank();
 
     if match (from, from_rank, to_rank) {
         (Piece::W_PAWN, RANK_2, RANK_4) => true,
         (Piece::B_PAWN, RANK_7, RANK_5) => true,
         _ => false,
     } {
-        assert_eq!(file, to_file);
+        assert_eq!(file, _file);
         // check if there's opponent's pawn on the left or right of 'to' square
         let board = &pos.bitboards[if from == Piece::W_PAWN {
             Piece::B_PAWN.as_usize()
         } else {
             Piece::W_PAWN.as_usize()
         }];
+
+        println!("Checking if move creates en passant right: from {} to {}", from_sq, to_sq);
+        println!("Piece: {}, From rank: {}, To rank: {}", from, from_rank, to_rank);
+        println!("from_sq: {}, to_sq: {}", from_sq.0, to_sq.0);
+        println!("???????????????????????????????????????????");
+
         if file < FILE_H && board.test(Square::make(file + 1, to_rank).as_u8()) {
             return true;
         }
@@ -545,34 +553,8 @@ pub fn to_board_string(pos: &Position) -> String {
     for rank in (0..8).rev() {
         for file in 0..8 {
             let sq = rank * 8 + file;
-            let c = if pos.bitboards[Piece::W_BISHOP.as_usize()].test(sq) {
-                'B'
-            } else if pos.bitboards[Piece::W_KNIGHT.as_usize()].test(sq) {
-                'N'
-            } else if pos.bitboards[Piece::W_PAWN.as_usize()].test(sq) {
-                'P'
-            } else if pos.bitboards[Piece::W_ROOK.as_usize()].test(sq) {
-                'R'
-            } else if pos.bitboards[Piece::W_QUEEN.as_usize()].test(sq) {
-                'Q'
-            } else if pos.bitboards[Piece::W_KING.as_usize()].test(sq) {
-                'K'
-            } else if pos.bitboards[Piece::B_BISHOP.as_usize()].test(sq) {
-                'b'
-            } else if pos.bitboards[Piece::B_KNIGHT.as_usize()].test(sq) {
-                'n'
-            } else if pos.bitboards[Piece::B_PAWN.as_usize()].test(sq) {
-                'p'
-            } else if pos.bitboards[Piece::B_ROOK.as_usize()].test(sq) {
-                'r'
-            } else if pos.bitboards[Piece::B_QUEEN.as_usize()].test(sq) {
-                'q'
-            } else if pos.bitboards[Piece::B_KING.as_usize()].test(sq) {
-                'k'
-            } else {
-                '.'
-            };
-            s.push(c);
+            let piece = pos.get_piece(Square(sq));
+            s.push(piece.to_char());
         }
     }
     s
