@@ -1,8 +1,7 @@
-pub mod board;
 pub mod engine;
 pub mod game;
 
-use engine::Engine;
+use engine::engine::*;
 use rustyline::{DefaultEditor, Result};
 use std::env;
 use std::io::{self, Write};
@@ -42,7 +41,7 @@ fn game_main() {
 }
 
 fn uci_main() -> Result<()> {
-    println!("{}", engine::name());
+    println!("{}", name());
     let mut stdout = io::stdout();
     let mut engine = Engine::new();
     let mut rl = DefaultEditor::new()?;
@@ -80,7 +79,7 @@ fn uci_main() -> Result<()> {
 }
 
 fn print_usage() {
-    println!("Usage: {} [--help] [--version] [--game]", engine::NAME);
+    println!("Usage: {} [--help] [--version] [--game]", NAME);
     println!("Options:");
     println!("  --help     Show this help message");
     println!("  --version  Show version information");
@@ -88,7 +87,7 @@ fn print_usage() {
 }
 
 fn print_version() {
-    println!("Engine version {}", engine::version());
+    println!("{}", name());
 }
 
 fn main() -> Result<()> {

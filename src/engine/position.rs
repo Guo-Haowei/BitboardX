@@ -1,14 +1,14 @@
-use super::bitboard::BitBoard;
-use super::types::*;
+use super::board::{BitBoard, Square};
+use super::move_generator;
+use super::moves::{Move, MoveFlags, create_move, validate_move};
+use super::piece::{Color, Piece};
 use super::utils::fen::*;
-use crate::board::move_generator;
-use crate::board::moves::{Move, MoveFlags, create_move, validate_move};
 
 pub struct Position {
     /// Data used to serialize/deserialize FEN.
-    pub bitboards: [BitBoard; NB_PIECES],
+    pub bitboards: [BitBoard; Piece::COUNT],
 
-    pub side_to_move: u8,
+    pub side_to_move: Color,
     pub castling: u8,
     // @TODO: en passant
     pub halfmove_clock: u32,
@@ -16,7 +16,7 @@ pub struct Position {
 
     /// Data can be computed from the FEN state.
     pub occupancies: [BitBoard; 3],
-    pub attack_map: [BitBoard; NB_COLORS],
+    pub attack_map: [BitBoard; Color::COUNT],
 }
 
 impl Position {
@@ -41,7 +41,7 @@ impl Position {
 
         Self {
             bitboards,
-            side_to_move: COLOR_WHITE,
+            side_to_move: Color::WHITE,
             castling: MoveFlags::KQkq,
             halfmove_clock: 0,
             fullmove_number: 1,
@@ -59,7 +59,10 @@ impl Position {
         fullmove_number: &str,
     ) -> Result<Self, &'static str> {
         let bitboards = parse_board(piece_placement)?;
-        let side_to_move = parse_side_to_move(side_to_move)?;
+        let side_to_move = match Color::parse(side_to_move) {
+            Some(color) => color,
+            None => return Err("Invalid side to move in FEN"),
+        };
         let castling = parse_castling(castling_rights)?;
         let halfmove_clock = parse_halfmove_clock(halfmove_clock)?;
         let fullmove_number = parse_fullmove_number(fullmove_number)?;
@@ -95,31 +98,31 @@ impl Position {
     }
 
     pub fn change_side(&mut self) {
-        self.side_to_move = get_opposite_color(self.side_to_move);
+        self.side_to_move = self.side_to_move.opponent()
     }
 
-    pub fn get_piece(&self, sq: u8) -> Piece {
-        for i in 0..NB_PIECES {
-            if self.bitboards[i].test(sq) {
+    pub fn get_piece(&self, sq: Square) -> Piece {
+        for i in 0..Piece::COUNT {
+            if self.bitboards[i].test(sq.as_u8()) {
                 return unsafe { std::mem::transmute(i as u8) };
             }
         }
 
-        Piece::None
+        Piece::NONE
     }
 
     pub fn is_legal_move(&mut self, m: &Move) -> bool {
         validate_move(self, &m)
     }
 
-    pub fn pseudo_legal_move(&self, sq: u8) -> BitBoard {
-        if self.occupancies[self.side_to_move as usize].test(sq) {
+    pub fn pseudo_legal_move(&self, sq: Square) -> BitBoard {
+        if self.occupancies[self.side_to_move.as_usize()].test(sq.as_u8()) {
             return move_generator::pseudo_legal_move(self, sq);
         }
         BitBoard::new()
     }
 
-    pub fn legal_move(&mut self, sq: u8) -> BitBoard {
+    pub fn legal_move(&mut self, sq: Square) -> BitBoard {
         let mut pseudo_legal = self.pseudo_legal_move(sq);
 
         let mut bits = pseudo_legal.get();
@@ -127,7 +130,7 @@ impl Position {
         while bits != 0 {
             let dst_sq = bits.trailing_zeros();
 
-            if let Some(m) = create_move(self, sq, dst_sq as u8) {
+            if let Some(m) = create_move(self, sq, Square(dst_sq as u8)) {
                 if !self.is_legal_move(&m) {
                     pseudo_legal.unset(dst_sq as u8);
                 }
@@ -142,15 +145,13 @@ impl Position {
     fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(&self) -> BitBoard {
         let mut attack_map = BitBoard::new();
 
-        for i in START..END {
+        for i in START..=END {
             // pieces from W to B
-            let bb = self.bitboards[i as usize].get();
-            for f in 0..8 {
-                for r in 0..8 {
-                    let sq = make_square(f, r);
-                    if bb & (1u64 << sq) != 0 {
-                        attack_map |= move_generator::pseudo_legal_attack(self, sq, COLOR);
-                    }
+            let bb = self.bitboards[i as usize];
+            for sq in 0..64 {
+                if bb.test(sq) {
+                    attack_map |=
+                        move_generator::pseudo_legal_attack(self, Square(sq), Color::from(COLOR));
                 }
             }
         }
@@ -158,10 +159,10 @@ impl Position {
         attack_map
     }
 
-    pub fn calc_attack_map(&self) -> [BitBoard; NB_COLORS] {
+    pub fn calc_attack_map(&self) -> [BitBoard; Color::COUNT] {
         [
-            self.calc_attack_map_impl::<COLOR_WHITE, W_START, W_END>(),
-            self.calc_attack_map_impl::<COLOR_BLACK, B_START, B_END>(),
+            self.calc_attack_map_impl::<{ Color::WHITE.as_u8() }, { Piece::W_START }, { Piece::W_END }>(),
+            self.calc_attack_map_impl::<{ Color::BLACK.as_u8() }, { Piece::B_START }, { Piece::B_END }>(),
         ]
     }
 
@@ -172,29 +173,29 @@ impl Position {
             s.push(' ');
             for file in 0..8 {
                 let sq = rank * 8 + file;
-                let piece_char = if self.bitboards[Piece::WPawn as usize].test(sq) {
+                let piece_char = if self.bitboards[Piece::W_PAWN.as_usize()].test(sq) {
                     '♙'
-                } else if self.bitboards[Piece::WKnight as usize].test(sq) {
+                } else if self.bitboards[Piece::W_KNIGHT.as_usize()].test(sq) {
                     '♘'
-                } else if self.bitboards[Piece::WBishop as usize].test(sq) {
+                } else if self.bitboards[Piece::W_BISHOP.as_usize()].test(sq) {
                     '♗'
-                } else if self.bitboards[Piece::WRook as usize].test(sq) {
+                } else if self.bitboards[Piece::W_ROOK.as_usize()].test(sq) {
                     '♖'
-                } else if self.bitboards[Piece::WQueen as usize].test(sq) {
+                } else if self.bitboards[Piece::W_QUEEN.as_usize()].test(sq) {
                     '♕'
-                } else if self.bitboards[Piece::WKing as usize].test(sq) {
+                } else if self.bitboards[Piece::W_KING.as_usize()].test(sq) {
                     '♔'
-                } else if self.bitboards[Piece::BPawn as usize].test(sq) {
+                } else if self.bitboards[Piece::B_PAWN.as_usize()].test(sq) {
                     '♟'
-                } else if self.bitboards[Piece::BKnight as usize].test(sq) {
+                } else if self.bitboards[Piece::B_KNIGHT.as_usize()].test(sq) {
                     '♞'
-                } else if self.bitboards[Piece::BBishop as usize].test(sq) {
+                } else if self.bitboards[Piece::B_BISHOP.as_usize()].test(sq) {
                     '♝'
-                } else if self.bitboards[Piece::BRook as usize].test(sq) {
+                } else if self.bitboards[Piece::B_ROOK.as_usize()].test(sq) {
                     '♜'
-                } else if self.bitboards[Piece::BQueen as usize].test(sq) {
+                } else if self.bitboards[Piece::B_QUEEN.as_usize()].test(sq) {
                     '♛'
-                } else if self.bitboards[Piece::BKing as usize].test(sq) {
+                } else if self.bitboards[Piece::B_KING.as_usize()].test(sq) {
                     '♚'
                 } else {
                     '.'
@@ -212,10 +213,7 @@ impl Position {
             s.push('\n');
         }
         s.push_str("  ａｂｃｄｅｆｇｈ\n");
-        s.push_str(
-            format!("Side: {}\n", if self.side_to_move == COLOR_WHITE { "White" } else { "Black" })
-                .as_str(),
-        );
+        s.push_str(format!("Side: {}\n", self.side_to_move).as_str());
         s.push_str(format!("Castling: {}\n", &castling_to_string(self.castling)).as_str());
         s.push_str(format!("Halfmove clock: {}\n", self.halfmove_clock).as_str());
         s.push_str(format!("Fullmove number: {}\n", self.fullmove_number).as_str());
@@ -228,29 +226,29 @@ impl Position {
         for rank in (0..8).rev() {
             for file in 0..8 {
                 let sq = rank * 8 + file;
-                let c = if self.bitboards[Piece::WBishop as usize].test(sq) {
+                let c = if self.bitboards[Piece::W_BISHOP.as_usize()].test(sq) {
                     'B'
-                } else if self.bitboards[Piece::WKnight as usize].test(sq) {
+                } else if self.bitboards[Piece::W_KNIGHT.as_usize()].test(sq) {
                     'N'
-                } else if self.bitboards[Piece::WPawn as usize].test(sq) {
+                } else if self.bitboards[Piece::W_PAWN.as_usize()].test(sq) {
                     'P'
-                } else if self.bitboards[Piece::WRook as usize].test(sq) {
+                } else if self.bitboards[Piece::W_ROOK.as_usize()].test(sq) {
                     'R'
-                } else if self.bitboards[Piece::WQueen as usize].test(sq) {
+                } else if self.bitboards[Piece::W_QUEEN.as_usize()].test(sq) {
                     'Q'
-                } else if self.bitboards[Piece::WKing as usize].test(sq) {
+                } else if self.bitboards[Piece::W_KING.as_usize()].test(sq) {
                     'K'
-                } else if self.bitboards[Piece::BBishop as usize].test(sq) {
+                } else if self.bitboards[Piece::B_BISHOP.as_usize()].test(sq) {
                     'b'
-                } else if self.bitboards[Piece::BKnight as usize].test(sq) {
+                } else if self.bitboards[Piece::B_KNIGHT.as_usize()].test(sq) {
                     'n'
-                } else if self.bitboards[Piece::BPawn as usize].test(sq) {
+                } else if self.bitboards[Piece::B_PAWN.as_usize()].test(sq) {
                     'p'
-                } else if self.bitboards[Piece::BRook as usize].test(sq) {
+                } else if self.bitboards[Piece::B_ROOK.as_usize()].test(sq) {
                     'r'
-                } else if self.bitboards[Piece::BQueen as usize].test(sq) {
+                } else if self.bitboards[Piece::B_QUEEN.as_usize()].test(sq) {
                     'q'
-                } else if self.bitboards[Piece::BKing as usize].test(sq) {
+                } else if self.bitboards[Piece::B_KING.as_usize()].test(sq) {
                     'k'
                 } else {
                     '.'
@@ -279,12 +277,12 @@ mod tests {
     #[test]
     fn test_constructor_new() {
         let pos = Position::new();
-        assert!(pos.bitboards[Piece::WPawn as usize].equal(0x000000000000FF00u64));
-        assert!(pos.bitboards[Piece::BPawn as usize].equal(0x00FF000000000000u64));
-        assert!(pos.bitboards[Piece::WRook as usize].equal(0x0000000000000081u64));
-        assert!(pos.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
+        assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
 
-        assert_eq!(pos.side_to_move, COLOR_WHITE);
+        assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
@@ -305,12 +303,12 @@ mod tests {
             "1",
         )
         .unwrap();
-        assert!(pos.bitboards[Piece::WPawn as usize].equal(0x000000000000FF00u64));
-        assert!(pos.bitboards[Piece::BPawn as usize].equal(0x00FF000000000000u64));
-        assert!(pos.bitboards[Piece::WRook as usize].equal(0x0000000000000081u64));
-        assert!(pos.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
+        assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
 
-        assert_eq!(pos.side_to_move, COLOR_WHITE);
+        assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
@@ -325,7 +323,7 @@ mod tests {
         let pos = Position::from("r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7")
             .unwrap();
 
-        assert_eq!(pos.side_to_move, COLOR_WHITE);
+        assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
         assert_eq!(pos.halfmove_clock, 6);
         assert_eq!(pos.fullmove_number, 7);
@@ -342,8 +340,8 @@ mod tests {
 
         let attack_maps = pos.calc_attack_map();
 
-        assert_eq!(attack_maps[COLOR_WHITE as usize].get(), 0x0000000000FF0000);
-        assert_eq!(attack_maps[COLOR_BLACK as usize].get(), 0x0000FF0000000000);
+        assert_eq!(attack_maps[Color::WHITE.as_usize()].get(), 0x0000000000FF0000);
+        assert_eq!(attack_maps[Color::BLACK.as_usize()].get(), 0x0000FF0000000000);
     }
 
     #[test]
