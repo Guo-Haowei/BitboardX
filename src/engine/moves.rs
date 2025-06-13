@@ -1,4 +1,4 @@
-use super::board::{BitBoard, Square};
+use super::board::{BitBoard, RANK_3, RANK_4, RANK_5, RANK_6, Square};
 use super::piece::*;
 use super::position::Position;
 use modular_bitfield::prelude::*;
@@ -57,8 +57,11 @@ struct PackedData {
     color: B1,
     capture: B5,
     castling_disabled: B4,
+    drop_en_passant: B1,
+    create_en_passant: B1,
+    en_passant_sq: B4,
     #[skip]
-    __: B10,
+    __: B4,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -73,6 +76,8 @@ impl Move {
         piece: Piece,
         capture: Piece,
         casling_disabled: u8,
+        drop_en_passant: Option<Square>,
+        create_en_passant: bool,
     ) -> Self {
         debug_assert!(piece != Piece::NONE);
         let color = piece.color();
@@ -82,6 +87,23 @@ impl Move {
         data.set_capture(capture.as_u8());
         data.set_castling_disabled(casling_disabled);
         data.set_color(color.as_u8());
+        data.set_create_en_passant(create_en_passant as u8);
+
+        match drop_en_passant {
+            Some(sq) => {
+                data.set_drop_en_passant(1);
+                let (file, rank) = sq.file_rank();
+                assert!(
+                    matches!(rank, RANK_3 | RANK_6),
+                    "En passant square must be on rank 3 or 6"
+                );
+                let value = if color == Color::WHITE { file } else { file + 8 };
+                data.set_en_passant_sq(value);
+            }
+            None => {
+                data.set_drop_en_passant(0);
+            }
+        }
 
         Self { data }
     }
@@ -106,6 +128,19 @@ impl Move {
         self.data.castling_disabled() & MoveFlags::KQkq
     }
 
+    pub fn drop_ep(&self) -> Option<Square> {
+        if self.data.drop_en_passant() == 0 {
+            return None;
+        }
+        let file = self.data.en_passant_sq() % 8;
+        let rank = if file < 8 { RANK_3 } else { RANK_6 };
+        Some(Square::make(file, rank))
+    }
+
+    pub fn create_ep(&self) -> bool {
+        self.data.create_en_passant() != 0
+    }
+
     pub fn into_bytes(&self) -> [u8; 4] {
         self.data.into_bytes()
     }
@@ -113,6 +148,45 @@ impl Move {
     pub fn from_bytes(bytes: [u8; 4]) -> Self {
         Self { data: PackedData::from_bytes(bytes) }
     }
+}
+
+pub fn do_move(pos: &mut Position, m: &Move) -> bool {
+    let from = pos.get_piece(m.from_sq());
+    do_move_generic(pos, m, from);
+    do_castling(pos, m, from);
+    do_ep_move(pos, m, from);
+    post_move(pos);
+    true
+}
+
+pub fn undo_move(pos: &mut Position, m: &Move) {
+    let from = pos.get_piece(m.to_sq());
+    undo_move_generic(pos, m, from);
+    undo_castling(pos, m, from);
+    undo_ep_move(pos, m, from);
+    post_move(pos);
+}
+
+fn do_ep_move(pos: &mut Position, m: &Move, from: Piece) {
+    if !m.create_ep() {
+        return;
+    }
+
+    debug_assert!(from.piece_type() == PieceType::Pawn, "En passant move must be a pawn move");
+    let (file, rank) = m.to_sq().file_rank();
+    match (rank, from.color()) {
+        (RANK_4, Color::WHITE) => {
+            pos.ep_sq = Some(Square::make(file, RANK_3));
+        }
+        (RANK_5, Color::BLACK) => {
+            pos.ep_sq = Some(Square::make(file, RANK_6));
+        }
+        _ => {}
+    }
+}
+
+fn undo_ep_move(pos: &mut Position, m: &Move, from: Piece) {
+    // @TODO: Implement undo for en passant move
 }
 
 fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {
@@ -194,21 +268,6 @@ fn undo_castling(pos: &mut Position, m: &Move, from: Piece) {
 fn post_move(pos: &mut Position) {
     pos.change_side();
     pos.update_cache();
-}
-
-pub fn do_move(pos: &mut Position, m: &Move) -> bool {
-    let from = pos.get_piece(m.from_sq());
-    do_move_generic(pos, m, from);
-    do_castling(pos, m, from);
-    post_move(pos);
-    true
-}
-
-pub fn undo_move(pos: &mut Position, m: &Move) {
-    let from = pos.get_piece(m.to_sq());
-    undo_move_generic(pos, m, from);
-    undo_castling(pos, m, from);
-    post_move(pos);
 }
 
 #[cfg(test)]

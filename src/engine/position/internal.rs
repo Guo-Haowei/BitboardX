@@ -378,15 +378,46 @@ pub fn pseudo_legal_move_from_to(pos: &Position, from_sq: Square, to_sq: Square)
     flags |= move_disable_castling::<{ MoveFlags::k }>(pos, from, to, from_sq, to_sq);
     flags |= move_disable_castling::<{ MoveFlags::q }>(pos, from, to, from_sq, to_sq);
 
-    // check if move drops en passant right
-    // match pos.ep_sq {
-    //     Some(ep_sq) => {}
-    //     None => {}
-    // }
-
     // check if move creates en passant right
+    let create_ep_right = check_if_move_creates_ep_right(pos, from_sq, to_sq, from);
 
-    Move::new(from_sq, to_sq, from, to, flags)
+    Move::new(from_sq, to_sq, from, to, flags, pos.ep_sq, create_ep_right)
+}
+
+fn check_if_move_creates_ep_right(
+    pos: &Position,
+    from_sq: Square,
+    to_sq: Square,
+    from: Piece,
+) -> bool {
+    if from.piece_type() != PieceType::Pawn {
+        return false;
+    }
+
+    let (from_rank, file) = from_sq.file_rank();
+    let (to_rank, to_file) = to_sq.file_rank();
+
+    if match (from, from_rank, to_rank) {
+        (Piece::W_PAWN, RANK_2, RANK_4) => true,
+        (Piece::B_PAWN, RANK_7, RANK_5) => true,
+        _ => false,
+    } {
+        assert_eq!(file, to_file);
+        // check if there's opponent's pawn on the left or right of 'to' square
+        let board = &pos.bitboards[if from == Piece::W_PAWN {
+            Piece::B_PAWN.as_usize()
+        } else {
+            Piece::W_PAWN.as_usize()
+        }];
+        if file < FILE_H && board.test(Square::make(file + 1, to_rank).as_u8()) {
+            return true;
+        }
+        if file > FILE_A && board.test(Square::make(file - 1, to_rank).as_u8()) {
+            return true;
+        }
+    }
+
+    false
 }
 
 pub fn legal_move_from_to(pos: &mut Position, from_sq: Square, to_sq: Square) -> Option<Move> {
@@ -499,6 +530,10 @@ pub fn to_string(pos: &Position, pad: bool) -> String {
     s.push_str("  ａｂｃｄｅｆｇｈ\n");
     s.push_str(format!("Side: {}\n", pos.side_to_move).as_str());
     s.push_str(format!("Castling: {}\n", castling_to_string(pos.castling)).as_str());
+    match pos.ep_sq {
+        Some(ep_sq) => s.push_str(format!("En passant: {}\n", ep_sq).as_str()),
+        None => s.push_str("En passant: -\n"),
+    }
     s.push_str(format!("Halfmove clock: {}\n", pos.halfmove_clock).as_str());
     s.push_str(format!("Fullmove number: {}\n", pos.fullmove_number).as_str());
 
