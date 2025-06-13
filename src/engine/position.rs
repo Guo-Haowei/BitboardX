@@ -342,21 +342,6 @@ mod tests {
     }
 
     #[test]
-    fn test_constructor_from_invalid_fen() {
-        let pos = Position::from("4k3/8/8/4Pp2/8/8/8/4K3 w - f6 2 4").unwrap();
-
-        assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, 0);
-        assert_eq!(pos.ep_sq.unwrap(), Square::F6);
-        assert_eq!(pos.halfmove_clock, 2);
-        assert_eq!(pos.fullmove_number, 4);
-        assert_eq!(
-            pos.to_board_string(),
-            "....k.......................Pp..............................K..."
-        );
-    }
-
-    #[test]
     fn test_constructor_from() {
         let pos = Position::from("r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7")
             .unwrap();

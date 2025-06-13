@@ -437,28 +437,21 @@ fn move_disable_castling<const BIT: u8>(
 mod tests {
     use super::*;
 
-    const BB_C8: BitBoard = Square::C8.to_bitboard();
+    fn squares_to_bitboard(sqs: &[Square]) -> BitBoard {
+        let mut bb = BitBoard::new();
+        for &sq in sqs {
+            bb.set_sq(sq);
+        }
+        bb
+    }
 
     const BB_D4: BitBoard = Square::D4.to_bitboard();
     const BB_D5: BitBoard = Square::D5.to_bitboard();
     const BB_D6: BitBoard = Square::D6.to_bitboard();
-    const BB_D7: BitBoard = Square::D7.to_bitboard();
-    const BB_D8: BitBoard = Square::D8.to_bitboard();
 
     const BB_E3: BitBoard = Square::E3.to_bitboard();
     const BB_E4: BitBoard = Square::E4.to_bitboard();
     const BB_E5: BitBoard = Square::E5.to_bitboard();
-
-    const BB_F5: BitBoard = Square::F5.to_bitboard();
-    const BB_F8: BitBoard = Square::F8.to_bitboard();
-
-    const BB_G4: BitBoard = Square::G4.to_bitboard();
-    const BB_G7: BitBoard = Square::G7.to_bitboard();
-    const BB_G8: BitBoard = Square::G8.to_bitboard();
-
-    const BB_H3: BitBoard = Square::H3.to_bitboard();
-    const BB_H7: BitBoard = Square::H7.to_bitboard();
-    const BB_H8: BitBoard = Square::H8.to_bitboard();
 
     #[test]
     fn test_white_pawn_pseudo_legal_move() {
@@ -506,7 +499,10 @@ mod tests {
         let pos = Position::from(fen).unwrap();
 
         let moves = pseudo_legal_move_from(&pos, Square::E6);
-        assert_eq!(moves, BB_C8 | BB_D7 | BB_F5 | BB_G4 | BB_H3);
+        assert_eq!(
+            moves,
+            squares_to_bitboard(&[Square::C8, Square::D7, Square::F5, Square::G4, Square::H3])
+        );
     }
 
     #[test]
@@ -515,7 +511,7 @@ mod tests {
         let pos = Position::from(fen).unwrap();
 
         let moves = pseudo_legal_move_from(&pos, Square::H7);
-        assert_eq!(moves, BB_H8 | BB_G7);
+        assert_eq!(moves, squares_to_bitboard(&[Square::H8, Square::G7]));
     }
 
     #[test]
@@ -524,7 +520,7 @@ mod tests {
         let pos = Position::from(fen).unwrap();
 
         let moves = pseudo_legal_move_from(&pos, Square::B1);
-        assert_eq!(moves, Square::A3.to_bitboard() | Square::C3.to_bitboard());
+        assert_eq!(moves, squares_to_bitboard(&[Square::A3, Square::C3]));
     }
 
     #[test]
@@ -533,7 +529,7 @@ mod tests {
         let pos = Position::from(fen).unwrap();
 
         let moves = pseudo_legal_move_from(&pos, Square::F6);
-        assert_eq!(moves, BB_E4 | BB_G8 | BB_H7);
+        assert_eq!(moves, squares_to_bitboard(&[Square::E4, Square::G8, Square::H7]));
     }
 
     #[test]
@@ -542,8 +538,10 @@ mod tests {
         let pos = Position::from(fen).unwrap();
 
         let moves = pseudo_legal_move_from(&pos, Square::E8);
-        let expected_moves = BB_C8 | BB_D8 | BB_F8 | BB_G8 | BB_D7;
-        assert_eq!(moves, expected_moves);
+        assert_eq!(
+            moves,
+            squares_to_bitboard(&[Square::C8, Square::D8, Square::F8, Square::G8, Square::D7,])
+        );
     }
 
     #[test]
@@ -570,6 +568,24 @@ mod tests {
         let m = pseudo_legal_move_from_to(&pos, Square::B1, Square::A2);
 
         assert!(!validate_move(&mut pos, &m), "Move bishop to A2 exposes king to check");
+    }
+
+    #[test]
+    fn test_en_passant() {
+        let mut pos = Position::from("4k3/8/8/4Pp2/8/8/8/4K3 w - f6 2 4").unwrap();
+
+        assert_eq!(pos.side_to_move, Color::WHITE);
+        assert_eq!(pos.castling, 0);
+        assert_eq!(pos.ep_sq.unwrap(), Square::F6);
+        assert_eq!(pos.halfmove_clock, 2);
+        assert_eq!(pos.fullmove_number, 4);
+        assert_eq!(
+            pos.to_board_string(),
+            "....k.......................Pp..............................K..."
+        );
+
+        let legal_moves = pos.legal_move(Square::E5);
+        assert_eq!(legal_moves, Square::E6.to_bitboard() | Square::F6.to_bitboard());
     }
 }
 
