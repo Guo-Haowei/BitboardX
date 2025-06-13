@@ -31,35 +31,35 @@ fn shift(bb: BitBoard, dir: i32) -> BitBoard {
 }
 
 fn shift_east(bb: BitBoard) -> BitBoard {
-    shift(bb & !BOUND_H, EAST)
+    (bb & !BOUND_H).shift(EAST)
 }
 
 fn shift_west(bb: BitBoard) -> BitBoard {
-    shift(bb & !BOUND_A, WEST)
+    (bb & !BOUND_A).shift(WEST)
 }
 
 fn shift_north(bb: BitBoard) -> BitBoard {
-    shift(bb & !BOUND_8, NORTH)
+    (bb & !BOUND_8).shift(NORTH)
 }
 
 fn shift_south(bb: BitBoard) -> BitBoard {
-    shift(bb & !BOUND_1, SOUTH)
+    (bb & !BOUND_1).shift(SOUTH)
 }
 
 fn shift_ne(bb: BitBoard) -> BitBoard {
-    shift(bb & !(BOUND_H | BOUND_8), NE)
+    (bb & !(BOUND_H | BOUND_8)).shift(NE)
 }
 
 fn shift_nw(bb: BitBoard) -> BitBoard {
-    shift(bb & !(BOUND_A | BOUND_8), NW)
+    (bb & !(BOUND_A | BOUND_8)).shift(NW)
 }
 
 fn shift_se(bb: BitBoard) -> BitBoard {
-    shift(bb & !(BOUND_H | BOUND_1), SE)
+    (bb & !(BOUND_H | BOUND_1)).shift(SE)
 }
 
 fn shift_sw(bb: BitBoard) -> BitBoard {
-    shift(bb & !(BOUND_A | BOUND_1), SW)
+    (bb & !(BOUND_A | BOUND_1)).shift(SW)
 }
 
 const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =

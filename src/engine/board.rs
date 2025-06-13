@@ -1,6 +1,8 @@
 use std::fmt;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
+use crate::engine::piece::Piece;
+
 // Constants for ranks
 pub const RANK_1: u8 = 0;
 pub const RANK_2: u8 = 1;
@@ -23,6 +25,8 @@ pub const RANK_8: u8 = 7;
 /// in chess engines, allowing bitwise operations to perform bulk computations.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct BitBoard(u64);
+
+pub type Board = [BitBoard; Piece::COUNT];
 
 impl BitBoard {
     pub const fn new() -> Self {
@@ -64,8 +68,14 @@ impl BitBoard {
     pub const fn equal(&self, val: u64) -> bool {
         self.0 == val
     }
+
+    pub fn shift(&self, dir: i32) -> BitBoard {
+        let val = if dir < 0 { self.0 >> (-dir) } else { self.0 << dir };
+        BitBoard(val)
+    }
 }
 
+/* #region Bitwise Operations */
 impl BitAnd for BitBoard {
     type Output = BitBoard;
 
