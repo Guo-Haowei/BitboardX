@@ -125,6 +125,24 @@ impl Piece {
     pub const fn as_u8(&self) -> u8 {
         self.0
     }
+
+    pub const fn parse(c: char) -> Option<Piece> {
+        match c {
+            'p' => Some(Piece::B_PAWN),
+            'r' => Some(Piece::B_ROOK),
+            'n' => Some(Piece::B_KNIGHT),
+            'b' => Some(Piece::B_BISHOP),
+            'q' => Some(Piece::B_QUEEN),
+            'k' => Some(Piece::B_KING),
+            'P' => Some(Piece::W_PAWN),
+            'R' => Some(Piece::W_ROOK),
+            'N' => Some(Piece::W_KNIGHT),
+            'B' => Some(Piece::W_BISHOP),
+            'Q' => Some(Piece::W_QUEEN),
+            'K' => Some(Piece::W_KING),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Color {

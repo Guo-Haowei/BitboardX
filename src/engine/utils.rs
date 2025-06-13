@@ -12,21 +12,13 @@ pub mod fen {
                 let rank = 7 - row as u8;
                 let sq = (rank << 3) + file as u8;
                 let mut inc = 1;
-                match c {
-                    'p' => bitboards[Piece::B_PAWN.as_usize()].set(sq),
-                    'r' => bitboards[Piece::B_ROOK.as_usize()].set(sq),
-                    'n' => bitboards[Piece::B_KNIGHT.as_usize()].set(sq),
-                    'b' => bitboards[Piece::B_BISHOP.as_usize()].set(sq),
-                    'q' => bitboards[Piece::B_QUEEN.as_usize()].set(sq),
-                    'k' => bitboards[Piece::B_KING.as_usize()].set(sq),
-                    'P' => bitboards[Piece::W_PAWN.as_usize()].set(sq),
-                    'R' => bitboards[Piece::W_ROOK.as_usize()].set(sq),
-                    'N' => bitboards[Piece::W_KNIGHT.as_usize()].set(sq),
-                    'B' => bitboards[Piece::W_BISHOP.as_usize()].set(sq),
-                    'Q' => bitboards[Piece::W_QUEEN.as_usize()].set(sq),
-                    'K' => bitboards[Piece::W_KING.as_usize()].set(sq),
-                    '1'..='8' => inc = c.to_digit(10).unwrap(),
-                    _ => return Err("Invalid character in board layout"),
+                if let Some(piece) = Piece::parse(c) {
+                    bitboards[piece.as_usize()].set(sq);
+                } else {
+                    match c {
+                        '1'..='8' => inc = c.to_digit(10).unwrap(),
+                        _ => return Err("Invalid character in board layout"),
+                    }
                 }
 
                 file += inc as usize;
