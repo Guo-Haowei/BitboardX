@@ -2,6 +2,7 @@ pub mod undo_redo;
 
 use crate::board::moves;
 use crate::board::position::Position;
+use crate::board::types::Square;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -86,7 +87,7 @@ impl Game {
 
     pub fn legal_move(&self, sq: u8) -> u64 {
         // self.pos.borrow_mut().pseudo_legal_move(square).get()
-        self.pos.borrow_mut().legal_move(sq).get()
+        self.pos.borrow_mut().legal_move(Square(sq)).get()
     }
 }
 

@@ -27,8 +27,8 @@ impl MoveFlags {
 }
 
 pub struct Move {
-    pub from_sq: u8,
-    pub to_sq: u8,
+    pub from_sq: Square,
+    pub to_sq: Square,
     pub pieces: u8, // encode from piece and to piece,
     pub flags: u8,  // reserved for castling, en passant, promotion
 }
@@ -99,8 +99,7 @@ impl Move {
     const PIECE_MASK: u8 = 0xF;
     const CAPTURE_MASK: u8 = 0xF0;
 
-    pub fn new(from_sq: u8, to_sq: u8, piece: Piece, capture: Piece, flags: u8) -> Self {
-        debug_assert!(from_sq < 64 && to_sq < 64);
+    pub fn new(from_sq: Square, to_sq: Square, piece: Piece, capture: Piece, flags: u8) -> Self {
         debug_assert!(piece != Piece::NONE);
 
         let pieces =
@@ -125,10 +124,10 @@ impl Move {
 
     pub fn castling_type(&self) -> Castling {
         match self.piece() {
-            Piece::W_KING if self.to_sq == SQ_G1 => Castling::WhiteKingSide,
-            Piece::W_KING if self.to_sq == SQ_C1 => Castling::WhiteQueenSide,
-            Piece::B_KING if self.to_sq == SQ_G8 => Castling::BlackKingSide,
-            Piece::B_KING if self.to_sq == SQ_C8 => Castling::BlackQueenSide,
+            Piece::W_KING if self.to_sq == Square::G1 => Castling::WhiteKingSide,
+            Piece::W_KING if self.to_sq == Square::C1 => Castling::WhiteQueenSide,
+            Piece::B_KING if self.to_sq == Square::G8 => Castling::BlackKingSide,
+            Piece::B_KING if self.to_sq == Square::C8 => Castling::BlackQueenSide,
             _ => Castling::None,
         }
     }
@@ -142,8 +141,8 @@ fn move_disable_castling<const BIT: u8>(
     pos: &Position,
     from: Piece,
     to: Piece,
-    from_sq: u8,
-    to_sq: u8,
+    from_sq: Square,
+    to_sq: Square,
 ) -> u8 {
     if pos.castling & BIT == 0 {
         return 0;
@@ -158,18 +157,18 @@ fn move_disable_castling<const BIT: u8>(
     }
 
     match (from, from_sq) {
-        (Piece::W_ROOK, SQ_A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-        (Piece::W_ROOK, SQ_H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-        (Piece::B_ROOK, SQ_A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-        (Piece::B_ROOK, SQ_H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+        (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+        (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+        (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+        (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
         _ => {}
     }
 
     match (to, to_sq) {
-        (Piece::W_ROOK, SQ_A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-        (Piece::W_ROOK, SQ_H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-        (Piece::B_ROOK, SQ_A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-        (Piece::B_ROOK, SQ_H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+        (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+        (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+        (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+        (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
         _ => {}
     }
 
@@ -177,8 +176,8 @@ fn move_disable_castling<const BIT: u8>(
 }
 
 // @TODO: make this function a psuedo-legal move generator
-pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
-    if !pos.occupancies[pos.side_to_move.as_usize()].test(from_sq) {
+pub fn create_move(pos: &Position, from_sq: Square, to_sq: Square) -> Option<Move> {
+    if !pos.occupancies[pos.side_to_move.as_usize()].test(from_sq.as_u8()) {
         return None;
     }
 
@@ -186,10 +185,10 @@ pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
     let mut to = Piece::NONE;
     for i in 0..pos.bitboards.len() {
         let bb = &pos.bitboards[i];
-        if bb.test(from_sq) {
+        if bb.test(from_sq.as_u8()) {
             from = unsafe { std::mem::transmute(i as u8) };
         }
-        if bb.test(to_sq) {
+        if bb.test(to_sq.as_u8()) {
             to = unsafe { std::mem::transmute(i as u8) };
         }
     }
@@ -221,17 +220,18 @@ pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
 }
 
 fn do_move_generic(pos: &mut Position, m: &Move) {
-    debug_assert!(pos.occupancies[pos.side_to_move.as_usize()].test(m.from_sq));
+    debug_assert!(pos.occupancies[pos.side_to_move.as_usize()].test(m.from_sq.as_u8()));
 
     let from = m.piece();
     let to = m.capture();
 
     let bb_from = &mut pos.bitboards[from.as_usize()];
 
-    bb_from.unset(m.from_sq); // Clear the 'from' square
-    bb_from.set(m.to_sq); // Place piece on 'to' square
+    // @TODO: make set unset a generic function
+    bb_from.unset(m.from_sq.as_u8()); // Clear the 'from' square
+    bb_from.set(m.to_sq.as_u8()); // Place piece on 'to' square
     if to != Piece::NONE {
-        pos.bitboards[to.as_usize()].unset(m.to_sq); // Clear the 'to' square for the captured piece
+        pos.bitboards[to.as_usize()].unset(m.to_sq.as_u8()); // Clear the 'to' square for the captured piece
     }
 }
 
@@ -240,65 +240,51 @@ fn undo_move_generic(pos: &mut Position, m: &Move) {
     let to = m.capture();
 
     let bb_from = &mut pos.bitboards[from.as_usize()];
-    bb_from.set(m.from_sq); // Place piece back on 'from' square
-    bb_from.unset(m.to_sq); // Clear the 'to' square
+    bb_from.set(m.from_sq.as_u8()); // Place piece back on 'from' square
+    bb_from.unset(m.to_sq.as_u8()); // Clear the 'to' square
 
     if to != Piece::NONE {
-        pos.bitboards[to.as_usize()].set(m.to_sq); // Place captured piece back on 'to' square
+        pos.bitboards[to.as_usize()].set(m.to_sq.as_u8()); // Place captured piece back on 'to' square
     }
 }
+
+fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {
+    debug_assert!(board.test(from_sq.as_u8()), "No piece found on 'from' square");
+    board.unset(from_sq.as_u8());
+    board.set(to_sq.as_u8());
+}
+
+const CASTLING_ROOK_SQUARES: [(Piece, Square, Square); 4] = [
+    (Piece::W_ROOK, Square::H1, Square::F1), // White King-side
+    (Piece::W_ROOK, Square::A1, Square::D1), // White Queen-side
+    (Piece::B_ROOK, Square::H8, Square::F8), // Black King-side
+    (Piece::B_ROOK, Square::A8, Square::D8), // Black Queen-side
+];
 
 fn do_castling(pos: &mut Position, m: &Move) {
     // Update castling rights if necessary
     pos.castling &= !m.castling_mask();
 
-    // Move rook to its new position
-    match m.castling_type() {
-        Castling::WhiteKingSide => {
-            pos.bitboards[Piece::W_ROOK.as_usize()].unset(SQ_H1);
-            pos.bitboards[Piece::W_ROOK.as_usize()].set(SQ_F1);
-        }
-        Castling::WhiteQueenSide => {
-            pos.bitboards[Piece::W_ROOK.as_usize()].unset(SQ_A1);
-            pos.bitboards[Piece::W_ROOK.as_usize()].set(SQ_D1);
-        }
-        Castling::BlackKingSide => {
-            pos.bitboards[Piece::B_ROOK.as_usize()].unset(SQ_H8);
-            pos.bitboards[Piece::B_ROOK.as_usize()].set(SQ_F8);
-        }
-        Castling::BlackQueenSide => {
-            pos.bitboards[Piece::B_ROOK.as_usize()].unset(SQ_A8);
-            pos.bitboards[Piece::B_ROOK.as_usize()].set(SQ_D8);
-        }
-        Castling::None => {}
+    let index = m.castling_type() as usize;
+    if index >= CASTLING_ROOK_SQUARES.len() {
+        return;
     }
+
+    let (piece, from_sq, to_sq) = CASTLING_ROOK_SQUARES[index];
+    move_piece(&mut pos.bitboards[piece.as_usize()], from_sq, to_sq);
 }
 
 fn undo_castling(pos: &mut Position, m: &Move) {
     // Restore castling rights if necessary
     pos.castling |= m.castling_mask();
 
-    // Move rook back to its original position
-    match m.castling_type() {
-        // @TODO: extract position.move_piece()
-        Castling::WhiteKingSide => {
-            pos.bitboards[Piece::W_ROOK.as_usize()].unset(SQ_F1);
-            pos.bitboards[Piece::W_ROOK.as_usize()].set(SQ_H1);
-        }
-        Castling::WhiteQueenSide => {
-            pos.bitboards[Piece::W_ROOK.as_usize()].unset(SQ_D1);
-            pos.bitboards[Piece::W_ROOK.as_usize()].set(SQ_A1);
-        }
-        Castling::BlackKingSide => {
-            pos.bitboards[Piece::B_ROOK.as_usize()].unset(SQ_F8);
-            pos.bitboards[Piece::B_ROOK.as_usize()].set(SQ_H8);
-        }
-        Castling::BlackQueenSide => {
-            pos.bitboards[Piece::B_ROOK.as_usize()].unset(SQ_D8);
-            pos.bitboards[Piece::B_ROOK.as_usize()].set(SQ_A8);
-        }
-        Castling::None => {}
+    let index = m.castling_type() as usize;
+    if index >= CASTLING_ROOK_SQUARES.len() {
+        return;
     }
+
+    let (piece, from_sq, to_sq) = CASTLING_ROOK_SQUARES[index];
+    move_piece(&mut pos.bitboards[piece.as_usize()], to_sq, from_sq);
 }
 
 fn post_move(pos: &mut Position) {
@@ -319,15 +305,15 @@ pub fn undo_move(pos: &mut Position, m: &Move) {
     post_move(pos);
 }
 
-pub fn create_move_verified(pos: &mut Position, from_sq: u8, to_sq: u8) -> Option<Move> {
-    if (move_generator::pseudo_legal_move(pos, from_sq) & BitBoard::from_bit(to_sq)).none() {
+pub fn create_move_verified(pos: &mut Position, from_sq: Square, to_sq: Square) -> Option<Move> {
+    if !move_generator::pseudo_legal_move(pos, from_sq).test(to_sq.as_u8()) {
         return None;
     }
 
     create_move(pos, from_sq, to_sq)
 }
 
-pub fn parse_move(input: &str) -> Option<(u8, u8)> {
+pub fn parse_move(input: &str) -> Option<(Square, Square)> {
     if input.len() != 4 {
         return None;
     }
@@ -341,7 +327,7 @@ pub fn parse_move(input: &str) -> Option<(u8, u8)> {
         return None;
     }
 
-    Some((make_square(from_file, from_rank), make_square(to_file, to_rank)))
+    Some((Square::make(from_file, from_rank), Square::make(to_file, to_rank)))
 }
 
 pub fn apply_move_str(pos: &mut Position, move_str: &str) -> bool {
@@ -363,21 +349,21 @@ mod tests {
 
     #[test]
     fn test_move_creation() {
-        let m = Move::new(SQ_E7, SQ_E8, Piece::W_QUEEN, Piece::B_KNIGHT, 0);
+        let m = Move::new(Square::E7, Square::E8, Piece::W_QUEEN, Piece::B_KNIGHT, 0);
         assert_eq!(m.piece(), Piece::W_QUEEN);
         assert_eq!(m.capture(), Piece::B_KNIGHT);
 
-        let m = Move::new(SQ_E7, SQ_E8, Piece::B_QUEEN, Piece::NONE, 0);
+        let m = Move::new(Square::E7, Square::E8, Piece::B_QUEEN, Piece::NONE, 0);
         assert_eq!(m.piece(), Piece::B_QUEEN);
         assert_eq!(m.capture(), Piece::NONE);
     }
 
     #[test]
     fn test_parse_move() {
-        assert_eq!(parse_move("e2e4"), Some((SQ_E2, SQ_E4)));
-        assert_eq!(parse_move("a7a8"), Some((SQ_A7, SQ_A8)));
-        assert_eq!(parse_move("h1h2"), Some((SQ_H1, SQ_H2)));
-        assert_eq!(parse_move("d4d5"), Some((SQ_D4, SQ_D5)));
+        assert_eq!(parse_move("e2e4"), Some((Square::E2, Square::E4)));
+        assert_eq!(parse_move("a7a8"), Some((Square::A7, Square::A8)));
+        assert_eq!(parse_move("h1h2"), Some((Square::H1, Square::H2)));
+        assert_eq!(parse_move("d4d5"), Some((Square::D4, Square::D5)));
         assert_eq!(parse_move("z1z2"), None);
         assert_eq!(parse_move("e9e4"), None);
         assert_eq!(parse_move("e2e"), None);
@@ -395,7 +381,7 @@ mod tests {
             BitBoard::from(0b11000000_01000000_01111110)
         );
 
-        let m = create_move(&pos, SQ_B1, SQ_A2).unwrap();
+        let m = create_move(&pos, Square::B1, Square::A2).unwrap();
 
         assert!(!validate_move(&mut pos, &m), "Move bishop to A2 exposes king to check");
     }

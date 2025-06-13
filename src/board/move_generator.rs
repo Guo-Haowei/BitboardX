@@ -67,7 +67,11 @@ const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
     [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
 
 /// Pseudo-legal move generation for a square
-fn pseudo_legal_impl<const ATTACK_ONLY: bool>(pos: &Position, sq: u8, color: Color) -> BitBoard {
+fn pseudo_legal_impl<const ATTACK_ONLY: bool>(
+    pos: &Position,
+    sq: Square,
+    color: Color,
+) -> BitBoard {
     let piece = pos.get_piece(sq);
 
     match piece {
@@ -86,18 +90,18 @@ fn pseudo_legal_impl<const ATTACK_ONLY: bool>(pos: &Position, sq: u8, color: Col
     }
 }
 
-pub fn pseudo_legal_move(pos: &Position, sq: u8) -> BitBoard {
+pub fn pseudo_legal_move(pos: &Position, sq: Square) -> BitBoard {
     pseudo_legal_impl::<false>(pos, sq, pos.side_to_move)
 }
 
-pub fn pseudo_legal_attack(pos: &Position, sq: u8, color: Color) -> BitBoard {
+pub fn pseudo_legal_attack(pos: &Position, sq: Square, color: Color) -> BitBoard {
     pseudo_legal_impl::<true>(pos, sq, color)
 }
 
 /// Pseudo-legal move generation for pawns
-pub fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: u8) -> BitBoard {
-    let (_file, rank) = get_file_rank(sq);
-    let bb = BitBoard::from_bit(sq);
+pub fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Square) -> BitBoard {
+    let (_file, rank) = sq.file_rank();
+    let bb = sq.to_bitboard();
     let mut moves = BitBoard::new();
 
     let opponent = COLOR ^ 1;
@@ -158,11 +162,11 @@ pub fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: u
 /// Pseudo-legal move generation for a sliding piece (rook, bishop, queen)
 pub fn move_sliding<const START: u8, const END: u8>(
     pos: &Position,
-    sq: u8,
+    sq: Square,
     color: Color,
 ) -> BitBoard {
     let mut moves = BitBoard::new();
-    let bb = BitBoard::from_bit(sq);
+    let bb = sq.to_bitboard();
     let opponent = color.opponent();
 
     for i in START..END {
@@ -188,9 +192,9 @@ pub fn move_sliding<const START: u8, const END: u8>(
 }
 
 /// Pseudo-legal move generation for a knight
-pub fn move_knight(pos: &Position, sq: u8, color: Color) -> BitBoard {
+pub fn move_knight(pos: &Position, sq: Square, color: Color) -> BitBoard {
     let mut moves = BitBoard::new();
-    let bb = BitBoard::from_bit(sq);
+    let bb = sq.to_bitboard();
     let occupancy = !pos.occupancies[color.as_usize()];
 
     moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & occupancy;
@@ -206,8 +210,17 @@ pub fn move_knight(pos: &Position, sq: u8, color: Color) -> BitBoard {
     moves
 }
 
+fn min_max(a: Square, b: Square) -> (Square, Square) {
+    if a.0 < b.0 { (a, b) } else { (b, a) }
+}
+
 /// Pseudo-legal move generation for a king
-fn castling_check<const COLOR: u8>(pos: &Position, sq: u8, dst_sq: u8, rook_sq: u8) -> bool {
+fn castling_check<const COLOR: u8>(
+    pos: &Position,
+    sq: Square,
+    dst_sq: Square,
+    rook_sq: Square,
+) -> bool {
     // r . . . k . . r
     // a b c d e f g h
     let color = Color::from(COLOR);
@@ -215,23 +228,21 @@ fn castling_check<const COLOR: u8>(pos: &Position, sq: u8, dst_sq: u8, rook_sq: 
 
     // check if the rook is in the right place
     let rook_type = Piece::get_piece(color, PieceType::Rook);
-    if pos.bitboards[rook_type.as_usize()].test(rook_sq) == false {
+    if pos.bitboards[rook_type.as_usize()].test(rook_sq.as_u8()) == false {
         return false;
     }
 
     // check if the cells are under attack
-    let start = sq.min(dst_sq);
-    let end = sq.max(dst_sq);
-    for i in start..=end {
+    let (start, end) = min_max(sq, dst_sq);
+    for i in start.0..=end.0 {
         if pos.attack_map[opponent.as_usize()].test(i) {
             return false;
         }
     }
 
     // check if any piece is in the way
-    let start = sq.min(rook_sq);
-    let end = sq.max(rook_sq);
-    for i in start + 1..end {
+    let (start, end) = min_max(sq, rook_sq);
+    for i in start.0 + 1..end.0 {
         if (pos.occupancies[Color::BOTH.as_usize()]).test(i) {
             return false;
         }
@@ -240,11 +251,11 @@ fn castling_check<const COLOR: u8>(pos: &Position, sq: u8, dst_sq: u8, rook_sq: 
     true
 }
 
-pub fn move_king<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: u8) -> BitBoard {
+pub fn move_king<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Square) -> BitBoard {
     let color = Color::from(COLOR);
     let is_white = color.is_white();
 
-    let bb = BitBoard::from_bit(sq);
+    let bb = sq.to_bitboard();
     let mut moves = BitBoard::new();
     let occupancy = !pos.occupancies[COLOR as usize];
     moves |= shift_north(bb) & occupancy;
@@ -261,25 +272,29 @@ pub fn move_king<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: u
 
         // Castling doesn't form attack
         if is_white {
-            if (pos.castling & MoveFlags::K != 0) && castling_check::<COLOR>(pos, sq, SQ_G1, SQ_H1)
+            if (pos.castling & MoveFlags::K != 0)
+                && castling_check::<COLOR>(pos, sq, Square::G1, Square::H1)
             {
-                assert!(sq == SQ_E1);
+                assert!(sq == Square::E1);
                 moves |= BB_G1;
             }
-            if (pos.castling & MoveFlags::Q != 0) && castling_check::<COLOR>(pos, sq, SQ_C1, SQ_A1)
+            if (pos.castling & MoveFlags::Q != 0)
+                && castling_check::<COLOR>(pos, sq, Square::C1, Square::A1)
             {
-                assert!(sq == SQ_E1);
+                assert!(sq == Square::E1);
                 moves |= BB_C1;
             }
         } else {
-            if (pos.castling & MoveFlags::k != 0) && castling_check::<COLOR>(pos, sq, SQ_G8, SQ_H8)
+            if (pos.castling & MoveFlags::k != 0)
+                && castling_check::<COLOR>(pos, sq, Square::G8, Square::H8)
             {
-                assert!(sq == SQ_E8);
+                assert!(sq == Square::E8);
                 moves |= BB_G8;
             }
-            if (pos.castling & MoveFlags::q != 0) && castling_check::<COLOR>(pos, sq, SQ_C8, SQ_A8)
+            if (pos.castling & MoveFlags::q != 0)
+                && castling_check::<COLOR>(pos, sq, Square::C8, Square::A8)
             {
-                assert!(sq == SQ_E8);
+                assert!(sq == Square::E8);
                 moves |= BB_C8;
             }
         }
@@ -302,7 +317,7 @@ mod tests {
             "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
         );
 
-        let moves = pseudo_legal_move(&pos, SQ_E2);
+        let moves = pseudo_legal_move(&pos, Square::E2);
         assert_eq!(moves, BB_E3 | BB_E4);
     }
 
@@ -311,7 +326,7 @@ mod tests {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1";
         let pos = Position::from(fen).unwrap();
 
-        let moves = pseudo_legal_move(&pos, SQ_D7);
+        let moves = pseudo_legal_move(&pos, Square::D7);
         assert_eq!(moves, BB_D6 | BB_D5);
     }
 
@@ -320,7 +335,7 @@ mod tests {
         let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 w - - 0 10";
         let pos = Position::from(fen).unwrap();
 
-        let moves = pseudo_legal_move(&pos, SQ_E4);
+        let moves = pseudo_legal_move(&pos, Square::E4);
         assert_eq!(moves, BB_D5 | BB_E5);
     }
 
@@ -329,7 +344,7 @@ mod tests {
         let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 b - - 0 10";
         let pos = Position::from(fen).unwrap();
 
-        let moves = pseudo_legal_move(&pos, SQ_D5);
+        let moves = pseudo_legal_move(&pos, Square::D5);
         assert_eq!(moves, BB_D4 | BB_E4);
     }
 
@@ -338,7 +353,7 @@ mod tests {
         let fen = "rn1qkbnr/ppp1pppp/4b3/3p4/3PP3/8/PPP2PPP/RNBQKBNR b KQkq e3 0 1";
         let pos = Position::from(fen).unwrap();
 
-        let moves = pseudo_legal_move(&pos, SQ_E6);
+        let moves = pseudo_legal_move(&pos, Square::E6);
         assert_eq!(moves, BB_C8 | BB_D7 | BB_F5 | BB_G4 | BB_H3);
     }
 
@@ -347,7 +362,7 @@ mod tests {
         let fen = "rnbqkbn1/ppp1pp1r/7p/3p2p1/7P/3P1PPR/PPP1P3/RNBQKBN1 b - - 0 1";
         let pos = Position::from(fen).unwrap();
 
-        let moves = pseudo_legal_move(&pos, SQ_H7);
+        let moves = pseudo_legal_move(&pos, Square::H7);
         assert_eq!(moves, BB_H8 | BB_G7);
     }
 
@@ -356,7 +371,7 @@ mod tests {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         let pos = Position::from(fen).unwrap();
 
-        let moves = pseudo_legal_move(&pos, SQ_B1);
+        let moves = pseudo_legal_move(&pos, Square::B1);
         assert_eq!(moves, BB_A3 | BB_C3);
     }
 
@@ -365,7 +380,7 @@ mod tests {
         let fen = "rn2kb1r/pppqppp1/5n2/3p3p/4P1b1/BPN5/P1PP1PPP/R2QKBNR b KQkq - 0 1";
         let pos = Position::from(fen).unwrap();
 
-        let moves = pseudo_legal_move(&pos, SQ_F6);
+        let moves = pseudo_legal_move(&pos, Square::F6);
         assert_eq!(moves, BB_E4 | BB_G8 | BB_H7);
     }
 
@@ -374,7 +389,7 @@ mod tests {
         let fen = "r3k2r/ppp1bppp/2n1pn2/3p4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 b kq - 0 10";
         let pos = Position::from(fen).unwrap();
 
-        let moves = pseudo_legal_move(&pos, SQ_E8);
+        let moves = pseudo_legal_move(&pos, Square::E8);
         let expected_moves = BB_C8 | BB_D8 | BB_F8 | BB_G8 | BB_D7;
         assert_eq!(moves, expected_moves);
     }
@@ -384,7 +399,7 @@ mod tests {
         let fen = "8/4k3/8/8/8/8/r6R/R3K3 w Q - 0 1";
         let pos = Position::from(fen).unwrap();
 
-        let moves = pseudo_legal_move(&pos, SQ_E1);
-        assert!(moves.test(SQ_C1))
+        let moves = pseudo_legal_move(&pos, Square::E1);
+        assert!(moves.test(Square::C1.as_u8()))
     }
 }

@@ -102,9 +102,9 @@ impl Position {
         self.side_to_move = self.side_to_move.opponent()
     }
 
-    pub fn get_piece(&self, sq: u8) -> Piece {
+    pub fn get_piece(&self, sq: Square) -> Piece {
         for i in 0..Piece::COUNT {
-            if self.bitboards[i].test(sq) {
+            if self.bitboards[i].test(sq.as_u8()) {
                 return unsafe { std::mem::transmute(i as u8) };
             }
         }
@@ -116,14 +116,14 @@ impl Position {
         validate_move(self, &m)
     }
 
-    pub fn pseudo_legal_move(&self, sq: u8) -> BitBoard {
-        if self.occupancies[self.side_to_move.as_usize()].test(sq) {
+    pub fn pseudo_legal_move(&self, sq: Square) -> BitBoard {
+        if self.occupancies[self.side_to_move.as_usize()].test(sq.as_u8()) {
             return move_generator::pseudo_legal_move(self, sq);
         }
         BitBoard::new()
     }
 
-    pub fn legal_move(&mut self, sq: u8) -> BitBoard {
+    pub fn legal_move(&mut self, sq: Square) -> BitBoard {
         let mut pseudo_legal = self.pseudo_legal_move(sq);
 
         let mut bits = pseudo_legal.get();
@@ -131,7 +131,7 @@ impl Position {
         while bits != 0 {
             let dst_sq = bits.trailing_zeros();
 
-            if let Some(m) = create_move(self, sq, dst_sq as u8) {
+            if let Some(m) = create_move(self, sq, Square(dst_sq as u8)) {
                 if !self.is_legal_move(&m) {
                     pseudo_legal.unset(dst_sq as u8);
                 }
@@ -148,14 +148,11 @@ impl Position {
 
         for i in START..=END {
             // pieces from W to B
-            let bb = self.bitboards[i as usize].get();
-            for f in 0..8 {
-                for r in 0..8 {
-                    let sq = make_square(f, r);
-                    if bb & (1u64 << sq) != 0 {
-                        attack_map |=
-                            move_generator::pseudo_legal_attack(self, sq, Color::from(COLOR));
-                    }
+            let bb = self.bitboards[i as usize];
+            for sq in 0..64 {
+                if bb.test(sq) {
+                    attack_map |=
+                        move_generator::pseudo_legal_attack(self, Square(sq), Color::from(COLOR));
                 }
             }
         }
