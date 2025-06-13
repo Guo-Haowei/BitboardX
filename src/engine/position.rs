@@ -187,108 +187,15 @@ impl Position {
         }
     }
 
+    // @TODO: move to internal module
     pub fn to_string(&self, pad: bool) -> String {
-        let mut s = String::new();
-        for rank in (0..8).rev() {
-            s.push((rank as u8 + b'1') as char);
-            s.push(' ');
-            for file in 0..8 {
-                let sq = rank * 8 + file;
-                let piece_char = if self.bitboards[Piece::W_PAWN.as_usize()].test(sq) {
-                    '♙'
-                } else if self.bitboards[Piece::W_KNIGHT.as_usize()].test(sq) {
-                    '♘'
-                } else if self.bitboards[Piece::W_BISHOP.as_usize()].test(sq) {
-                    '♗'
-                } else if self.bitboards[Piece::W_ROOK.as_usize()].test(sq) {
-                    '♖'
-                } else if self.bitboards[Piece::W_QUEEN.as_usize()].test(sq) {
-                    '♕'
-                } else if self.bitboards[Piece::W_KING.as_usize()].test(sq) {
-                    '♔'
-                } else if self.bitboards[Piece::B_PAWN.as_usize()].test(sq) {
-                    '♟'
-                } else if self.bitboards[Piece::B_KNIGHT.as_usize()].test(sq) {
-                    '♞'
-                } else if self.bitboards[Piece::B_BISHOP.as_usize()].test(sq) {
-                    '♝'
-                } else if self.bitboards[Piece::B_ROOK.as_usize()].test(sq) {
-                    '♜'
-                } else if self.bitboards[Piece::B_QUEEN.as_usize()].test(sq) {
-                    '♛'
-                } else if self.bitboards[Piece::B_KING.as_usize()].test(sq) {
-                    '♚'
-                } else {
-                    '.'
-                };
-
-                if piece_char == '.' {
-                    s.push('・');
-                } else {
-                    s.push(piece_char);
-                    if pad {
-                        s.push(' ');
-                    }
-                }
-            }
-            s.push('\n');
-        }
-        s.push_str("  ａｂｃｄｅｆｇｈ\n");
-        s.push_str(format!("Side: {}\n", self.side_to_move).as_str());
-        s.push_str(format!("Castling: {}\n", &castling_to_string(self.castling)).as_str());
-        s.push_str(format!("Halfmove clock: {}\n", self.halfmove_clock).as_str());
-        s.push_str(format!("Fullmove number: {}\n", self.fullmove_number).as_str());
-
-        s
+        internal::to_string(self, pad)
     }
 
+    // @TODO: move to internal module
     pub fn to_board_string(&self) -> String {
-        let mut s = String::new();
-        for rank in (0..8).rev() {
-            for file in 0..8 {
-                let sq = rank * 8 + file;
-                let c = if self.bitboards[Piece::W_BISHOP.as_usize()].test(sq) {
-                    'B'
-                } else if self.bitboards[Piece::W_KNIGHT.as_usize()].test(sq) {
-                    'N'
-                } else if self.bitboards[Piece::W_PAWN.as_usize()].test(sq) {
-                    'P'
-                } else if self.bitboards[Piece::W_ROOK.as_usize()].test(sq) {
-                    'R'
-                } else if self.bitboards[Piece::W_QUEEN.as_usize()].test(sq) {
-                    'Q'
-                } else if self.bitboards[Piece::W_KING.as_usize()].test(sq) {
-                    'K'
-                } else if self.bitboards[Piece::B_BISHOP.as_usize()].test(sq) {
-                    'b'
-                } else if self.bitboards[Piece::B_KNIGHT.as_usize()].test(sq) {
-                    'n'
-                } else if self.bitboards[Piece::B_PAWN.as_usize()].test(sq) {
-                    'p'
-                } else if self.bitboards[Piece::B_ROOK.as_usize()].test(sq) {
-                    'r'
-                } else if self.bitboards[Piece::B_QUEEN.as_usize()].test(sq) {
-                    'q'
-                } else if self.bitboards[Piece::B_KING.as_usize()].test(sq) {
-                    'k'
-                } else {
-                    '.'
-                };
-                s.push(c);
-            }
-        }
-        s
+        internal::to_board_string(self)
     }
-}
-
-fn castling_to_string(castling: u8) -> String {
-    let mut result = String::new();
-    for (i, c) in ['K', 'Q', 'k', 'q'].iter().enumerate() {
-        if castling & (1 << i) != 0 {
-            result.push(*c);
-        }
-    }
-    if result.is_empty() { "-".to_string() } else { result }
 }
 
 #[cfg(test)]
