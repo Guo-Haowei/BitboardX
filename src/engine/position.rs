@@ -1,9 +1,9 @@
 use super::bitboard::BitBoard;
+use super::move_generator;
+use super::moves::{Move, MoveFlags, create_move, validate_move};
 use super::piece::{Color, Piece};
 use super::types::*;
 use super::utils::fen::*;
-use crate::board::move_generator;
-use crate::board::moves::{Move, MoveFlags, create_move, validate_move};
 
 pub struct Position {
     /// Data used to serialize/deserialize FEN.

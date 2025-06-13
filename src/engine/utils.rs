@@ -1,7 +1,7 @@
 pub mod fen {
-    use crate::board::bitboard::BitBoard;
-    use crate::board::moves::MoveFlags;
-    use crate::board::piece::*;
+    use crate::engine::bitboard::BitBoard;
+    use crate::engine::moves::MoveFlags;
+    use crate::engine::piece::*;
 
     pub fn parse_board(input: &str) -> Result<[BitBoard; Piece::COUNT], &'static str> {
         let mut bitboards = [BitBoard::new(); Piece::COUNT];
