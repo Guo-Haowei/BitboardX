@@ -371,13 +371,14 @@ pub fn pseudo_legal_move_from_to(pos: &Position, from_sq: Square, to_sq: Square)
         "Piece on 'to' square is of the same color as the piece on 'from' square"
     );
 
+    // check if move disables castling
     let mut flags = 0;
     flags |= move_disable_castling::<{ MoveFlags::K }>(pos, from, to, from_sq, to_sq);
     flags |= move_disable_castling::<{ MoveFlags::Q }>(pos, from, to, from_sq, to_sq);
     flags |= move_disable_castling::<{ MoveFlags::k }>(pos, from, to, from_sq, to_sq);
     flags |= move_disable_castling::<{ MoveFlags::q }>(pos, from, to, from_sq, to_sq);
 
-    // en passant bit
+    // check if move disables en passant right
 
     Move::new(from_sq, to_sq, from, to, flags)
 }

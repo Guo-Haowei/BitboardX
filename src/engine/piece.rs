@@ -92,6 +92,11 @@ impl Piece {
 
     const NB_PIECE_TYPES: u8 = PieceType::None as u8;
 
+    pub const fn from(piece: u8) -> Piece {
+        debug_assert!(piece <= Self::COUNT as u8);
+        Piece(piece)
+    }
+
     pub const fn color(&self) -> Color {
         debug_assert!(true);
         match self.0 {
