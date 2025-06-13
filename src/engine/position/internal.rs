@@ -270,31 +270,32 @@ fn move_king<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
         moves &= !pos.attack_map[color.opponent().as_usize()];
 
         // Castling doesn't form attack
+        // @TODO: refactor this part
         if is_white {
             if (pos.castling & MoveFlags::K != 0)
                 && castling_check::<COLOR>(pos, sq, Square::G1, Square::H1)
             {
                 assert!(sq == Square::E1);
-                moves |= BB_G1;
+                moves.set_sq(Square::G1);
             }
             if (pos.castling & MoveFlags::Q != 0)
                 && castling_check::<COLOR>(pos, sq, Square::C1, Square::A1)
             {
                 assert!(sq == Square::E1);
-                moves |= BB_C1;
+                moves.set_sq(Square::C1);
             }
         } else {
             if (pos.castling & MoveFlags::k != 0)
                 && castling_check::<COLOR>(pos, sq, Square::G8, Square::H8)
             {
                 assert!(sq == Square::E8);
-                moves |= BB_G8;
+                moves.set_sq(Square::G8);
             }
             if (pos.castling & MoveFlags::q != 0)
                 && castling_check::<COLOR>(pos, sq, Square::C8, Square::A8)
             {
                 assert!(sq == Square::E8);
-                moves |= BB_C8;
+                moves.set_sq(Square::C8);
             }
         }
     }
@@ -422,6 +423,29 @@ pub fn apply_move_str(pos: &mut Position, move_str: &str) -> bool {
 mod tests {
     use super::*;
 
+    const BB_C8: BitBoard = Square::C8.to_bitboard();
+
+    const BB_D4: BitBoard = Square::D4.to_bitboard();
+    const BB_D5: BitBoard = Square::D5.to_bitboard();
+    const BB_D6: BitBoard = Square::D6.to_bitboard();
+    const BB_D7: BitBoard = Square::D7.to_bitboard();
+    const BB_D8: BitBoard = Square::D8.to_bitboard();
+
+    const BB_E3: BitBoard = Square::E3.to_bitboard();
+    const BB_E4: BitBoard = Square::E4.to_bitboard();
+    const BB_E5: BitBoard = Square::E5.to_bitboard();
+
+    const BB_F5: BitBoard = Square::F5.to_bitboard();
+    const BB_F8: BitBoard = Square::F8.to_bitboard();
+
+    const BB_G4: BitBoard = Square::G4.to_bitboard();
+    const BB_G7: BitBoard = Square::G7.to_bitboard();
+    const BB_G8: BitBoard = Square::G8.to_bitboard();
+
+    const BB_H3: BitBoard = Square::H3.to_bitboard();
+    const BB_H7: BitBoard = Square::H7.to_bitboard();
+    const BB_H8: BitBoard = Square::H8.to_bitboard();
+
     #[test]
     fn test_white_pawn_pseudo_legal_move() {
         let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -486,7 +510,7 @@ mod tests {
         let pos = Position::from(fen).unwrap();
 
         let moves = pseudo_legal_move_from(&pos, Square::B1);
-        assert_eq!(moves, BB_A3 | BB_C3);
+        assert_eq!(moves, Square::A3.to_bitboard() | Square::C3.to_bitboard());
     }
 
     #[test]
@@ -536,74 +560,3 @@ mod tests {
 }
 
 // @TODO: get rid of these constants
-pub const BB_A1: BitBoard = Square::A1.to_bitboard();
-pub const BB_A2: BitBoard = Square::A2.to_bitboard();
-pub const BB_A3: BitBoard = Square::A3.to_bitboard();
-pub const BB_A4: BitBoard = Square::A4.to_bitboard();
-pub const BB_A5: BitBoard = Square::A5.to_bitboard();
-pub const BB_A6: BitBoard = Square::A6.to_bitboard();
-pub const BB_A7: BitBoard = Square::A7.to_bitboard();
-pub const BB_A8: BitBoard = Square::A8.to_bitboard();
-
-pub const BB_B1: BitBoard = Square::B1.to_bitboard();
-pub const BB_B2: BitBoard = Square::B2.to_bitboard();
-pub const BB_B3: BitBoard = Square::B3.to_bitboard();
-pub const BB_B4: BitBoard = Square::B4.to_bitboard();
-pub const BB_B5: BitBoard = Square::B5.to_bitboard();
-pub const BB_B6: BitBoard = Square::B6.to_bitboard();
-pub const BB_B7: BitBoard = Square::B7.to_bitboard();
-pub const BB_B8: BitBoard = Square::B8.to_bitboard();
-
-pub const BB_C1: BitBoard = Square::C1.to_bitboard();
-pub const BB_C2: BitBoard = Square::C2.to_bitboard();
-pub const BB_C3: BitBoard = Square::C3.to_bitboard();
-pub const BB_C4: BitBoard = Square::C4.to_bitboard();
-pub const BB_C5: BitBoard = Square::C5.to_bitboard();
-pub const BB_C6: BitBoard = Square::C6.to_bitboard();
-pub const BB_C7: BitBoard = Square::C7.to_bitboard();
-pub const BB_C8: BitBoard = Square::C8.to_bitboard();
-
-pub const BB_D1: BitBoard = Square::D1.to_bitboard();
-pub const BB_D2: BitBoard = Square::D2.to_bitboard();
-pub const BB_D3: BitBoard = Square::D3.to_bitboard();
-pub const BB_D4: BitBoard = Square::D4.to_bitboard();
-pub const BB_D5: BitBoard = Square::D5.to_bitboard();
-pub const BB_D6: BitBoard = Square::D6.to_bitboard();
-pub const BB_D7: BitBoard = Square::D7.to_bitboard();
-pub const BB_D8: BitBoard = Square::D8.to_bitboard();
-
-pub const BB_E1: BitBoard = Square::E1.to_bitboard();
-pub const BB_E2: BitBoard = Square::E2.to_bitboard();
-pub const BB_E3: BitBoard = Square::E3.to_bitboard();
-pub const BB_E4: BitBoard = Square::E4.to_bitboard();
-pub const BB_E5: BitBoard = Square::E5.to_bitboard();
-pub const BB_E6: BitBoard = Square::E6.to_bitboard();
-pub const BB_E7: BitBoard = Square::E7.to_bitboard();
-pub const BB_E8: BitBoard = Square::E8.to_bitboard();
-
-pub const BB_F1: BitBoard = Square::F1.to_bitboard();
-pub const BB_F2: BitBoard = Square::F2.to_bitboard();
-pub const BB_F3: BitBoard = Square::F3.to_bitboard();
-pub const BB_F4: BitBoard = Square::F4.to_bitboard();
-pub const BB_F5: BitBoard = Square::F5.to_bitboard();
-pub const BB_F6: BitBoard = Square::F6.to_bitboard();
-pub const BB_F7: BitBoard = Square::F7.to_bitboard();
-pub const BB_F8: BitBoard = Square::F8.to_bitboard();
-
-pub const BB_G1: BitBoard = Square::G1.to_bitboard();
-pub const BB_G2: BitBoard = Square::G2.to_bitboard();
-pub const BB_G3: BitBoard = Square::G3.to_bitboard();
-pub const BB_G4: BitBoard = Square::G4.to_bitboard();
-pub const BB_G5: BitBoard = Square::G5.to_bitboard();
-pub const BB_G6: BitBoard = Square::G6.to_bitboard();
-pub const BB_G7: BitBoard = Square::G7.to_bitboard();
-pub const BB_G8: BitBoard = Square::G8.to_bitboard();
-
-pub const BB_H1: BitBoard = Square::H1.to_bitboard();
-pub const BB_H2: BitBoard = Square::H2.to_bitboard();
-pub const BB_H3: BitBoard = Square::H3.to_bitboard();
-pub const BB_H4: BitBoard = Square::H4.to_bitboard();
-pub const BB_H5: BitBoard = Square::H5.to_bitboard();
-pub const BB_H6: BitBoard = Square::H6.to_bitboard();
-pub const BB_H7: BitBoard = Square::H7.to_bitboard();
-pub const BB_H8: BitBoard = Square::H8.to_bitboard();

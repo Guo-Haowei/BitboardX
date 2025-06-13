@@ -61,6 +61,10 @@ impl BitBoard {
         self.0 |= 1u64 << bit;
     }
 
+    pub fn set_sq(&mut self, sq: Square) {
+        self.set(sq.0);
+    }
+
     pub const fn unset(&mut self, bit: u8) {
         self.0 &= !(1u64 << bit);
     }
