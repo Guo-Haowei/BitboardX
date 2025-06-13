@@ -71,15 +71,15 @@ fn pseudo_legal_impl<const ATTACK_ONLY: bool>(pos: &Position, sq: u8, color: u8)
     let piece = pos.get_piece(sq);
 
     match piece {
-        Piece::WPawn => move_pawn::<COLOR_WHITE, ATTACK_ONLY>(pos, sq),
-        Piece::BPawn => move_pawn::<COLOR_BLACK, ATTACK_ONLY>(pos, sq),
-        Piece::WRook | Piece::BRook => move_sliding::<0, 4>(pos, sq, color),
-        Piece::WBishop | Piece::BBishop => move_sliding::<4, 8>(pos, sq, color),
-        Piece::WQueen | Piece::BQueen => move_sliding::<0, 8>(pos, sq, color),
-        Piece::WKnight | Piece::BKnight => move_knight(pos, sq, color),
-        Piece::WKing => move_king::<COLOR_WHITE, ATTACK_ONLY>(pos, sq),
-        Piece::BKing => move_king::<COLOR_BLACK, ATTACK_ONLY>(pos, sq),
-        Piece::None => BitBoard::new(),
+        Piece::W_PAWN => move_pawn::<COLOR_WHITE, ATTACK_ONLY>(pos, sq),
+        Piece::B_PAWN => move_pawn::<COLOR_BLACK, ATTACK_ONLY>(pos, sq),
+        Piece::W_ROOK | Piece::B_ROOK => move_sliding::<0, 4>(pos, sq, color),
+        Piece::W_BISHOP | Piece::B_BISHOP => move_sliding::<4, 8>(pos, sq, color),
+        Piece::W_QUEEN | Piece::B_QUEEN => move_sliding::<0, 8>(pos, sq, color),
+        Piece::W_KNIGHT | Piece::B_KNIGHT => move_knight(pos, sq, color),
+        Piece::W_KING => move_king::<COLOR_WHITE, ATTACK_ONLY>(pos, sq),
+        Piece::B_KING => move_king::<COLOR_BLACK, ATTACK_ONLY>(pos, sq),
+        Piece::NONE => BitBoard::new(),
         _ => {
             panic!("Invalid piece type: {:?}", piece);
         }

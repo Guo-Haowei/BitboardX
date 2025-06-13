@@ -101,7 +101,7 @@ impl Move {
 
     pub fn new(from_sq: u8, to_sq: u8, piece: Piece, capture: Piece, flags: u8) -> Self {
         debug_assert!(from_sq < 64 && to_sq < 64);
-        debug_assert!(piece != Piece::None);
+        debug_assert!(piece != Piece::NONE);
 
         let pieces =
             (piece.as_u8()) & Self::PIECE_MASK | ((capture.as_u8()) << 4) & Self::CAPTURE_MASK;
@@ -125,10 +125,10 @@ impl Move {
 
     pub fn castling_type(&self) -> Castling {
         match self.piece() {
-            Piece::WKing if self.to_sq == SQ_G1 => Castling::WhiteKingSide,
-            Piece::WKing if self.to_sq == SQ_C1 => Castling::WhiteQueenSide,
-            Piece::BKing if self.to_sq == SQ_G8 => Castling::BlackKingSide,
-            Piece::BKing if self.to_sq == SQ_C8 => Castling::BlackQueenSide,
+            Piece::W_KING if self.to_sq == SQ_G1 => Castling::WhiteKingSide,
+            Piece::W_KING if self.to_sq == SQ_C1 => Castling::WhiteQueenSide,
+            Piece::B_KING if self.to_sq == SQ_G8 => Castling::BlackKingSide,
+            Piece::B_KING if self.to_sq == SQ_C8 => Castling::BlackQueenSide,
             _ => Castling::None,
         }
     }
@@ -149,27 +149,27 @@ fn move_disable_castling<const BIT: u8>(
         return 0;
     }
 
-    if from == Piece::WKing && (BIT & MoveFlags::KQ) != 0 {
+    if from == Piece::W_KING && (BIT & MoveFlags::KQ) != 0 {
         return BIT;
     }
 
-    if from == Piece::BKing && (BIT & MoveFlags::kq) != 0 {
+    if from == Piece::B_KING && (BIT & MoveFlags::kq) != 0 {
         return BIT;
     }
 
     match (from, from_sq) {
-        (Piece::WRook, SQ_A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-        (Piece::WRook, SQ_H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-        (Piece::BRook, SQ_A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-        (Piece::BRook, SQ_H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+        (Piece::W_ROOK, SQ_A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+        (Piece::W_ROOK, SQ_H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+        (Piece::B_ROOK, SQ_A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+        (Piece::B_ROOK, SQ_H8) if (BIT & MoveFlags::k) != 0 => return BIT,
         _ => {}
     }
 
     match (to, to_sq) {
-        (Piece::WRook, SQ_A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-        (Piece::WRook, SQ_H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-        (Piece::BRook, SQ_A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-        (Piece::BRook, SQ_H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+        (Piece::W_ROOK, SQ_A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+        (Piece::W_ROOK, SQ_H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+        (Piece::B_ROOK, SQ_A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+        (Piece::B_ROOK, SQ_H8) if (BIT & MoveFlags::k) != 0 => return BIT,
         _ => {}
     }
 
@@ -182,8 +182,8 @@ pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
         return None;
     }
 
-    let mut from = Piece::None;
-    let mut to = Piece::None;
+    let mut from = Piece::NONE;
+    let mut to = Piece::NONE;
     for i in 0..pos.bitboards.len() {
         let bb = &pos.bitboards[i];
         if bb.test(from_sq) {
@@ -194,7 +194,7 @@ pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
         }
     }
 
-    debug_assert!(from != Piece::None, "No piece found on 'from' square");
+    debug_assert!(from != Piece::NONE, "No piece found on 'from' square");
     let mut flags = 0u8;
     flags |= move_disable_castling::<{ MoveFlags::K }>(pos, from, to, from_sq, to_sq);
     flags |= move_disable_castling::<{ MoveFlags::Q }>(pos, from, to, from_sq, to_sq);
@@ -207,8 +207,8 @@ pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
 pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
     let our_side = pos.side_to_move;
     let their_side = get_opposite_color(our_side);
-    let piece: Piece = unsafe { std::mem::transmute(our_side * 6 + Piece::WKing.as_u8()) };
-    debug_assert!(piece == Piece::WKing || piece == Piece::BKing);
+    let piece: Piece = unsafe { std::mem::transmute(our_side * 6 + Piece::W_KING.as_u8()) };
+    debug_assert!(piece == Piece::W_KING || piece == Piece::B_KING);
     debug_assert!(piece.color() == our_side);
 
     do_move(pos, m);
@@ -230,7 +230,7 @@ fn do_move_generic(pos: &mut Position, m: &Move) {
 
     bb_from.unset(m.from_sq); // Clear the 'from' square
     bb_from.set(m.to_sq); // Place piece on 'to' square
-    if to != Piece::None {
+    if to != Piece::NONE {
         pos.bitboards[to.as_usize()].unset(m.to_sq); // Clear the 'to' square for the captured piece
     }
 }
@@ -243,7 +243,7 @@ fn undo_move_generic(pos: &mut Position, m: &Move) {
     bb_from.set(m.from_sq); // Place piece back on 'from' square
     bb_from.unset(m.to_sq); // Clear the 'to' square
 
-    if to != Piece::None {
+    if to != Piece::NONE {
         pos.bitboards[to.as_usize()].set(m.to_sq); // Place captured piece back on 'to' square
     }
 }
@@ -255,20 +255,20 @@ fn do_castling(pos: &mut Position, m: &Move) {
     // Move rook to its new position
     match m.castling_type() {
         Castling::WhiteKingSide => {
-            pos.bitboards[Piece::WRook.as_usize()].unset(SQ_H1);
-            pos.bitboards[Piece::WRook.as_usize()].set(SQ_F1);
+            pos.bitboards[Piece::W_ROOK.as_usize()].unset(SQ_H1);
+            pos.bitboards[Piece::W_ROOK.as_usize()].set(SQ_F1);
         }
         Castling::WhiteQueenSide => {
-            pos.bitboards[Piece::WRook.as_usize()].unset(SQ_A1);
-            pos.bitboards[Piece::WRook.as_usize()].set(SQ_D1);
+            pos.bitboards[Piece::W_ROOK.as_usize()].unset(SQ_A1);
+            pos.bitboards[Piece::W_ROOK.as_usize()].set(SQ_D1);
         }
         Castling::BlackKingSide => {
-            pos.bitboards[Piece::BRook.as_usize()].unset(SQ_H8);
-            pos.bitboards[Piece::BRook.as_usize()].set(SQ_F8);
+            pos.bitboards[Piece::B_ROOK.as_usize()].unset(SQ_H8);
+            pos.bitboards[Piece::B_ROOK.as_usize()].set(SQ_F8);
         }
         Castling::BlackQueenSide => {
-            pos.bitboards[Piece::BRook.as_usize()].unset(SQ_A8);
-            pos.bitboards[Piece::BRook.as_usize()].set(SQ_D8);
+            pos.bitboards[Piece::B_ROOK.as_usize()].unset(SQ_A8);
+            pos.bitboards[Piece::B_ROOK.as_usize()].set(SQ_D8);
         }
         Castling::None => {}
     }
@@ -282,20 +282,20 @@ fn undo_castling(pos: &mut Position, m: &Move) {
     match m.castling_type() {
         // @TODO: extract position.move_piece()
         Castling::WhiteKingSide => {
-            pos.bitboards[Piece::WRook.as_usize()].unset(SQ_F1);
-            pos.bitboards[Piece::WRook.as_usize()].set(SQ_H1);
+            pos.bitboards[Piece::W_ROOK.as_usize()].unset(SQ_F1);
+            pos.bitboards[Piece::W_ROOK.as_usize()].set(SQ_H1);
         }
         Castling::WhiteQueenSide => {
-            pos.bitboards[Piece::WRook.as_usize()].unset(SQ_D1);
-            pos.bitboards[Piece::WRook.as_usize()].set(SQ_A1);
+            pos.bitboards[Piece::W_ROOK.as_usize()].unset(SQ_D1);
+            pos.bitboards[Piece::W_ROOK.as_usize()].set(SQ_A1);
         }
         Castling::BlackKingSide => {
-            pos.bitboards[Piece::BRook.as_usize()].unset(SQ_F8);
-            pos.bitboards[Piece::BRook.as_usize()].set(SQ_H8);
+            pos.bitboards[Piece::B_ROOK.as_usize()].unset(SQ_F8);
+            pos.bitboards[Piece::B_ROOK.as_usize()].set(SQ_H8);
         }
         Castling::BlackQueenSide => {
-            pos.bitboards[Piece::BRook.as_usize()].unset(SQ_D8);
-            pos.bitboards[Piece::BRook.as_usize()].set(SQ_A8);
+            pos.bitboards[Piece::B_ROOK.as_usize()].unset(SQ_D8);
+            pos.bitboards[Piece::B_ROOK.as_usize()].set(SQ_A8);
         }
         Castling::None => {}
     }
@@ -363,13 +363,13 @@ mod tests {
 
     #[test]
     fn test_move_creation() {
-        let m = Move::new(SQ_E7, SQ_E8, Piece::WQueen, Piece::BKnight, 0);
-        assert_eq!(m.piece(), Piece::WQueen);
-        assert_eq!(m.capture(), Piece::BKnight);
+        let m = Move::new(SQ_E7, SQ_E8, Piece::W_QUEEN, Piece::B_KNIGHT, 0);
+        assert_eq!(m.piece(), Piece::W_QUEEN);
+        assert_eq!(m.capture(), Piece::B_KNIGHT);
 
-        let m = Move::new(SQ_E7, SQ_E8, Piece::BQueen, Piece::None, 0);
-        assert_eq!(m.piece(), Piece::BQueen);
-        assert_eq!(m.capture(), Piece::None);
+        let m = Move::new(SQ_E7, SQ_E8, Piece::B_QUEEN, Piece::NONE, 0);
+        assert_eq!(m.piece(), Piece::B_QUEEN);
+        assert_eq!(m.capture(), Piece::NONE);
     }
 
     #[test]

@@ -106,7 +106,7 @@ impl Position {
             }
         }
 
-        Piece::None
+        Piece::NONE
     }
 
     pub fn is_legal_move(&mut self, m: &Move) -> bool {
@@ -173,29 +173,29 @@ impl Position {
             s.push(' ');
             for file in 0..8 {
                 let sq = rank * 8 + file;
-                let piece_char = if self.bitboards[Piece::WPawn.as_usize()].test(sq) {
+                let piece_char = if self.bitboards[Piece::W_PAWN.as_usize()].test(sq) {
                     '♙'
-                } else if self.bitboards[Piece::WKnight.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_KNIGHT.as_usize()].test(sq) {
                     '♘'
-                } else if self.bitboards[Piece::WBishop.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_BISHOP.as_usize()].test(sq) {
                     '♗'
-                } else if self.bitboards[Piece::WRook.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_ROOK.as_usize()].test(sq) {
                     '♖'
-                } else if self.bitboards[Piece::WQueen.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_QUEEN.as_usize()].test(sq) {
                     '♕'
-                } else if self.bitboards[Piece::WKing.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_KING.as_usize()].test(sq) {
                     '♔'
-                } else if self.bitboards[Piece::BPawn.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_PAWN.as_usize()].test(sq) {
                     '♟'
-                } else if self.bitboards[Piece::BKnight.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_KNIGHT.as_usize()].test(sq) {
                     '♞'
-                } else if self.bitboards[Piece::BBishop.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_BISHOP.as_usize()].test(sq) {
                     '♝'
-                } else if self.bitboards[Piece::BRook.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_ROOK.as_usize()].test(sq) {
                     '♜'
-                } else if self.bitboards[Piece::BQueen.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_QUEEN.as_usize()].test(sq) {
                     '♛'
-                } else if self.bitboards[Piece::BKing.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_KING.as_usize()].test(sq) {
                     '♚'
                 } else {
                     '.'
@@ -229,29 +229,29 @@ impl Position {
         for rank in (0..8).rev() {
             for file in 0..8 {
                 let sq = rank * 8 + file;
-                let c = if self.bitboards[Piece::WBishop.as_usize()].test(sq) {
+                let c = if self.bitboards[Piece::W_BISHOP.as_usize()].test(sq) {
                     'B'
-                } else if self.bitboards[Piece::WKnight.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_KNIGHT.as_usize()].test(sq) {
                     'N'
-                } else if self.bitboards[Piece::WPawn.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_PAWN.as_usize()].test(sq) {
                     'P'
-                } else if self.bitboards[Piece::WRook.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_ROOK.as_usize()].test(sq) {
                     'R'
-                } else if self.bitboards[Piece::WQueen.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_QUEEN.as_usize()].test(sq) {
                     'Q'
-                } else if self.bitboards[Piece::WKing.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::W_KING.as_usize()].test(sq) {
                     'K'
-                } else if self.bitboards[Piece::BBishop.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_BISHOP.as_usize()].test(sq) {
                     'b'
-                } else if self.bitboards[Piece::BKnight.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_KNIGHT.as_usize()].test(sq) {
                     'n'
-                } else if self.bitboards[Piece::BPawn.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_PAWN.as_usize()].test(sq) {
                     'p'
-                } else if self.bitboards[Piece::BRook.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_ROOK.as_usize()].test(sq) {
                     'r'
-                } else if self.bitboards[Piece::BQueen.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_QUEEN.as_usize()].test(sq) {
                     'q'
-                } else if self.bitboards[Piece::BKing.as_usize()].test(sq) {
+                } else if self.bitboards[Piece::B_KING.as_usize()].test(sq) {
                     'k'
                 } else {
                     '.'
@@ -280,10 +280,10 @@ mod tests {
     #[test]
     fn test_constructor_new() {
         let pos = Position::new();
-        assert!(pos.bitboards[Piece::WPawn.as_usize()].equal(0x000000000000FF00u64));
-        assert!(pos.bitboards[Piece::BPawn.as_usize()].equal(0x00FF000000000000u64));
-        assert!(pos.bitboards[Piece::WRook.as_usize()].equal(0x0000000000000081u64));
-        assert!(pos.bitboards[Piece::BRook.as_usize()].equal(0x8100000000000000u64));
+        assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
 
         assert_eq!(pos.side_to_move, COLOR_WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
@@ -306,10 +306,10 @@ mod tests {
             "1",
         )
         .unwrap();
-        assert!(pos.bitboards[Piece::WPawn.as_usize()].equal(0x000000000000FF00u64));
-        assert!(pos.bitboards[Piece::BPawn.as_usize()].equal(0x00FF000000000000u64));
-        assert!(pos.bitboards[Piece::WRook.as_usize()].equal(0x0000000000000081u64));
-        assert!(pos.bitboards[Piece::BRook.as_usize()].equal(0x8100000000000000u64));
+        assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
 
         assert_eq!(pos.side_to_move, COLOR_WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);

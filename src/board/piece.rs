@@ -28,25 +28,24 @@ const NB_PIECE_TYPES: usize = 6;
 pub struct Piece(u8);
 
 impl Piece {
-    // @TODO: rename
-    pub const WPawn: Piece = Piece(0);
-    pub const WKnight: Piece = Piece(1);
-    pub const WBishop: Piece = Piece(2);
-    pub const WRook: Piece = Piece(3);
-    pub const WQueen: Piece = Piece(4);
-    pub const WKing: Piece = Piece(5);
-    pub const BPawn: Piece = Piece(6);
-    pub const BKnight: Piece = Piece(7);
-    pub const BBishop: Piece = Piece(8);
-    pub const BRook: Piece = Piece(9);
-    pub const BQueen: Piece = Piece(10);
-    pub const BKing: Piece = Piece(11);
-    pub const None: Piece = Piece(12);
-    pub const COUNT: usize = Self::None.0 as usize;
-    pub const W_START: u8 = Self::WPawn.0;
-    pub const W_END: u8 = Self::WKing.0;
-    pub const B_START: u8 = Self::BPawn.0;
-    pub const B_END: u8 = Self::BKing.0;
+    pub const W_PAWN: Piece = Piece(0);
+    pub const W_KNIGHT: Piece = Piece(1);
+    pub const W_BISHOP: Piece = Piece(2);
+    pub const W_ROOK: Piece = Piece(3);
+    pub const W_QUEEN: Piece = Piece(4);
+    pub const W_KING: Piece = Piece(5);
+    pub const B_PAWN: Piece = Piece(6);
+    pub const B_KNIGHT: Piece = Piece(7);
+    pub const B_BISHOP: Piece = Piece(8);
+    pub const B_ROOK: Piece = Piece(9);
+    pub const B_QUEEN: Piece = Piece(10);
+    pub const B_KING: Piece = Piece(11);
+    pub const NONE: Piece = Piece(12);
+    pub const COUNT: usize = Self::NONE.0 as usize;
+    pub const W_START: u8 = Self::W_PAWN.0;
+    pub const W_END: u8 = Self::W_KING.0;
+    pub const B_START: u8 = Self::B_PAWN.0;
+    pub const B_END: u8 = Self::B_KING.0;
 
     pub const fn color(&self) -> u8 {
         match self.0 {
@@ -87,17 +86,17 @@ mod tests {
 
     #[test]
     fn test_piece_color() {
-        assert_eq!(Piece::WPawn.color(), COLOR_WHITE);
-        assert_eq!(Piece::WKnight.color(), COLOR_WHITE);
-        assert_eq!(Piece::WBishop.color(), COLOR_WHITE);
-        assert_eq!(Piece::WRook.color(), COLOR_WHITE);
-        assert_eq!(Piece::WQueen.color(), COLOR_WHITE);
-        assert_eq!(Piece::WKing.color(), COLOR_WHITE);
-        assert_eq!(Piece::BPawn.color(), COLOR_BLACK);
-        assert_eq!(Piece::BKnight.color(), COLOR_BLACK);
-        assert_eq!(Piece::BBishop.color(), COLOR_BLACK);
-        assert_eq!(Piece::BRook.color(), COLOR_BLACK);
-        assert_eq!(Piece::BQueen.color(), COLOR_BLACK);
-        assert_eq!(Piece::BKing.color(), COLOR_BLACK);
+        assert_eq!(Piece::W_PAWN.color(), COLOR_WHITE);
+        assert_eq!(Piece::W_KNIGHT.color(), COLOR_WHITE);
+        assert_eq!(Piece::W_BISHOP.color(), COLOR_WHITE);
+        assert_eq!(Piece::W_ROOK.color(), COLOR_WHITE);
+        assert_eq!(Piece::W_QUEEN.color(), COLOR_WHITE);
+        assert_eq!(Piece::W_KING.color(), COLOR_WHITE);
+        assert_eq!(Piece::B_PAWN.color(), COLOR_BLACK);
+        assert_eq!(Piece::B_KNIGHT.color(), COLOR_BLACK);
+        assert_eq!(Piece::B_BISHOP.color(), COLOR_BLACK);
+        assert_eq!(Piece::B_ROOK.color(), COLOR_BLACK);
+        assert_eq!(Piece::B_QUEEN.color(), COLOR_BLACK);
+        assert_eq!(Piece::B_KING.color(), COLOR_BLACK);
     }
 }
