@@ -1,52 +1,8 @@
 use super::bitboard::BitBoard;
-
-pub const COLOR_WHITE: u8 = 0;
-pub const COLOR_BLACK: u8 = 1;
-pub const COLOR_BOTH: u8 = 2;
-pub const COLOR_NONE: u8 = COLOR_BOTH;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(u8)]
-pub enum PieceType {
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King,
-    None,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
-#[repr(u8)]
-pub enum Piece {
-    WPawn,
-    WKnight,
-    WBishop,
-    WRook,
-    WQueen,
-    WKing,
-    BPawn,
-    BKnight,
-    BBishop,
-    BRook,
-    BQueen,
-    BKing,
-    None,
-}
-
-pub const fn get_opposite_color(color: u8) -> u8 {
-    assert!(color != COLOR_BOTH);
-    return 1 - color;
-}
+use super::piece::{COLOR_BOTH, PieceType};
 
 pub const fn make_square(file: u8, rank: u8) -> u8 {
     (rank << 3) + file
-}
-
-pub fn get_color(piece: Piece) -> u8 {
-    assert!(piece != Piece::None);
-    (piece as u8) / (Piece::BPawn as u8)
 }
 
 pub fn get_file_rank(square: u8) -> (u8, u8) {
@@ -58,12 +14,6 @@ pub fn get_file_rank(square: u8) -> (u8, u8) {
 
 pub const NB_COLORS: usize = COLOR_BOTH as usize;
 pub const NB_PIECE_TYPES: usize = PieceType::None as usize;
-pub const NB_PIECES: usize = Piece::None as usize;
-
-pub const W_START: u8 = Piece::WPawn as u8;
-pub const W_END: u8 = Piece::WKing as u8 + 1;
-pub const B_START: u8 = Piece::BPawn as u8;
-pub const B_END: u8 = Piece::BKing as u8 + 1;
 
 // Constants for files
 pub const FILE_A: u8 = 0;
@@ -256,21 +206,5 @@ mod tests {
         assert_eq!(get_file_rank(SQ_F3), (FILE_F, RANK_3));
         assert_eq!(get_file_rank(SQ_G2), (FILE_G, RANK_2));
         assert_eq!(get_file_rank(SQ_H1), (FILE_H, RANK_1));
-    }
-
-    #[test]
-    fn get_color_test() {
-        assert_eq!(get_color(Piece::WPawn), COLOR_WHITE);
-        assert_eq!(get_color(Piece::WKnight), COLOR_WHITE);
-        assert_eq!(get_color(Piece::WBishop), COLOR_WHITE);
-        assert_eq!(get_color(Piece::WRook), COLOR_WHITE);
-        assert_eq!(get_color(Piece::WQueen), COLOR_WHITE);
-        assert_eq!(get_color(Piece::WKing), COLOR_WHITE);
-        assert_eq!(get_color(Piece::BPawn), COLOR_BLACK);
-        assert_eq!(get_color(Piece::BKnight), COLOR_BLACK);
-        assert_eq!(get_color(Piece::BBishop), COLOR_BLACK);
-        assert_eq!(get_color(Piece::BRook), COLOR_BLACK);
-        assert_eq!(get_color(Piece::BQueen), COLOR_BLACK);
-        assert_eq!(get_color(Piece::BKing), COLOR_BLACK);
     }
 }

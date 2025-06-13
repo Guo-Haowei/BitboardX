@@ -1,4 +1,5 @@
 use super::bitboard::BitBoard;
+use super::piece::*;
 use super::types::*;
 use super::utils::fen::*;
 use crate::board::move_generator;
@@ -6,7 +7,7 @@ use crate::board::moves::{Move, MoveFlags, create_move, validate_move};
 
 pub struct Position {
     /// Data used to serialize/deserialize FEN.
-    pub bitboards: [BitBoard; NB_PIECES],
+    pub bitboards: [BitBoard; Piece::COUNT],
 
     pub side_to_move: u8,
     pub castling: u8,
@@ -99,7 +100,7 @@ impl Position {
     }
 
     pub fn get_piece(&self, sq: u8) -> Piece {
-        for i in 0..NB_PIECES {
+        for i in 0..Piece::COUNT {
             if self.bitboards[i].test(sq) {
                 return unsafe { std::mem::transmute(i as u8) };
             }
@@ -142,7 +143,7 @@ impl Position {
     fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(&self) -> BitBoard {
         let mut attack_map = BitBoard::new();
 
-        for i in START..END {
+        for i in START..=END {
             // pieces from W to B
             let bb = self.bitboards[i as usize].get();
             for f in 0..8 {
@@ -160,8 +161,8 @@ impl Position {
 
     pub fn calc_attack_map(&self) -> [BitBoard; NB_COLORS] {
         [
-            self.calc_attack_map_impl::<COLOR_WHITE, W_START, W_END>(),
-            self.calc_attack_map_impl::<COLOR_BLACK, B_START, B_END>(),
+            self.calc_attack_map_impl::<COLOR_WHITE, { Piece::W_START }, { Piece::W_END }>(),
+            self.calc_attack_map_impl::<COLOR_BLACK, { Piece::B_START }, { Piece::B_END }>(),
         ]
     }
 
@@ -172,29 +173,29 @@ impl Position {
             s.push(' ');
             for file in 0..8 {
                 let sq = rank * 8 + file;
-                let piece_char = if self.bitboards[Piece::WPawn as usize].test(sq) {
+                let piece_char = if self.bitboards[Piece::WPawn.as_usize()].test(sq) {
                     '♙'
-                } else if self.bitboards[Piece::WKnight as usize].test(sq) {
+                } else if self.bitboards[Piece::WKnight.as_usize()].test(sq) {
                     '♘'
-                } else if self.bitboards[Piece::WBishop as usize].test(sq) {
+                } else if self.bitboards[Piece::WBishop.as_usize()].test(sq) {
                     '♗'
-                } else if self.bitboards[Piece::WRook as usize].test(sq) {
+                } else if self.bitboards[Piece::WRook.as_usize()].test(sq) {
                     '♖'
-                } else if self.bitboards[Piece::WQueen as usize].test(sq) {
+                } else if self.bitboards[Piece::WQueen.as_usize()].test(sq) {
                     '♕'
-                } else if self.bitboards[Piece::WKing as usize].test(sq) {
+                } else if self.bitboards[Piece::WKing.as_usize()].test(sq) {
                     '♔'
-                } else if self.bitboards[Piece::BPawn as usize].test(sq) {
+                } else if self.bitboards[Piece::BPawn.as_usize()].test(sq) {
                     '♟'
-                } else if self.bitboards[Piece::BKnight as usize].test(sq) {
+                } else if self.bitboards[Piece::BKnight.as_usize()].test(sq) {
                     '♞'
-                } else if self.bitboards[Piece::BBishop as usize].test(sq) {
+                } else if self.bitboards[Piece::BBishop.as_usize()].test(sq) {
                     '♝'
-                } else if self.bitboards[Piece::BRook as usize].test(sq) {
+                } else if self.bitboards[Piece::BRook.as_usize()].test(sq) {
                     '♜'
-                } else if self.bitboards[Piece::BQueen as usize].test(sq) {
+                } else if self.bitboards[Piece::BQueen.as_usize()].test(sq) {
                     '♛'
-                } else if self.bitboards[Piece::BKing as usize].test(sq) {
+                } else if self.bitboards[Piece::BKing.as_usize()].test(sq) {
                     '♚'
                 } else {
                     '.'
@@ -228,29 +229,29 @@ impl Position {
         for rank in (0..8).rev() {
             for file in 0..8 {
                 let sq = rank * 8 + file;
-                let c = if self.bitboards[Piece::WBishop as usize].test(sq) {
+                let c = if self.bitboards[Piece::WBishop.as_usize()].test(sq) {
                     'B'
-                } else if self.bitboards[Piece::WKnight as usize].test(sq) {
+                } else if self.bitboards[Piece::WKnight.as_usize()].test(sq) {
                     'N'
-                } else if self.bitboards[Piece::WPawn as usize].test(sq) {
+                } else if self.bitboards[Piece::WPawn.as_usize()].test(sq) {
                     'P'
-                } else if self.bitboards[Piece::WRook as usize].test(sq) {
+                } else if self.bitboards[Piece::WRook.as_usize()].test(sq) {
                     'R'
-                } else if self.bitboards[Piece::WQueen as usize].test(sq) {
+                } else if self.bitboards[Piece::WQueen.as_usize()].test(sq) {
                     'Q'
-                } else if self.bitboards[Piece::WKing as usize].test(sq) {
+                } else if self.bitboards[Piece::WKing.as_usize()].test(sq) {
                     'K'
-                } else if self.bitboards[Piece::BBishop as usize].test(sq) {
+                } else if self.bitboards[Piece::BBishop.as_usize()].test(sq) {
                     'b'
-                } else if self.bitboards[Piece::BKnight as usize].test(sq) {
+                } else if self.bitboards[Piece::BKnight.as_usize()].test(sq) {
                     'n'
-                } else if self.bitboards[Piece::BPawn as usize].test(sq) {
+                } else if self.bitboards[Piece::BPawn.as_usize()].test(sq) {
                     'p'
-                } else if self.bitboards[Piece::BRook as usize].test(sq) {
+                } else if self.bitboards[Piece::BRook.as_usize()].test(sq) {
                     'r'
-                } else if self.bitboards[Piece::BQueen as usize].test(sq) {
+                } else if self.bitboards[Piece::BQueen.as_usize()].test(sq) {
                     'q'
-                } else if self.bitboards[Piece::BKing as usize].test(sq) {
+                } else if self.bitboards[Piece::BKing.as_usize()].test(sq) {
                     'k'
                 } else {
                     '.'
@@ -279,10 +280,10 @@ mod tests {
     #[test]
     fn test_constructor_new() {
         let pos = Position::new();
-        assert!(pos.bitboards[Piece::WPawn as usize].equal(0x000000000000FF00u64));
-        assert!(pos.bitboards[Piece::BPawn as usize].equal(0x00FF000000000000u64));
-        assert!(pos.bitboards[Piece::WRook as usize].equal(0x0000000000000081u64));
-        assert!(pos.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
+        assert!(pos.bitboards[Piece::WPawn.as_usize()].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::BPawn.as_usize()].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::WRook.as_usize()].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::BRook.as_usize()].equal(0x8100000000000000u64));
 
         assert_eq!(pos.side_to_move, COLOR_WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
@@ -305,10 +306,10 @@ mod tests {
             "1",
         )
         .unwrap();
-        assert!(pos.bitboards[Piece::WPawn as usize].equal(0x000000000000FF00u64));
-        assert!(pos.bitboards[Piece::BPawn as usize].equal(0x00FF000000000000u64));
-        assert!(pos.bitboards[Piece::WRook as usize].equal(0x0000000000000081u64));
-        assert!(pos.bitboards[Piece::BRook as usize].equal(0x8100000000000000u64));
+        assert!(pos.bitboards[Piece::WPawn.as_usize()].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::BPawn.as_usize()].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::WRook.as_usize()].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::BRook.as_usize()].equal(0x8100000000000000u64));
 
         assert_eq!(pos.side_to_move, COLOR_WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);

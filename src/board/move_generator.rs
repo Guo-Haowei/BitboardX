@@ -1,7 +1,8 @@
-use crate::board::bitboard::BitBoard;
-use crate::board::moves::*;
-use crate::board::position::Position;
-use crate::board::types::*;
+use super::bitboard::BitBoard;
+use super::moves::*;
+use super::piece::*;
+use super::position::Position;
+use super::types::*;
 
 const NORTH: i32 = 8;
 const SOUTH: i32 = -NORTH;
@@ -79,6 +80,9 @@ fn pseudo_legal_impl<const ATTACK_ONLY: bool>(pos: &Position, sq: u8, color: u8)
         Piece::WKing => move_king::<COLOR_WHITE, ATTACK_ONLY>(pos, sq),
         Piece::BKing => move_king::<COLOR_BLACK, ATTACK_ONLY>(pos, sq),
         Piece::None => BitBoard::new(),
+        _ => {
+            panic!("Invalid piece type: {:?}", piece);
+        }
     }
 }
 
@@ -205,9 +209,8 @@ fn castling_check<const COLOR: u8>(pos: &Position, sq: u8, dst_sq: u8, rook_sq: 
     let opponent = get_opposite_color(COLOR);
 
     // check if the rook is in the right place
-    let rook_type = COLOR * 6 + Piece::WRook as u8;
-    assert!(rook_type == Piece::WRook as u8 || rook_type == Piece::BRook as u8);
-    if pos.bitboards[rook_type as usize].test(rook_sq) == false {
+    let rook_type = Piece::get_piece(COLOR, PieceType::Rook);
+    if pos.bitboards[rook_type.as_usize()].test(rook_sq) == false {
         return false;
     }
 

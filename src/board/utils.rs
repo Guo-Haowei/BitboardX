@@ -1,10 +1,10 @@
 pub mod fen {
     use crate::board::bitboard::BitBoard;
     use crate::board::moves::MoveFlags;
-    use crate::board::types::*;
+    use crate::board::piece::*;
 
-    pub fn parse_board(input: &str) -> Result<[BitBoard; NB_PIECES], &'static str> {
-        let mut bitboards = [BitBoard::new(); NB_PIECES];
+    pub fn parse_board(input: &str) -> Result<[BitBoard; Piece::COUNT], &'static str> {
+        let mut bitboards = [BitBoard::new(); Piece::COUNT];
 
         for (row, rank_str) in input.split('/').enumerate() {
             let mut file = 0;
@@ -13,18 +13,18 @@ pub mod fen {
                 let sq = (rank << 3) + file as u8;
                 let mut inc = 1;
                 match c {
-                    'p' => bitboards[Piece::BPawn as usize].set(sq),
-                    'r' => bitboards[Piece::BRook as usize].set(sq),
-                    'n' => bitboards[Piece::BKnight as usize].set(sq),
-                    'b' => bitboards[Piece::BBishop as usize].set(sq),
-                    'q' => bitboards[Piece::BQueen as usize].set(sq),
-                    'k' => bitboards[Piece::BKing as usize].set(sq),
-                    'P' => bitboards[Piece::WPawn as usize].set(sq),
-                    'R' => bitboards[Piece::WRook as usize].set(sq),
-                    'N' => bitboards[Piece::WKnight as usize].set(sq),
-                    'B' => bitboards[Piece::WBishop as usize].set(sq),
-                    'Q' => bitboards[Piece::WQueen as usize].set(sq),
-                    'K' => bitboards[Piece::WKing as usize].set(sq),
+                    'p' => bitboards[Piece::BPawn.as_usize()].set(sq),
+                    'r' => bitboards[Piece::BRook.as_usize()].set(sq),
+                    'n' => bitboards[Piece::BKnight.as_usize()].set(sq),
+                    'b' => bitboards[Piece::BBishop.as_usize()].set(sq),
+                    'q' => bitboards[Piece::BQueen.as_usize()].set(sq),
+                    'k' => bitboards[Piece::BKing.as_usize()].set(sq),
+                    'P' => bitboards[Piece::WPawn.as_usize()].set(sq),
+                    'R' => bitboards[Piece::WRook.as_usize()].set(sq),
+                    'N' => bitboards[Piece::WKnight.as_usize()].set(sq),
+                    'B' => bitboards[Piece::WBishop.as_usize()].set(sq),
+                    'Q' => bitboards[Piece::WQueen.as_usize()].set(sq),
+                    'K' => bitboards[Piece::WKing.as_usize()].set(sq),
                     '1'..='8' => inc = c.to_digit(10).unwrap(),
                     _ => return Err("Invalid character in board layout"),
                 }
@@ -77,19 +77,19 @@ pub mod fen {
         input.parse().map_err(|_| "Invalid fullmove number")
     }
 
-    pub fn calc_occupancies(bitboards: &[BitBoard; NB_PIECES]) -> [BitBoard; 3] {
-        let white_pieces = bitboards[Piece::WPawn as usize]
-            | bitboards[Piece::WKnight as usize]
-            | bitboards[Piece::WBishop as usize]
-            | bitboards[Piece::WRook as usize]
-            | bitboards[Piece::WQueen as usize]
-            | bitboards[Piece::WKing as usize];
-        let black_pieces = bitboards[Piece::BPawn as usize]
-            | bitboards[Piece::BKnight as usize]
-            | bitboards[Piece::BBishop as usize]
-            | bitboards[Piece::BRook as usize]
-            | bitboards[Piece::BQueen as usize]
-            | bitboards[Piece::BKing as usize];
+    pub fn calc_occupancies(bitboards: &[BitBoard; Piece::COUNT]) -> [BitBoard; 3] {
+        let white_pieces = bitboards[Piece::WPawn.as_usize()]
+            | bitboards[Piece::WKnight.as_usize()]
+            | bitboards[Piece::WBishop.as_usize()]
+            | bitboards[Piece::WRook.as_usize()]
+            | bitboards[Piece::WQueen.as_usize()]
+            | bitboards[Piece::WKing.as_usize()];
+        let black_pieces = bitboards[Piece::BPawn.as_usize()]
+            | bitboards[Piece::BKnight.as_usize()]
+            | bitboards[Piece::BBishop.as_usize()]
+            | bitboards[Piece::BRook.as_usize()]
+            | bitboards[Piece::BQueen.as_usize()]
+            | bitboards[Piece::BKing.as_usize()];
         [white_pieces, black_pieces, white_pieces | black_pieces]
     }
 

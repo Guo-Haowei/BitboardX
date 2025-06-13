@@ -1,4 +1,5 @@
 use super::bitboard::BitBoard;
+use super::piece::*;
 use super::position::Position;
 use super::types::*;
 use crate::board::move_generator;
@@ -102,7 +103,8 @@ impl Move {
         debug_assert!(from_sq < 64 && to_sq < 64);
         debug_assert!(piece != Piece::None);
 
-        let pieces = (piece as u8) & Self::PIECE_MASK | ((capture as u8) << 4) & Self::CAPTURE_MASK;
+        let pieces =
+            (piece.as_u8()) & Self::PIECE_MASK | ((capture.as_u8()) << 4) & Self::CAPTURE_MASK;
         Self { from_sq, to_sq, pieces, flags }
     }
 
@@ -205,13 +207,13 @@ pub fn create_move(pos: &Position, from_sq: u8, to_sq: u8) -> Option<Move> {
 pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
     let our_side = pos.side_to_move;
     let their_side = get_opposite_color(our_side);
-    let piece: Piece = unsafe { std::mem::transmute(our_side * 6 + Piece::WKing as u8) };
+    let piece: Piece = unsafe { std::mem::transmute(our_side * 6 + Piece::WKing.as_u8()) };
     debug_assert!(piece == Piece::WKing || piece == Piece::BKing);
-    debug_assert!(get_color(piece) == our_side);
+    debug_assert!(piece.color() == our_side);
 
     do_move(pos, m);
 
-    let legal = (pos.bitboards[piece as usize] & pos.attack_map[their_side as usize]).none();
+    let legal = (pos.bitboards[piece.as_usize()] & pos.attack_map[their_side as usize]).none();
 
     undo_move(pos, m);
 
@@ -224,12 +226,12 @@ fn do_move_generic(pos: &mut Position, m: &Move) {
     let from = m.piece();
     let to = m.capture();
 
-    let bb_from = &mut pos.bitboards[from as usize];
+    let bb_from = &mut pos.bitboards[from.as_usize()];
 
     bb_from.unset(m.from_sq); // Clear the 'from' square
     bb_from.set(m.to_sq); // Place piece on 'to' square
     if to != Piece::None {
-        pos.bitboards[to as usize].unset(m.to_sq); // Clear the 'to' square for the captured piece
+        pos.bitboards[to.as_usize()].unset(m.to_sq); // Clear the 'to' square for the captured piece
     }
 }
 
@@ -237,12 +239,12 @@ fn undo_move_generic(pos: &mut Position, m: &Move) {
     let from = m.piece();
     let to = m.capture();
 
-    let bb_from = &mut pos.bitboards[from as usize];
+    let bb_from = &mut pos.bitboards[from.as_usize()];
     bb_from.set(m.from_sq); // Place piece back on 'from' square
     bb_from.unset(m.to_sq); // Clear the 'to' square
 
     if to != Piece::None {
-        pos.bitboards[to as usize].set(m.to_sq); // Place captured piece back on 'to' square
+        pos.bitboards[to.as_usize()].set(m.to_sq); // Place captured piece back on 'to' square
     }
 }
 
@@ -253,20 +255,20 @@ fn do_castling(pos: &mut Position, m: &Move) {
     // Move rook to its new position
     match m.castling_type() {
         Castling::WhiteKingSide => {
-            pos.bitboards[Piece::WRook as usize].unset(SQ_H1);
-            pos.bitboards[Piece::WRook as usize].set(SQ_F1);
+            pos.bitboards[Piece::WRook.as_usize()].unset(SQ_H1);
+            pos.bitboards[Piece::WRook.as_usize()].set(SQ_F1);
         }
         Castling::WhiteQueenSide => {
-            pos.bitboards[Piece::WRook as usize].unset(SQ_A1);
-            pos.bitboards[Piece::WRook as usize].set(SQ_D1);
+            pos.bitboards[Piece::WRook.as_usize()].unset(SQ_A1);
+            pos.bitboards[Piece::WRook.as_usize()].set(SQ_D1);
         }
         Castling::BlackKingSide => {
-            pos.bitboards[Piece::BRook as usize].unset(SQ_H8);
-            pos.bitboards[Piece::BRook as usize].set(SQ_F8);
+            pos.bitboards[Piece::BRook.as_usize()].unset(SQ_H8);
+            pos.bitboards[Piece::BRook.as_usize()].set(SQ_F8);
         }
         Castling::BlackQueenSide => {
-            pos.bitboards[Piece::BRook as usize].unset(SQ_A8);
-            pos.bitboards[Piece::BRook as usize].set(SQ_D8);
+            pos.bitboards[Piece::BRook.as_usize()].unset(SQ_A8);
+            pos.bitboards[Piece::BRook.as_usize()].set(SQ_D8);
         }
         Castling::None => {}
     }
@@ -278,21 +280,22 @@ fn undo_castling(pos: &mut Position, m: &Move) {
 
     // Move rook back to its original position
     match m.castling_type() {
+        // @TODO: extract position.move_piece()
         Castling::WhiteKingSide => {
-            pos.bitboards[Piece::WRook as usize].unset(SQ_F1);
-            pos.bitboards[Piece::WRook as usize].set(SQ_H1);
+            pos.bitboards[Piece::WRook.as_usize()].unset(SQ_F1);
+            pos.bitboards[Piece::WRook.as_usize()].set(SQ_H1);
         }
         Castling::WhiteQueenSide => {
-            pos.bitboards[Piece::WRook as usize].unset(SQ_D1);
-            pos.bitboards[Piece::WRook as usize].set(SQ_A1);
+            pos.bitboards[Piece::WRook.as_usize()].unset(SQ_D1);
+            pos.bitboards[Piece::WRook.as_usize()].set(SQ_A1);
         }
         Castling::BlackKingSide => {
-            pos.bitboards[Piece::BRook as usize].unset(SQ_F8);
-            pos.bitboards[Piece::BRook as usize].set(SQ_H8);
+            pos.bitboards[Piece::BRook.as_usize()].unset(SQ_F8);
+            pos.bitboards[Piece::BRook.as_usize()].set(SQ_H8);
         }
         Castling::BlackQueenSide => {
-            pos.bitboards[Piece::BRook as usize].unset(SQ_D8);
-            pos.bitboards[Piece::BRook as usize].set(SQ_A8);
+            pos.bitboards[Piece::BRook.as_usize()].unset(SQ_D8);
+            pos.bitboards[Piece::BRook.as_usize()].set(SQ_A8);
         }
         Castling::None => {}
     }
