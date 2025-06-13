@@ -1,5 +1,5 @@
 pub mod fen {
-    use crate::engine::bitboard::BitBoard;
+    use crate::engine::board::BitBoard;
     use crate::engine::moves::MoveFlags;
     use crate::engine::piece::*;
 

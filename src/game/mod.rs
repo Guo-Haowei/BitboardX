@@ -1,8 +1,8 @@
 pub mod undo_redo;
 
+use crate::engine::board::Square;
 use crate::engine::moves;
 use crate::engine::position::Position;
-use crate::engine::types::Square;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;

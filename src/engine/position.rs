@@ -1,8 +1,7 @@
-use super::bitboard::BitBoard;
+use super::board::{BitBoard, Square};
 use super::move_generator;
 use super::moves::{Move, MoveFlags, create_move, validate_move};
 use super::piece::{Color, Piece};
-use super::types::*;
 use super::utils::fen::*;
 
 pub struct Position {

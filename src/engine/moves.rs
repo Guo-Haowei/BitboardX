@@ -1,8 +1,7 @@
-use super::bitboard::BitBoard;
+use super::board::{BitBoard, Square};
 use super::move_generator;
 use super::piece::*;
 use super::position::Position;
-use super::types::*;
 
 #[repr(u8)]
 pub enum Castling {
