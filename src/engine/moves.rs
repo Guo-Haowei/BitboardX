@@ -56,10 +56,9 @@ pub enum SpecialMove {
 struct PackedData {
     from_sq: B6,
     to_sq: B6,
-    capture: B5,       // capture piece is not necessarily on to_sq
     is_ep_capture: B1, // if this move captures enemy pawn by en passant rule
     #[skip]
-    __: B14,
+    __: B19,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -68,18 +67,11 @@ pub struct Move {
 }
 
 impl Move {
-    pub fn new(
-        from_sq: Square,
-        to_sq: Square,
-        from: Piece,
-        capture: Piece,
-        is_ep_capture: bool,
-    ) -> Self {
+    pub fn new(from_sq: Square, to_sq: Square, from: Piece, is_ep_capture: bool) -> Self {
         debug_assert!(from != Piece::NONE);
         let mut data = PackedData::new();
         data.set_from_sq(from_sq.as_u8());
         data.set_to_sq(to_sq.as_u8());
-        data.set_capture(capture.as_u8());
         data.set_is_ep_capture(is_ep_capture as u8);
 
         Self { data }
@@ -91,10 +83,6 @@ impl Move {
 
     fn to_sq(&self) -> Square {
         Square(self.data.to_sq())
-    }
-
-    pub fn capture(&self) -> Piece {
-        Piece::from(self.data.capture())
     }
 
     pub fn is_ep_capture(&self) -> bool {
@@ -198,7 +186,12 @@ fn update_en_passant_square(
 }
 
 pub fn make_move(pos: &mut Position, m: &Move) -> Snapshot {
-    let snapshot = pos.snapshot();
+    // @TODO: refactor this code, pretty please
+
+    let castling = pos.castling;
+    let en_passant = pos.en_passant;
+    let halfmove_clock = pos.halfmove_clock;
+    let fullmove_number = pos.fullmove_number;
 
     let disabled_castling = drop_castling(
         pos,
@@ -210,19 +203,32 @@ pub fn make_move(pos: &mut Position, m: &Move) -> Snapshot {
 
     let from = pos.get_piece(m.from_sq());
     do_move_ep(pos, m, from);
-    do_move_generic(pos, m, from);
+
+    debug_assert!(pos.occupancies[pos.side_to_move.as_usize()].test(m.from_sq().as_u8()));
+
+    let from_sq = m.from_sq();
+    let to_sq = m.to_sq();
+
+    let to_piece = pos.get_piece(to_sq);
+
+    move_piece(&mut pos.bitboards[from.as_usize()], from_sq, to_sq);
+
+    if to_piece != Piece::NONE {
+        pos.bitboards[to_piece.as_usize()].unset(m.to_sq().as_u8()); // Clear the 'to' square for the captured piece
+    }
+
     do_castling(pos, m, from);
     post_move(pos);
 
     pos.castling &= !disabled_castling;
     pos.en_passant = update_en_passant_square(pos, m.from_sq(), m.to_sq(), from);
 
-    snapshot
+    Snapshot { castling, en_passant, halfmove_clock, fullmove_number, to_piece }
 }
 
 pub fn unmake_move(pos: &mut Position, m: &Move, snapshot: &Snapshot) {
     let from = pos.get_piece(m.to_sq());
-    undo_move_generic(pos, m, from);
+    undo_move_generic(pos, m, from, snapshot.to_piece);
     undo_move_ep(pos, m, from);
 
     undo_castling(pos, m, from);
@@ -270,24 +276,9 @@ fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {
     board.set(to_sq.as_u8());
 }
 
-fn do_move_generic(pos: &mut Position, m: &Move, from: Piece) {
-    debug_assert!(pos.occupancies[pos.side_to_move.as_usize()].test(m.from_sq().as_u8()));
-
+fn undo_move_generic(pos: &mut Position, m: &Move, from: Piece, to: Piece) {
     let from_sq = m.from_sq();
     let to_sq = m.to_sq();
-    let to = m.capture();
-
-    move_piece(&mut pos.bitboards[from.as_usize()], from_sq, to_sq);
-
-    if to != Piece::NONE {
-        pos.bitboards[to.as_usize()].unset(m.to_sq().as_u8()); // Clear the 'to' square for the captured piece
-    }
-}
-
-fn undo_move_generic(pos: &mut Position, m: &Move, from: Piece) {
-    let from_sq = m.from_sq();
-    let to_sq = m.to_sq();
-    let to = m.capture();
 
     move_piece(&mut pos.bitboards[from.as_usize()], to_sq, from_sq);
 

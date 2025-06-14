@@ -11,6 +11,7 @@ pub struct Snapshot {
     pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
+    pub to_piece: Piece,
 }
 
 pub struct Position {
@@ -189,15 +190,6 @@ impl Position {
             self.calc_attack_map_impl::<{ Color::WHITE.as_u8() }, { Piece::W_START }, { Piece::W_END }>(),
             self.calc_attack_map_impl::<{ Color::BLACK.as_u8() }, { Piece::B_START }, { Piece::B_END }>(),
         ]
-    }
-
-    pub fn snapshot(&self) -> Snapshot {
-        Snapshot {
-            castling: self.castling,
-            en_passant: self.en_passant,
-            halfmove_clock: self.halfmove_clock,
-            fullmove_number: self.fullmove_number,
-        }
     }
 
     pub fn restore(&mut self, snapshot: &Snapshot) {
