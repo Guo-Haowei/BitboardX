@@ -1,5 +1,3 @@
-use crate::engine::move_gen::internal::pseudo_legal_move_from_to;
-
 use super::board::*;
 use super::position::Position;
 use super::types::*;
@@ -8,7 +6,7 @@ mod internal;
 
 /// Pseudo-legal move generation
 pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
-    let mut moves = MoveList::new();
+    let mut move_list = MoveList::new();
 
     let color = pos.side_to_move;
     let (start, end) = if color == Color::WHITE {
@@ -18,23 +16,27 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
     };
 
     for i in start..=end {
+        let piece = Piece::from(i);
         let mut bb = pos.bitboards[i as usize];
+
         while bb.any() {
             let sq = bb.first_nonzero_sq();
 
-            let mut bb2 = internal::pseudo_legal_move_from(pos, sq);
+            if !internal::pseudo_legal_moves_from_sq(&mut move_list, piece, pos, sq) {
+                let mut bb2 = internal::pseudo_legal_move_from(pos, sq);
 
-            while bb2.any() {
-                let m = internal::pseudo_legal_move_from_to(pos, sq, bb2.first_nonzero_sq());
-                moves.add(m);
-                bb2.remove_first_nonzero_sq();
+                while bb2.any() {
+                    let m = internal::pseudo_legal_move_from_to(pos, sq, bb2.first_nonzero_sq());
+                    move_list.add(m);
+                    bb2.remove_first_nonzero_sq();
+                }
             }
 
             bb.remove_first_nonzero_sq();
         }
     }
 
-    moves
+    move_list
 }
 
 /// Legal move generation

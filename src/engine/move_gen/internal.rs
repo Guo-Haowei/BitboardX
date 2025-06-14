@@ -64,6 +64,34 @@ fn shift_sw(bb: BitBoard) -> BitBoard {
 const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
     [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
 
+pub fn pseudo_legal_moves_from_sq(
+    move_list: &mut MoveList,
+    piece: Piece,
+    pos: &Position,
+    sq: Square,
+) -> bool {
+    let color = piece.color();
+
+    let my = pos.occupancies[color.as_usize()];
+    let enemy = pos.occupancies[color.opponent().as_usize()];
+
+    match piece {
+        Piece::W_KNIGHT | Piece::B_KNIGHT => pseudo_legal_move_knight(move_list, sq, my),
+        Piece::W_ROOK | Piece::B_ROOK => pseudo_legal_move_rook(move_list, sq, my, enemy),
+        Piece::W_BISHOP | Piece::B_BISHOP => pseudo_legal_move_bishop(move_list, sq, my, enemy),
+        Piece::W_QUEEN | Piece::B_QUEEN => pseudo_legal_move_queen(move_list, sq, my, enemy),
+        _ => {
+            return false;
+        }
+    }
+    return true;
+}
+
+// @TODO: remove this eventually
+pub fn pseudo_legal_move_from(pos: &Position, sq: Square) -> BitBoard {
+    pseudo_legal_from_impl::<false>(pos, sq, pos.side_to_move)
+}
+
 /// Pseudo-legal move generation for a square
 fn pseudo_legal_from_impl<const ATTACK_ONLY: bool>(
     pos: &Position,
@@ -79,10 +107,10 @@ fn pseudo_legal_from_impl<const ATTACK_ONLY: bool>(
     match piece {
         Piece::W_PAWN => move_pawn::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(pos, sq),
         Piece::B_PAWN => move_pawn::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(pos, sq),
-        Piece::W_ROOK | Piece::B_ROOK => move_sliding::<0, 4>(pos, sq, color),
-        Piece::W_BISHOP | Piece::B_BISHOP => move_sliding::<4, 8>(pos, sq, color),
-        Piece::W_QUEEN | Piece::B_QUEEN => move_sliding::<0, 8>(pos, sq, color),
-        Piece::W_KNIGHT | Piece::B_KNIGHT => generate_knight_targets(sq, my_occupancy),
+        Piece::W_ROOK | Piece::B_ROOK => move_mask_rook(sq, my_occupancy, enemy_occupancy),
+        Piece::W_BISHOP | Piece::B_BISHOP => move_mask_bishop(sq, my_occupancy, enemy_occupancy),
+        Piece::W_QUEEN | Piece::B_QUEEN => move_mask_queen(sq, my_occupancy, enemy_occupancy),
+        Piece::W_KNIGHT | Piece::B_KNIGHT => move_mask_knight(sq, my_occupancy),
         Piece::W_KING => move_king::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(pos, sq),
         Piece::B_KING => move_king::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(pos, sq),
         Piece::NONE => BitBoard::new(),
@@ -107,10 +135,6 @@ pub fn is_move_legal(pos: &mut Position, m: &Move) -> bool {
     pos.unmake_move(m, &snapshot);
 
     legal
-}
-
-pub fn pseudo_legal_move_from(pos: &Position, sq: Square) -> BitBoard {
-    pseudo_legal_from_impl::<false>(pos, sq, pos.side_to_move)
 }
 
 pub fn pseudo_legal_attack_from(pos: &Position, sq: Square, color: Color) -> BitBoard {
@@ -205,25 +229,50 @@ fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
     moves
 }
 
+/// Computes the legal moves for sliding pieces (rook, bishop, and queen) from a given square on a bitboard.
+///
+/// Sliding pieces can move in straight lines across the board until they hit another piece or the board's edge.
+/// The move set depends on the piece:
+/// - **Rook**: moves along ranks and files (N, S, E, W)
+/// - **Bishop**: moves along diagonals (NE, NW, SE, SW)
+/// - **Queen**: combines rook and bishop movement
+///
+/// ## Movement Directions
+///
+/// - Rook:
+///   - N  → North (up)
+///   - S  → South (down)
+///   - E  → East  (right)
+///   - W  → West  (left)
+///
+/// - Bishop:
+///   - NE → North-East
+///   - NW → North-West
+///   - SE → South-East
+///   - SW → South-West
+///
+/// - Queen:
+///   - All 8 directions: N, S, E, W, NE, NW, SE, SW
+
 /// Pseudo-legal move generation for a sliding piece (rook, bishop, queen)
-fn move_sliding<const START: u8, const END: u8>(
-    pos: &Position,
+fn move_mask_sliding<const START: u8, const END: u8>(
     sq: Square,
-    color: Color,
+    my_occupancy: BitBoard,
+    enemy_occupancy: BitBoard,
+    // color: Color,
 ) -> BitBoard {
     let mut moves = BitBoard::new();
     let bb = sq.to_bitboard();
-    let opponent = color.opponent();
 
     for i in START..END {
         let mut next_bb = SHIFT_FUNCS[i as usize](bb);
 
         while next_bb.any() {
-            if (next_bb & pos.occupancies[color.as_usize()]).any() {
+            if (next_bb & my_occupancy).any() {
                 break;
             }
 
-            if (next_bb & pos.occupancies[opponent.as_usize()]).any() {
+            if (next_bb & enemy_occupancy).any() {
                 moves |= next_bb;
                 break;
             }
@@ -237,28 +286,96 @@ fn move_sliding<const START: u8, const END: u8>(
     moves
 }
 
-/// Pseudo-legal move generation for a knight
-fn generate_knight_targets(sq: Square, my_occupancy: BitBoard) -> BitBoard {
+fn move_mask_rook(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
+    move_mask_sliding::<0, 4>(sq, my_occupancy, enemy_occupancy)
+}
+
+fn move_mask_bishop(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
+    move_mask_sliding::<4, 8>(sq, my_occupancy, enemy_occupancy)
+}
+
+fn move_mask_queen(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
+    move_mask_sliding::<0, 8>(sq, my_occupancy, enemy_occupancy)
+}
+
+fn pseudo_legal_move_rook(
+    move_list: &mut MoveList,
+    sq: Square,
+    my_occupancy: BitBoard,
+    enemy_occupancy: BitBoard,
+) {
+    let mask = move_mask_rook(sq, my_occupancy, enemy_occupancy);
+    pseudo_legal_move_general(move_list, sq, mask);
+}
+
+fn pseudo_legal_move_bishop(
+    move_list: &mut MoveList,
+    sq: Square,
+    my_occupancy: BitBoard,
+    enemy_occupancy: BitBoard,
+) {
+    let mask = move_mask_bishop(sq, my_occupancy, enemy_occupancy);
+    pseudo_legal_move_general(move_list, sq, mask);
+}
+
+fn pseudo_legal_move_queen(
+    move_list: &mut MoveList,
+    sq: Square,
+    my_occupancy: BitBoard,
+    enemy_occupancy: BitBoard,
+) {
+    let mask = move_mask_queen(sq, my_occupancy, enemy_occupancy);
+    pseudo_legal_move_general(move_list, sq, mask);
+}
+
+// Piece::W_ROOK | Piece::B_ROOK => move_sliding::<0, 4>(pos, sq, color),
+// Piece::W_BISHOP | Piece::B_BISHOP => move_sliding::<4, 8>(pos, sq, color),
+// Piece::W_QUEEN | Piece::B_QUEEN => move_sliding::<0, 8>(pos, sq, color),
+
+/// Computes the legal knight moves from a given square on a bitboard.
+///
+/// The knight moves in an L-shape: two squares in one cardinal direction
+/// (N, S, E, W) followed by one square in a perpendicular direction.
+///
+/// ## Movement Description
+///
+/// A knight on a square can move in 8 possible directions:
+///
+/// - NE + N (2N 1E) → North-North-East
+/// - NW + N (2N 1W) → North-North-West
+/// - SE + S (2S 1E) → South-South-East
+/// - SW + S (2S 1W) → South-South-West
+/// - NW + W (2W 1N) → West-West-North
+/// - SW + W (2W 1S) → West-West-South
+/// - NE + E (2E 1N) → East-East-North
+/// - SE + E (2E 1S) → East-East-South
+fn move_mask_knight(sq: Square, my_occupancy: BitBoard) -> BitBoard {
     let mut moves = BitBoard::new();
     let bb = sq.to_bitboard();
 
     let mask = !my_occupancy;
 
-    moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & mask;
-    moves |= shift(bb & !(BOUND_AB | BOUND_8), NW + WEST) & mask;
-    moves |= shift(bb & !(BOUND_GH | BOUND_1), SE + EAST) & mask;
-    moves |= shift(bb & !(BOUND_GH | BOUND_8), NE + EAST) & mask;
-
-    moves |= shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH) & mask;
+    moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & mask;
     moves |= shift(bb & !(BOUND_A | BOUND_78), NW + NORTH) & mask;
     moves |= shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH) & mask;
-    moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & mask;
+    moves |= shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH) & mask;
+
+    moves |= shift(bb & !(BOUND_AB | BOUND_8), NW + WEST) & mask;
+    moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & mask;
+    moves |= shift(bb & !(BOUND_GH | BOUND_8), NE + EAST) & mask;
+    moves |= shift(bb & !(BOUND_GH | BOUND_1), SE + EAST) & mask;
 
     moves
 }
 
-fn generate_knight_moves(move_list: &mut MoveList, sq: Square, my_occupancy: BitBoard) {
-    let mut bb = generate_knight_targets(sq, my_occupancy);
+fn pseudo_legal_move_knight(move_list: &mut MoveList, sq: Square, my_occupancy: BitBoard) {
+    let mask = move_mask_knight(sq, my_occupancy);
+    pseudo_legal_move_general(move_list, sq, mask);
+}
+
+/// Pseudo-legal move generation for a knight, bishop, rook, and queen
+fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: BitBoard) {
+    let mut bb = move_mask;
     while bb.any() {
         let target_sq = bb.first_nonzero_sq();
         move_list.add(Move::new(sq, target_sq, MoveType::Normal));
