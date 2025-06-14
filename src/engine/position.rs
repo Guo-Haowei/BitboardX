@@ -1,5 +1,5 @@
 use super::board::{BitBoard, Square};
-use super::moves::{Move, MoveFlags, do_move, undo_move};
+use super::moves::{Move, MoveFlags, make_move, unmake_move};
 use super::piece::{Color, Piece};
 use super::utils;
 
@@ -188,11 +188,11 @@ impl Position {
         ]
     }
 
-    fn gen_snapshot(&self) -> Snapshot {
+    pub fn snapshot(&self) -> Snapshot {
         Snapshot { castling: self.castling }
     }
 
-    fn restore_snapshot(&mut self, snapshot: Snapshot) {
+    pub fn restore(&mut self, snapshot: &Snapshot) {
         self.castling = snapshot.castling;
     }
 
@@ -206,9 +206,7 @@ impl Position {
     }
 
     pub fn do_move(&mut self, m: &Move) -> Snapshot {
-        let snapshot = self.gen_snapshot();
-
-        do_move(self, m);
+        let snapshot = make_move(self, m);
 
         self.undo_stack.push((m.clone(), snapshot));
         self.redo_stack.clear();
@@ -223,7 +221,7 @@ impl Position {
 
         let (m, snapshot) = self.undo_stack.pop().unwrap();
 
-        undo_move(self, &m);
+        unmake_move(self, &m, &snapshot);
 
         self.redo_stack.push((m, snapshot));
         true
@@ -237,7 +235,7 @@ impl Position {
         let (m, snapshot) = self.redo_stack.pop().unwrap();
         // self.restore_snapshot(snapshot);
 
-        do_move(self, &m);
+        make_move(self, &m);
 
         self.undo_stack.push((m, snapshot));
         true
@@ -250,7 +248,7 @@ impl Position {
             Some((from, to)) => match self.legal_move_from_to(from, to) {
                 None => false,
                 Some(m) => {
-                    do_move(self, &m);
+                    make_move(self, &m);
                     true
                 }
             },

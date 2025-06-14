@@ -337,11 +337,11 @@ pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
     debug_assert!(piece == Piece::W_KING || piece == Piece::B_KING);
     debug_assert!(piece.color() == us);
 
-    do_move(pos, m);
+    let snapshot = make_move(pos, m);
 
     let legal = (pos.bitboards[piece.as_usize()] & pos.attack_map[opponent.as_usize()]).none();
 
-    undo_move(pos, m);
+    unmake_move(pos, m, &snapshot);
 
     legal
 }
@@ -373,12 +373,11 @@ pub fn pseudo_legal_move_from_to(pos: &Position, from_sq: Square, to_sq: Square)
 
     let drop_ep_sq = pos.ep_sq;
 
-    let drop_castling = check_dropped_castling_flags(pos, from_sq, to_sq, from, to);
     let add_ep_sq = check_if_add_eq_sq(pos, from_sq, to_sq, from);
 
     let is_ep_capture = check_if_is_eq_capture(pos, from_sq, to_sq, from, to);
 
-    Move::new(from_sq, to_sq, from, to, drop_castling, drop_ep_sq, add_ep_sq, is_ep_capture)
+    Move::new(from_sq, to_sq, from, to, drop_ep_sq, add_ep_sq, is_ep_capture)
 }
 
 fn check_if_is_eq_capture(
@@ -468,63 +467,6 @@ pub fn legal_move_from_to(pos: &mut Position, from_sq: Square, to_sq: Square) ->
     }
 
     Some(pseudo_legal_move_from_to(pos, from_sq, to_sq))
-}
-
-// if castling rights are already disabled, return
-// if king moved, disable castling rights, return
-// if rook moved, disable castling rights, return
-// if rook taken out, disable castling rights, return
-fn check_dropped_castling_flags(
-    pos: &Position,
-    from_sq: Square,
-    to_sq: Square,
-    from: Piece,
-    to: Piece,
-) -> u8 {
-    fn helper<const BIT: u8>(
-        pos: &Position,
-        from_sq: Square,
-        to_sq: Square,
-        from: Piece,
-        to: Piece,
-    ) -> u8 {
-        if pos.castling & BIT == 0 {
-            return 0;
-        }
-
-        if from == Piece::W_KING && (BIT & MoveFlags::KQ) != 0 {
-            return BIT;
-        }
-
-        if from == Piece::B_KING && (BIT & MoveFlags::kq) != 0 {
-            return BIT;
-        }
-
-        match (from, from_sq) {
-            (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-            (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-            (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-            (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
-            _ => {}
-        }
-
-        match (to, to_sq) {
-            (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-            (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-            (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-            (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
-            _ => {}
-        }
-
-        0
-    }
-
-    let mut drop_castling = 0;
-    drop_castling |= helper::<{ MoveFlags::K }>(pos, from_sq, to_sq, from, to);
-    drop_castling |= helper::<{ MoveFlags::Q }>(pos, from_sq, to_sq, from, to);
-    drop_castling |= helper::<{ MoveFlags::k }>(pos, from_sq, to_sq, from, to);
-    drop_castling |= helper::<{ MoveFlags::q }>(pos, from_sq, to_sq, from, to);
-    drop_castling
 }
 
 fn castling_to_string(castling: u8) -> String {

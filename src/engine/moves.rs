@@ -1,3 +1,5 @@
+use crate::engine::position::Snapshot;
+
 use super::board::{BitBoard, Square, constants::*};
 use super::piece::*;
 use super::position::Position;
@@ -56,13 +58,13 @@ struct PackedData {
     to_sq: B6,
     color: B1,
     capture: B5,       // capture piece is not necessarily on to_sq
-    drop_castling: B4, // castling rights drop (KQkq)
     is_ep_capture: B1, // if this move captures enemy pawn by en passant rule
     add_ep_sq: B1,     // if this move creates an en passant square
     drop_ep_sq: B1,    // if this move removes an en passant square
     en_passant_sq: B4, // removed en passant square file (0-7 for white, 8-15 for black)
+    is_castling: B1,
     #[skip]
-    __: B3,
+    __: B6,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -76,7 +78,6 @@ impl Move {
         to_sq: Square,
         from: Piece,
         capture: Piece,
-        drop_castling: u8,
         drop_ep_sq: Option<Square>,
         add_ep_sq: bool,
         is_ep_capture: bool,
@@ -87,10 +88,10 @@ impl Move {
         data.set_from_sq(from_sq.as_u8());
         data.set_to_sq(to_sq.as_u8());
         data.set_capture(capture.as_u8());
-        data.set_drop_castling(drop_castling);
         data.set_color(color.as_u8());
         data.set_add_ep_sq(add_ep_sq as u8);
         data.set_is_ep_capture(is_ep_capture as u8);
+        data.set_is_castling(0);
 
         match drop_ep_sq {
             Some(sq) => {
@@ -132,10 +133,6 @@ impl Move {
         Piece::from(self.data.capture())
     }
 
-    pub fn drop_castling(&self) -> u8 {
-        self.data.drop_castling() & MoveFlags::KQkq
-    }
-
     pub fn drop_ep(&self) -> Option<Square> {
         if self.data.drop_ep_sq() == 0 {
             return None;
@@ -163,22 +160,88 @@ impl Move {
     }
 }
 
-pub fn do_move(pos: &mut Position, m: &Move) -> bool {
+// if castling rights are already disabled, return
+// if king moved, disable castling rights, return
+// if rook moved, disable castling rights, return
+// if rook taken out, disable castling rights, return
+fn drop_castling(pos: &Position, from_sq: Square, to_sq: Square, from: Piece, to: Piece) -> u8 {
+    fn helper<const BIT: u8>(
+        pos: &Position,
+        from_sq: Square,
+        to_sq: Square,
+        from: Piece,
+        to: Piece,
+    ) -> u8 {
+        if pos.castling & BIT == 0 {
+            return 0;
+        }
+
+        if from == Piece::W_KING && (BIT & MoveFlags::KQ) != 0 {
+            return BIT;
+        }
+
+        if from == Piece::B_KING && (BIT & MoveFlags::kq) != 0 {
+            return BIT;
+        }
+
+        match (from, from_sq) {
+            (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+            (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+            (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+            (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+            _ => {}
+        }
+
+        match (to, to_sq) {
+            (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+            (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+            (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+            (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+            _ => {}
+        }
+
+        0
+    }
+
+    let mut drop_castling = 0;
+    drop_castling |= helper::<{ MoveFlags::K }>(pos, from_sq, to_sq, from, to);
+    drop_castling |= helper::<{ MoveFlags::Q }>(pos, from_sq, to_sq, from, to);
+    drop_castling |= helper::<{ MoveFlags::k }>(pos, from_sq, to_sq, from, to);
+    drop_castling |= helper::<{ MoveFlags::q }>(pos, from_sq, to_sq, from, to);
+    drop_castling
+}
+
+pub fn make_move(pos: &mut Position, m: &Move) -> Snapshot {
+    let snapshot = pos.snapshot();
+
+    let disabled_castling = drop_castling(
+        pos,
+        m.from_sq(),
+        m.to_sq(),
+        pos.get_piece(m.from_sq()),
+        pos.get_piece(m.to_sq()),
+    );
+
+    pos.castling &= !disabled_castling;
+
     let from = pos.get_piece(m.from_sq());
     do_move_ep(pos, m, from);
     do_move_generic(pos, m, from);
     do_castling(pos, m, from);
     post_move(pos);
-    true
+
+    snapshot
 }
 
-pub fn undo_move(pos: &mut Position, m: &Move) {
+pub fn unmake_move(pos: &mut Position, m: &Move, snapshot: &Snapshot) {
     let from = pos.get_piece(m.to_sq());
     undo_move_generic(pos, m, from);
     undo_move_ep(pos, m, from);
 
     undo_castling(pos, m, from);
     post_move(pos);
+
+    pos.restore(snapshot);
 }
 
 fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
@@ -217,10 +280,6 @@ fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
 }
 
 fn undo_move_ep(pos: &mut Position, m: &Move, _from: Piece) {
-    // if m.add_ep_sq() {
-    //     pos.ep_sq = None;
-    // }
-
     pos.ep_sq = m.drop_ep();
 
     if m.is_ep_capture() {
@@ -287,9 +346,6 @@ fn castling_type(from: Piece, from_sq: Square, to_sq: Square) -> Castling {
 }
 
 fn do_castling(pos: &mut Position, m: &Move, from: Piece) {
-    // Update castling rights if necessary
-    pos.castling &= !m.drop_castling();
-
     // Restore Rook position
     let index = castling_type(from, m.from_sq(), m.to_sq());
     if index == Castling::None {
@@ -300,9 +356,6 @@ fn do_castling(pos: &mut Position, m: &Move, from: Piece) {
 }
 
 fn undo_castling(pos: &mut Position, m: &Move, from: Piece) {
-    // Restore castling rights if necessary
-    pos.castling |= m.drop_castling();
-
     // Restore Rook position
     let index = castling_type(from, m.from_sq(), m.to_sq());
     if index == Castling::None {
