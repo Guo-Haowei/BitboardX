@@ -3,6 +3,7 @@ pub mod undo_redo;
 use crate::engine::board::Square;
 use crate::engine::moves;
 use crate::engine::position::Position;
+use crate::engine::utils;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -68,13 +69,13 @@ impl Game {
     }
 
     pub fn execute(&mut self, move_str: &str) -> bool {
-        let squares = moves::parse_move(move_str);
+        let squares = utils::parse_move(move_str);
         if squares.is_none() {
             return false;
         }
 
         let (from, to) = squares.unwrap();
-        let move_ = moves::create_move_verified(&mut self.pos.borrow_mut(), from, to);
+        let move_ = self.pos.borrow_mut().legal_move_from_to(from, to);
         if move_.is_none() {
             return false;
         }

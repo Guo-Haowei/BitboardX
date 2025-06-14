@@ -1,0 +1,165 @@
+export const MOVES_DATA =
+{
+  "Basic Movement": [
+    [
+      "r2q1rk1/pp3ppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 b - - 0 10",
+      {
+        description: "Black pawn moves forward one square",
+        expect: true,
+        moves: "d5d4"
+      },
+      {
+        description: "Black pawn captures white pawn",
+        expect: true,
+        moves: "d5e4"
+      },
+      {
+        description: "Black pawn can't capture empty square",
+        expect: false,
+        moves: "d5c4"
+      },
+      {
+        description: "Black bishop captures white pawn",
+        expect: true,
+        moves: "c5f2"
+      },
+      {
+        description: "Black bishop can't capture piece behind pin",
+        expect: false,
+        moves: "c5g1"
+      },
+      {
+        description: "Knight can move to empty cells",
+        expect: true,
+        moves: "f6g4 f3d4 g4e3"
+      },
+      {
+        description: "Knight can capture",
+        expect: true,
+        moves: "f6e4"
+      },
+      {
+        description: "Knight can't move to cells occupied by own pieces",
+        expect: false,
+        moves: "f6h7"
+      }
+    ]
+  ],
+  "En Passant": [
+    [
+      // 8 k . . . . . . .
+      // 7 . . . . . . . .
+      // 6 . . . . . . . .
+      // 5 . p P . . . . .
+      // 4 . . . . . p . .
+      // 3 . . . . . . . .
+      // 2 . . . . P . . .
+      // 1 . . . . . . . K
+      //   a b c d e f g h
+      "k7/8/8/1pP5/5p2/8/4P3/7K w - b6 0 1",
+      {
+        description: "White pawn can capture black pawn at b6",
+        expect: true,
+        moves: "c5b6"
+      },
+      {
+        description: "Black pawn can capture white pawn at e3",
+        expect: true,
+        moves: "e2e4 f4e3"
+      },
+      {
+        description: "White pawn can't capture black pawn at b6 after one move",
+        expect: false,
+        moves: "e2e4 f4e3 d5d7"
+      },
+      {
+        description: "Black pawn can't capture white pawn if it pushes by one square (set up)",
+        expect: true,
+        moves: "e2e3 a8a7 e3e4"
+      },
+      {
+        description: "Black pawn can't capture white pawn if it pushes by one square",
+        expect: false,
+        moves: "e2e3 a8a7 e3e4 f4e3"
+      },
+    ]
+  ],
+  "Castling": [
+    [
+      "r3k2r/pppbqppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPPBQPPP/R3K2R w KQkq - 0 1",
+      {
+        description: "White king can castle either side (Kingside)",
+        expect: true,
+        moves: "e1g1"
+      },
+      {
+        description: "White king can castle either side (Queenside)",
+        expect: true,
+        moves: "e1c1"
+      }
+    ],
+    [
+      "fen r3k2r/pppbqppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPPBQPPP/R3K2R b KQkq - 0 1",
+      {
+        description: "Black king can castle either side (Kingside)",
+        expect: true,
+        moves: "e8g8"
+      },
+      {
+        description: "Black king can castle either side (Queenside)",
+        expect: true,
+        moves: "e8c8"
+      }
+    ],
+    [
+      "r2bk2r/8/4B3/8/8/4b3/8/R3K2R w KQkq - 0 1",
+      {
+        description: "White king can't castle kingside because g1 is under attack",
+        expect: false,
+        moves: "e1g1"
+      },
+      {
+        description: "White king can't castle queenside because c1 is under attack",
+        expect: false,
+        moves: "e1c1"
+      }
+    ],
+    [
+      "r2bk2r/8/4B3/8/8/4b3/8/R3K2R b KQkq - 0 1",
+      {
+        description: "Black king can't castle kingside because g8 is under attack",
+        expect: false,
+        moves: "e8g8"
+      },
+      {
+        description: "Black king can't castle queenside because d8 is blocked",
+        expect: false,
+        moves: "e8c8"
+      }
+    ],
+    {
+      description: "White king can't castle because it's under attack",
+      expect: false,
+      fen: "r2bk2r/8/4B3/8/8/8/3b4/R3K2R w KQkq - 0 1",
+      moves: "e1c1"
+    },
+    {
+      description: "White king can't castle kingside because rook is taken out",
+      expect: false,
+      fen: "r2bk2r/8/4B3/8/4b3/8/8/R3K2R b KQkq - 0 1",
+      moves: "e4h1 e1g1"
+    },
+    {
+      description: "White king can't castle kingside, because castling is not allowed from fen",
+      expect: false,
+      fen: "r2bk2r/8/4B3/8/4b3/8/8/R3K2R w kq - 0 1",
+      moves: "e1g1"
+    },
+    {
+      description: "White king can castle kingside, because rook is not taken out",
+      expect: true,
+      fen: "r2bk2r/8/4B3/8/4b3/8/8/R3K2R w KQkq - 0 1",
+      moves: "e1g1"
+    }
+  ]
+};

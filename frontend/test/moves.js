@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { expect } = require('chai');
 const { exec } = require('child_process');
-const moveTests = require('./moves.test.json');
+const { MOVES_DATA } = require('./moves_data.js');
 
 const enginePath = '"../target/debug/BitboardX.exe"';
 
@@ -25,7 +25,7 @@ function testMove(testCase, fen) {
   });
 }
 
-for (const [key, value] of Object.entries(moveTests)) {
+for (const [key, value] of Object.entries(MOVES_DATA)) {
   describe(key, () => {
     value.forEach(testCase => {
       if (Array.isArray(testCase)) {

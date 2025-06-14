@@ -1,4 +1,3 @@
-use super::moves;
 use super::position::Position;
 use std::io::{self, Write};
 use wasm_bindgen::prelude::*;
@@ -6,7 +5,7 @@ use wasm_bindgen::prelude::*;
 pub const NAME: &str = "BitboardX";
 pub const VERSION_MAJOR: u32 = 0;
 pub const VERSION_MINOR: u32 = 1;
-pub const VERSION_PATCH: u32 = 4;
+pub const VERSION_PATCH: u32 = 5;
 
 pub fn version() -> String {
     format!("{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
@@ -75,7 +74,7 @@ impl Engine {
             match parts.as_slice() {
                 ["moves", moves @ ..] => {
                     for move_str in moves {
-                        if !moves::apply_move_str(&mut self.pos, move_str) {
+                        if !self.pos.apply_move_str(move_str) {
                             eprintln!("Error: Invalid move '{}'", move_str);
                             break;
                         }

@@ -92,6 +92,11 @@ impl Piece {
 
     const NB_PIECE_TYPES: u8 = PieceType::None as u8;
 
+    pub const fn from(piece: u8) -> Piece {
+        debug_assert!(piece <= Self::COUNT as u8);
+        Piece(piece)
+    }
+
     pub const fn color(&self) -> Color {
         debug_assert!(true);
         match self.0 {
@@ -125,6 +130,42 @@ impl Piece {
     pub const fn as_u8(&self) -> u8 {
         self.0
     }
+
+    pub const fn parse(c: char) -> Option<Piece> {
+        match c {
+            'p' => Some(Piece::B_PAWN),
+            'r' => Some(Piece::B_ROOK),
+            'n' => Some(Piece::B_KNIGHT),
+            'b' => Some(Piece::B_BISHOP),
+            'q' => Some(Piece::B_QUEEN),
+            'k' => Some(Piece::B_KING),
+            'P' => Some(Piece::W_PAWN),
+            'R' => Some(Piece::W_ROOK),
+            'N' => Some(Piece::W_KNIGHT),
+            'B' => Some(Piece::W_BISHOP),
+            'Q' => Some(Piece::W_QUEEN),
+            'K' => Some(Piece::W_KING),
+            _ => None,
+        }
+    }
+
+    pub fn to_char(&self) -> char {
+        match self.0 {
+            0 => 'P',  // White Pawn
+            1 => 'N',  // White Knight
+            2 => 'B',  // White Bishop
+            3 => 'R',  // White Rook
+            4 => 'Q',  // White Queen
+            5 => 'K',  // White King
+            6 => 'p',  // Black Pawn
+            7 => 'n',  // Black Knight
+            8 => 'b',  // Black Bishop
+            9 => 'r',  // Black Rook
+            10 => 'q', // Black Queen
+            11 => 'k', // Black King
+            _ => '.',  // None
+        }
+    }
 }
 
 impl fmt::Display for Color {
@@ -134,6 +175,12 @@ impl fmt::Display for Color {
             COLOR_BLACK => write!(f, "Black"),
             _ => write!(f, "-"),
         }
+    }
+}
+
+impl fmt::Display for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_char())
     }
 }
 
