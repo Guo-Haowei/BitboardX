@@ -1,3 +1,5 @@
+use crate::engine::board::constants::RANK_3;
+
 use super::board::{BitBoard, Square};
 use super::moves::{Move, MoveFlags, make_move, unmake_move};
 use super::piece::{Color, Piece};
@@ -8,6 +10,9 @@ mod internal;
 #[derive(Clone, Copy)]
 pub struct Snapshot {
     pub castling: u8,
+    pub en_passant: Option<Square>,
+    pub halfmove_clock: u32,
+    pub fullmove_number: u32,
 }
 
 pub struct Position {
@@ -16,7 +21,7 @@ pub struct Position {
 
     pub side_to_move: Color,
     pub castling: u8,
-    pub ep_sq: Option<Square>,
+    pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
 
@@ -54,7 +59,7 @@ impl Position {
             bitboards,
             side_to_move: Color::WHITE,
             castling: MoveFlags::KQkq,
-            ep_sq: None,
+            en_passant: None,
             halfmove_clock: 0,
             fullmove_number: 1,
             occupancies,
@@ -89,7 +94,7 @@ impl Position {
             bitboards,
             side_to_move,
             castling,
-            ep_sq: en_passant,
+            en_passant,
             halfmove_clock,
             fullmove_number,
             occupancies,
@@ -189,11 +194,20 @@ impl Position {
     }
 
     pub fn snapshot(&self) -> Snapshot {
-        Snapshot { castling: self.castling }
+        Snapshot {
+            castling: self.castling,
+            en_passant: self.en_passant,
+            halfmove_clock: self.halfmove_clock,
+            fullmove_number: self.fullmove_number,
+        }
     }
 
     pub fn restore(&mut self, snapshot: &Snapshot) {
         self.castling = snapshot.castling;
+        self.en_passant = snapshot.en_passant;
+
+        self.halfmove_clock = snapshot.halfmove_clock;
+        self.fullmove_number = snapshot.fullmove_number;
     }
 
     // TODO: move UndoRedo to other module
@@ -280,7 +294,7 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
-        assert!(pos.ep_sq.is_none());
+        assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
         assert_eq!(
@@ -307,7 +321,7 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
-        assert!(pos.ep_sq.is_none());
+        assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
         assert_eq!(
@@ -323,7 +337,7 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
-        assert!(pos.ep_sq.is_none());
+        assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 6);
         assert_eq!(pos.fullmove_number, 7);
         assert_eq!(

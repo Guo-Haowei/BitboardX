@@ -59,12 +59,8 @@ struct PackedData {
     color: B1,
     capture: B5,       // capture piece is not necessarily on to_sq
     is_ep_capture: B1, // if this move captures enemy pawn by en passant rule
-    add_ep_sq: B1,     // if this move creates an en passant square
-    drop_ep_sq: B1,    // if this move removes an en passant square
-    en_passant_sq: B4, // removed en passant square file (0-7 for white, 8-15 for black)
-    is_castling: B1,
     #[skip]
-    __: B6,
+    __: B13,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -78,8 +74,6 @@ impl Move {
         to_sq: Square,
         from: Piece,
         capture: Piece,
-        drop_ep_sq: Option<Square>,
-        add_ep_sq: bool,
         is_ep_capture: bool,
     ) -> Self {
         debug_assert!(from != Piece::NONE);
@@ -89,30 +83,7 @@ impl Move {
         data.set_to_sq(to_sq.as_u8());
         data.set_capture(capture.as_u8());
         data.set_color(color.as_u8());
-        data.set_add_ep_sq(add_ep_sq as u8);
         data.set_is_ep_capture(is_ep_capture as u8);
-        data.set_is_castling(0);
-
-        match drop_ep_sq {
-            Some(sq) => {
-                data.set_drop_ep_sq(1);
-                let (file, rank) = sq.file_rank();
-                assert!(
-                    matches!(rank, RANK_3 | RANK_6),
-                    "En passant square must be on rank 3 or 6"
-                );
-                let value = if rank == RANK_3 { file } else { file + 8 };
-                debug_assert!(match color {
-                    Color::WHITE => value > 8,
-                    Color::BLACK => value < 8,
-                    _ => false,
-                });
-                data.set_en_passant_sq(value);
-            }
-            None => {
-                data.set_drop_ep_sq(0);
-            }
-        }
 
         Self { data }
     }
@@ -131,20 +102,6 @@ impl Move {
 
     pub fn capture(&self) -> Piece {
         Piece::from(self.data.capture())
-    }
-
-    pub fn drop_ep(&self) -> Option<Square> {
-        if self.data.drop_ep_sq() == 0 {
-            return None;
-        }
-        let file = self.data.en_passant_sq() % 8;
-        let is_white = self.data.en_passant_sq() < 8;
-        let rank = if is_white { RANK_3 } else { RANK_6 };
-        Some(Square::make(file, rank))
-    }
-
-    pub fn add_ep_sq(&self) -> bool {
-        self.data.add_ep_sq() != 0
     }
 
     pub fn is_ep_capture(&self) -> bool {
@@ -211,6 +168,46 @@ fn drop_castling(pos: &Position, from_sq: Square, to_sq: Square, from: Piece, to
     drop_castling
 }
 
+fn update_en_passant_square(
+    pos: &Position,
+    from_sq: Square,
+    to_sq: Square,
+    from: Piece,
+) -> Option<Square> {
+    if from.piece_type() != PieceType::Pawn {
+        return None;
+    }
+
+    let (file, from_rank) = from_sq.file_rank();
+    let (_file, to_rank) = to_sq.file_rank();
+
+    if match (from, from_rank, to_rank) {
+        (Piece::W_PAWN, RANK_2, RANK_4) => true,
+        (Piece::B_PAWN, RANK_7, RANK_5) => true,
+        _ => false,
+    } {
+        assert_eq!(file, _file);
+        // check if there's opponent's pawn on the left or right of 'to' square
+        let board = &pos.bitboards[if from == Piece::W_PAWN {
+            Piece::B_PAWN.as_usize()
+        } else {
+            Piece::W_PAWN.as_usize()
+        }];
+
+        let mut legal_ep = false;
+        legal_ep =
+            legal_ep || (file < FILE_H && board.test(Square::make(file + 1, to_rank).as_u8()));
+        legal_ep =
+            legal_ep || (file > FILE_A && board.test(Square::make(file - 1, to_rank).as_u8()));
+
+        if legal_ep {
+            return Some(Square::make(file, (from_rank + to_rank) / 2));
+        }
+    }
+
+    None
+}
+
 pub fn make_move(pos: &mut Position, m: &Move) -> Snapshot {
     let snapshot = pos.snapshot();
 
@@ -222,13 +219,19 @@ pub fn make_move(pos: &mut Position, m: &Move) -> Snapshot {
         pos.get_piece(m.to_sq()),
     );
 
-    pos.castling &= !disabled_castling;
-
     let from = pos.get_piece(m.from_sq());
     do_move_ep(pos, m, from);
     do_move_generic(pos, m, from);
     do_castling(pos, m, from);
     post_move(pos);
+
+    pos.castling &= !disabled_castling;
+    pos.en_passant = update_en_passant_square(pos, m.from_sq(), m.to_sq(), from);
+
+    if let Some(sq) = pos.en_passant {
+        let (file, rank) = sq.file_rank();
+        assert!(rank == 2 || rank == 5, "En passant square must be on rank 3 or 4");
+    }
 
     snapshot
 }
@@ -244,8 +247,8 @@ pub fn unmake_move(pos: &mut Position, m: &Move, snapshot: &Snapshot) {
     pos.restore(snapshot);
 }
 
-fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
-    let (to_file, to_rank) = m.to_sq().file_rank();
+fn do_move_ep(pos: &mut Position, m: &Move, _: Piece) {
+    let (to_file, _) = m.to_sq().file_rank();
 
     // check if it's an en passant capture
     if m.is_ep_capture() {
@@ -260,28 +263,9 @@ fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
         // Remove the captured pawn from the board
         pos.bitboards[enemy.as_usize()].unset(enemy_sq.as_u8());
     }
-
-    // always remove the en passant square if it exists
-    pos.ep_sq = None;
-
-    // check if this move creates a new en passant square
-    if m.add_ep_sq() {
-        debug_assert!(from.piece_type() == PieceType::Pawn, "En passant move must be a pawn move");
-        match (to_rank, from.color()) {
-            (RANK_4, Color::WHITE) => {
-                pos.ep_sq = Some(Square::make(to_file, RANK_3));
-            }
-            (RANK_5, Color::BLACK) => {
-                pos.ep_sq = Some(Square::make(to_file, RANK_6));
-            }
-            _ => {}
-        }
-    }
 }
 
 fn undo_move_ep(pos: &mut Position, m: &Move, _from: Piece) {
-    pos.ep_sq = m.drop_ep();
-
     if m.is_ep_capture() {
         // Restore the captured pawn on the en passant square
         let (to_file, _) = m.to_sq().file_rank();

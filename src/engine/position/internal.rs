@@ -104,7 +104,7 @@ fn move_pawn_enpassant<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard 
     let is_white = COLOR == Color::WHITE.as_u8();
     let is_black = COLOR != Color::WHITE.as_u8();
 
-    if let Some(ep_sq) = pos.ep_sq {
+    if let Some(ep_sq) = pos.en_passant {
         debug_assert!(pos.get_piece(ep_sq) == Piece::NONE, "En passant square must be empty");
         let (ep_file, ep_rank) = ep_sq.file_rank();
         if (file as i32 - ep_file as i32).abs() == 1 {
@@ -371,13 +371,9 @@ pub fn pseudo_legal_move_from_to(pos: &Position, from_sq: Square, to_sq: Square)
         "Piece on 'to' square is of the same color as the piece on 'from' square"
     );
 
-    let drop_ep_sq = pos.ep_sq;
-
-    let add_ep_sq = check_if_add_eq_sq(pos, from_sq, to_sq, from);
-
     let is_ep_capture = check_if_is_eq_capture(pos, from_sq, to_sq, from, to);
 
-    Move::new(from_sq, to_sq, from, to, drop_ep_sq, add_ep_sq, is_ep_capture)
+    Move::new(from_sq, to_sq, from, to, is_ep_capture)
 }
 
 fn check_if_is_eq_capture(
@@ -426,38 +422,6 @@ fn check_if_is_eq_capture(
     }
 
     true
-}
-
-fn check_if_add_eq_sq(pos: &Position, from_sq: Square, to_sq: Square, from: Piece) -> bool {
-    if from.piece_type() != PieceType::Pawn {
-        return false;
-    }
-
-    let (file, from_rank) = from_sq.file_rank();
-    let (_file, to_rank) = to_sq.file_rank();
-
-    if match (from, from_rank, to_rank) {
-        (Piece::W_PAWN, RANK_2, RANK_4) => true,
-        (Piece::B_PAWN, RANK_7, RANK_5) => true,
-        _ => false,
-    } {
-        assert_eq!(file, _file);
-        // check if there's opponent's pawn on the left or right of 'to' square
-        let board = &pos.bitboards[if from == Piece::W_PAWN {
-            Piece::B_PAWN.as_usize()
-        } else {
-            Piece::W_PAWN.as_usize()
-        }];
-
-        if file < FILE_H && board.test(Square::make(file + 1, to_rank).as_u8()) {
-            return true;
-        }
-        if file > FILE_A && board.test(Square::make(file - 1, to_rank).as_u8()) {
-            return true;
-        }
-    }
-
-    false
 }
 
 pub fn legal_move_from_to(pos: &mut Position, from_sq: Square, to_sq: Square) -> Option<Move> {
@@ -528,7 +492,7 @@ pub fn to_string(pos: &Position, pad: bool) -> String {
     s.push_str("  ａｂｃｄｅｆｇｈ\n");
     s.push_str(format!("Side: {}\n", pos.side_to_move).as_str());
     s.push_str(format!("Castling: {}\n", castling_to_string(pos.castling)).as_str());
-    match pos.ep_sq {
+    match pos.en_passant {
         Some(ep_sq) => s.push_str(format!("En passant: {}\n", ep_sq).as_str()),
         None => s.push_str("En passant: -\n"),
     }
@@ -703,7 +667,7 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, 0);
-        assert_eq!(pos.ep_sq.unwrap(), Square::F6);
+        assert_eq!(pos.en_passant.unwrap(), Square::F6);
         assert_eq!(pos.halfmove_clock, 2);
         assert_eq!(pos.fullmove_number, 4);
         assert_eq!(
