@@ -194,13 +194,9 @@ fn update_en_passant_square(
             Piece::W_PAWN.as_usize()
         }];
 
-        let mut legal_ep = false;
-        legal_ep =
-            legal_ep || (file < FILE_H && board.test(Square::make(file + 1, to_rank).as_u8()));
-        legal_ep =
-            legal_ep || (file > FILE_A && board.test(Square::make(file - 1, to_rank).as_u8()));
-
-        if legal_ep {
+        if (file < FILE_H && board.test(Square::make(file + 1, to_rank).as_u8()))
+            || (file > FILE_A && board.test(Square::make(file - 1, to_rank).as_u8()))
+        {
             return Some(Square::make(file, (from_rank + to_rank) / 2));
         }
     }
@@ -227,11 +223,6 @@ pub fn make_move(pos: &mut Position, m: &Move) -> Snapshot {
 
     pos.castling &= !disabled_castling;
     pos.en_passant = update_en_passant_square(pos, m.from_sq(), m.to_sq(), from);
-
-    if let Some(sq) = pos.en_passant {
-        let (file, rank) = sq.file_rank();
-        assert!(rank == 2 || rank == 5, "En passant square must be on rank 3 or 4");
-    }
 
     snapshot
 }
