@@ -124,6 +124,20 @@ impl Position {
         Piece::NONE
     }
 
+    pub fn get_king(&self, color: Color) -> Square {
+        let piece = Piece::get_piece(color, PieceType::King);
+        let mut bb = self.bitboards[piece.as_usize()];
+        debug_assert!(bb.any(), "No king found for color {:?}", color);
+        let sq = bb.first_nonzero_sq();
+        if cfg!(debug_assertions) {
+            bb.remove_first_nonzero_sq();
+            debug_assert!(bb.none(), "only one king should be on the board");
+        }
+        sq
+    }
+
+    // @TODO: remove these methods, call move_gen directly
+
     pub fn is_move_legal(&mut self, m: &Move) -> bool {
         move_gen::is_move_legal(self, &m)
     }
@@ -350,6 +364,9 @@ mod tests {
             pos.to_board_string(),
             "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R"
         );
+
+        assert_eq!(pos.get_king(Color::WHITE), Square::E1);
+        assert_eq!(pos.get_king(Color::BLACK), Square::E8);
     }
 
     #[test]
