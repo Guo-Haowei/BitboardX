@@ -1,7 +1,28 @@
+use crate::engine::board::Move;
 use crate::engine::board::Square;
 use crate::engine::position::Position;
 use crate::engine::utils;
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub struct MoveJs {
+    internal: Move,
+}
+
+#[wasm_bindgen]
+impl MoveJs {
+    fn new(m: &Move) -> Self {
+        Self { internal: m.clone() }
+    }
+
+    pub fn from_sq(&self) -> u8 {
+        self.internal.from_sq().as_u8()
+    }
+
+    pub fn to(&self) -> u8 {
+        self.internal.to_sq().as_u8()
+    }
+}
 
 #[wasm_bindgen]
 pub struct Game {
@@ -47,28 +68,21 @@ impl Game {
         self.pos.redo()
     }
 
-    // pub fn execute(&mut self, move_str: &str) -> bool {
-    //     let squares = utils::parse_move(move_str);
-    //     if squares.is_none() {
-    //         return false;
-    //     }
+    pub fn execute(&mut self, m: MoveJs) -> bool {
+        self.pos.do_move(&m.internal);
+        true
+    }
 
-    //     let (from, to) = squares.unwrap();
-    //     let
-    //     let move_ = self.pos.legal_move_from_to(from, to);
-    //     if move_.is_none() {
-    //         return false;
-    //     }
+    pub fn legal_moves(&mut self) -> Vec<MoveJs> {
+        let mut res = Vec::new();
+        let moves = self.pos.legal_moves();
 
-    //     self.pos.do_move(&move_.unwrap());
+        for m in moves {
+            res.push(MoveJs::new(&m));
+        }
 
-    //     true
-    // }
-
-    // pub fn legal_move(&mut self, sq: u8) -> u64 {
-    //     // self.pos.borrow_mut().pseudo_legal_move(square).get()
-    //     self.pos.legal_move(Square(sq)).get()
-    // }
+        res
+    }
 }
 
 #[cfg(test)]

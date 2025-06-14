@@ -1,7 +1,9 @@
 pub mod engine;
 pub mod game;
 
+use engine::board::move_::Move;
 use engine::engine::*;
+use engine::position::Position;
 use rustyline::{DefaultEditor, Result};
 use std::env;
 use std::io::{self, Write};
@@ -91,7 +93,38 @@ fn print_version() {
     println!("{}", name());
 }
 
+fn perft_main() {
+    for depth in 1..=6 {
+        let mut pos = engine::position::Position::new();
+        let nodes = perft_test(&mut pos, depth);
+        println!("Depth {}: {} nodes", depth, nodes);
+    }
+}
+
+fn perft_test(pos: &mut Position, depth: u8) -> u64 {
+    let mut nodes = 0u64;
+
+    let move_list = pos.legal_moves();
+
+    if depth == 1 {
+        return move_list.len() as u64;
+    }
+
+    for m in move_list {
+        let snapshot = pos.make_move(&m);
+        nodes += perft_test(pos, depth - 1);
+        pos.unmake_move(&m, &snapshot);
+    }
+
+    nodes
+}
+
 fn main() -> Result<()> {
+    if true {
+        perft_main();
+        return Ok(());
+    }
+
     let argv: Vec<String> = env::args().collect();
     let argc = argv.len();
     if argc == 1 {

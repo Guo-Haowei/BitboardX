@@ -54,6 +54,10 @@ pub struct Move(u16);
 impl Move {
     const SQUARE_MASK: u16 = 0b111111; // 6 bits for square (0-63)
 
+    pub fn none() -> Self {
+        Self(0)
+    }
+
     pub fn new(from_sq: Square, to_sq: Square, move_type: MoveType) -> Self {
         let mut data = 0u16;
         data |= from_sq.as_u16();
@@ -61,6 +65,10 @@ impl Move {
         data |= (move_type as u16) << 12;
 
         Self(data)
+    }
+
+    pub fn is_none(&self) -> bool {
+        self.0 == 0
     }
 
     pub fn from_sq(&self) -> Square {
