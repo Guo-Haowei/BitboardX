@@ -1,6 +1,6 @@
 use super::super::board::constants::*;
 use super::super::board::*;
-use super::super::moves::*;
+use super::super::move_gen::*;
 use super::super::position::Position;
 use super::super::types::{Color, Piece, PieceType};
 

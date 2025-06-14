@@ -1,5 +1,5 @@
 use super::board::{BitBoard, Move, MoveFlags, Square};
-use super::moves::{make_move, unmake_move};
+use super::move_gen::{make_move, unmake_move};
 use super::types::{Color, Piece};
 use super::utils;
 
