@@ -30,9 +30,10 @@ fn game_main() {
                 return;
             }
 
-            if game.execute(input) {
-                break;
-            }
+            panic!("Game execution not implemented yet");
+            // if game.execute(input) {
+            //     break;
+            // }
 
             println!("Invalid move: {}", input);
             println!("------");

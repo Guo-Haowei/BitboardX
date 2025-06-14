@@ -1,8 +1,9 @@
+use crate::engine::move_gen;
+
 use super::board::*;
+use super::move_gen::*;
 use super::types::*;
 use super::utils;
-
-mod internal;
 
 #[derive(Clone, Copy)]
 pub struct Snapshot {
@@ -62,31 +63,31 @@ impl Position {
             fullmove_number: 1,
             occupancies,
             attack_map,
+            // @TODO: refactor
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         }
     }
 
-    pub fn from_parts(
-        piece_placement: &str,
-        side_to_move: &str,
-        castling_rights: &str,
-        en_passant_target: &str,
-        halfmove_clock: &str,
-        fullmove_number: &str,
-    ) -> Result<Self, &'static str> {
-        let bitboards = utils::parse_board(piece_placement)?;
-        let side_to_move = match Color::parse(side_to_move) {
+    pub fn from(fen: &str) -> Result<Self, &'static str> {
+        let parts: Vec<&str> = fen.trim().split_whitespace().collect();
+        if parts.len() != 6 {
+            return Err("Invalid FEN: must have 6 fields");
+        }
+
+        let bitboards = utils::parse_board(parts[0])?;
+        let side_to_move = match Color::parse(parts[1]) {
             Some(color) => color,
             None => return Err("Invalid side to move in FEN"),
         };
-        let castling = utils::parse_castling(castling_rights)?;
-        let halfmove_clock = utils::parse_halfmove_clock(halfmove_clock)?;
-        let fullmove_number = utils::parse_fullmove_number(fullmove_number)?;
+        let castling = utils::parse_castling(parts[2])?;
+
+        let en_passant = utils::parse_en_passant(parts[3])?;
+
+        let halfmove_clock = utils::parse_halfmove_clock(parts[4])?;
+        let fullmove_number = utils::parse_fullmove_number(parts[5])?;
 
         let occupancies = utils::calc_occupancies(&bitboards);
-
-        let en_passant = utils::parse_en_passant(en_passant_target)?;
 
         let mut pos = Self {
             bitboards,
@@ -103,15 +104,6 @@ impl Position {
 
         pos.attack_map = pos.calc_attack_map();
         Ok(pos)
-    }
-
-    pub fn from(fen: &str) -> Result<Self, &'static str> {
-        let parts: Vec<&str> = fen.trim().split_whitespace().collect();
-        if parts.len() != 6 {
-            return Err("Invalid FEN: must have 6 fields");
-        }
-
-        Self::from_parts(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
     }
 
     pub fn update_cache(&mut self) {
@@ -133,61 +125,30 @@ impl Position {
         Piece::NONE
     }
 
-    pub fn is_legal_move(&mut self, m: &Move) -> bool {
-        internal::validate_move(self, &m)
+    pub fn is_move_legal(&mut self, m: &Move) -> bool {
+        move_gen::is_move_legal(self, &m)
     }
 
-    pub fn legal_move_from_to(&mut self, from_sq: Square, to_sq: Square) -> Option<Move> {
-        internal::legal_move_from_to(self, from_sq, to_sq)
+    pub fn pseudo_legal_moves(&self) -> Vec<Move> {
+        move_gen::pseudo_legal_moves(self)
     }
 
-    pub fn pseudo_legal_move(&self, sq: Square) -> BitBoard {
-        if self.occupancies[self.side_to_move.as_usize()].test(sq.as_u8()) {
-            return internal::pseudo_legal_move_from(self, sq);
-        }
-        BitBoard::new()
-    }
-
-    pub fn legal_move(&mut self, sq: Square) -> BitBoard {
-        let mut pseudo_legal = self.pseudo_legal_move(sq);
-
-        let mut bits = pseudo_legal.get();
-
-        while bits != 0 {
-            let dst_sq = bits.trailing_zeros();
-
-            let m = internal::pseudo_legal_move_from_to(self, sq, Square(dst_sq as u8));
-            if !self.is_legal_move(&m) {
-                pseudo_legal.unset(dst_sq as u8);
-            }
-
-            bits &= bits - 1;
-        }
-
-        pseudo_legal
-    }
-
-    fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(&self) -> BitBoard {
-        let mut attack_map = BitBoard::new();
-
-        for i in START..=END {
-            // pieces from W to B
-            let bb = self.bitboards[i as usize];
-            for sq in 0..64 {
-                if bb.test(sq) {
-                    attack_map |=
-                        internal::pseudo_legal_attack_from(self, Square(sq), Color::from(COLOR));
-                }
-            }
-        }
-
-        attack_map
+    pub fn legal_moves(&mut self) -> Vec<Move> {
+        move_gen::legal_moves(self)
     }
 
     pub fn calc_attack_map(&self) -> [BitBoard; Color::COUNT] {
         [
-            self.calc_attack_map_impl::<{ Color::WHITE.as_u8() }, { Piece::W_START }, { Piece::W_END }>(),
-            self.calc_attack_map_impl::<{ Color::BLACK.as_u8() }, { Piece::B_START }, { Piece::B_END }>(),
+            move_gen::calc_attack_map_impl::<
+                { Color::WHITE.as_u8() },
+                { Piece::W_START },
+                { Piece::W_END },
+            >(self),
+            move_gen::calc_attack_map_impl::<
+                { Color::BLACK.as_u8() },
+                { Piece::B_START },
+                { Piece::B_END },
+            >(self),
         ]
     }
 
@@ -251,6 +212,26 @@ impl Position {
         self.restore(snapshot);
     }
 
+    /// @TODO: get rid of this method
+    pub fn apply_move_str(&mut self, move_str: &str) -> bool {
+        let m = utils::parse_move(move_str);
+        if m.is_none() {
+            return false;
+        }
+
+        let (from, to) = m.unwrap();
+
+        let legal_moves = self.legal_moves();
+        for m in legal_moves {
+            if m.from_sq() == from && m.to_sq() == to {
+                self.make_move(&m);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // TODO: move UndoRedo to other module
     pub fn can_undo(&self) -> bool {
         self.undo_stack.len() > 0
@@ -295,29 +276,14 @@ impl Position {
         self.undo_stack.push((m, snapshot));
         true
     }
-
-    /// @TODO: get rid of this method
-    pub fn apply_move_str(&mut self, move_str: &str) -> bool {
-        match utils::parse_move(move_str) {
-            None => false,
-            Some((from, to)) => match self.legal_move_from_to(from, to) {
-                None => false,
-                Some(m) => {
-                    self.make_move(&m);
-                    true
-                }
-            },
-        }
-    }
-
     // @TODO: move to utils
     pub fn to_string(&self, pad: bool) -> String {
-        internal::to_string(self, pad)
+        utils::to_string(self, pad)
     }
 
     // @TODO: move to utils
     pub fn to_board_string(&self) -> String {
-        internal::to_board_string(self)
+        utils::to_board_string(self)
     }
 }
 
@@ -346,15 +312,8 @@ mod tests {
 
     #[test]
     fn test_constructor_from_parts() {
-        let pos = Position::from_parts(
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",
-            "w",
-            "KQkq",
-            "-",
-            "0",
-            "1",
-        )
-        .unwrap();
+        let pos =
+            Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
         assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
         assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
         assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
@@ -397,22 +356,9 @@ mod tests {
         assert_eq!(attack_maps[Color::WHITE.as_usize()].get(), 0x0000000000FF0000);
         assert_eq!(attack_maps[Color::BLACK.as_usize()].get(), 0x0000FF0000000000);
     }
-
-    #[test]
-    fn test_trailing_zeros() {
-        let mut bits: u64 = 0b10101000;
-        let mut count = 0;
-        let expect = [3, 5, 7];
-        while bits != 0 {
-            let tz = bits.trailing_zeros();
-            bits &= bits - 1;
-            assert_eq!(tz, expect[count]);
-            count += 1;
-        }
-        assert_eq!(count, expect.len());
-    }
 }
 
+////////////////////////////
 ////////////////////////////
 fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
     let (to_file, _) = m.to_sq().file_rank();

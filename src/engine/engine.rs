@@ -53,7 +53,8 @@ impl Engine {
                 parts.remove(0);
             }
             ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => {
-                match Position::from_parts(p1, p2, p3, p4, p5, p6) {
+                let result = [*p1, *p2, *p3, *p4, *p5, *p6].join(" ");
+                match Position::from(result.as_str()) {
                     Ok(pos) => {
                         self.pos = pos;
                         parts.drain(0..=6); // remove the FEN parts

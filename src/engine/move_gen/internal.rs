@@ -88,7 +88,24 @@ fn pseudo_legal_from_impl<const ATTACK_ONLY: bool>(
     }
 }
 
-pub(crate) fn pseudo_legal_move_from(pos: &Position, sq: Square) -> BitBoard {
+/// @TODO: remove mut
+pub fn is_move_legal(pos: &mut Position, m: &Move) -> bool {
+    let us = pos.side_to_move;
+    let opponent = us.opponent();
+    let piece: Piece = Piece::get_piece(us, PieceType::King);
+    debug_assert!(piece == Piece::W_KING || piece == Piece::B_KING);
+    debug_assert!(piece.color() == us);
+
+    let snapshot = pos.make_move(m);
+
+    let legal = (pos.bitboards[piece.as_usize()] & pos.attack_map[opponent.as_usize()]).none();
+
+    pos.unmake_move(m, &snapshot);
+
+    legal
+}
+
+pub fn pseudo_legal_move_from(pos: &Position, sq: Square) -> BitBoard {
     pseudo_legal_from_impl::<false>(pos, sq, pos.side_to_move)
 }
 
@@ -329,22 +346,6 @@ fn move_king<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
     moves
 }
 
-pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
-    let us = pos.side_to_move;
-    let opponent = us.opponent();
-    let piece: Piece = Piece::get_piece(us, PieceType::King);
-    debug_assert!(piece == Piece::W_KING || piece == Piece::B_KING);
-    debug_assert!(piece.color() == us);
-
-    let snapshot = pos.make_move(m);
-
-    let legal = (pos.bitboards[piece.as_usize()] & pos.attack_map[opponent.as_usize()]).none();
-
-    pos.unmake_move(m, &snapshot);
-
-    legal
-}
-
 /// Pseudo-legal move generation from a square to another
 pub fn pseudo_legal_move_from_to(pos: &Position, from_sq: Square, to_sq: Square) -> Move {
     let mut from = Piece::NONE;
@@ -433,89 +434,10 @@ pub fn legal_move_from_to(pos: &mut Position, from_sq: Square, to_sq: Square) ->
     Some(pseudo_legal_move_from_to(pos, from_sq, to_sq))
 }
 
-fn castling_to_string(castling: u8) -> String {
-    let mut result = String::new();
-    for (i, c) in ['K', 'Q', 'k', 'q'].iter().enumerate() {
-        if castling & (1 << i) != 0 {
-            result.push(*c);
-        }
-    }
-    if result.is_empty() { "-".to_string() } else { result }
-}
-
-pub fn to_string(pos: &Position, pad: bool) -> String {
-    let mut s = String::new();
-    for rank in (0..8).rev() {
-        s.push((rank as u8 + b'1') as char);
-        s.push(' ');
-        for file in 0..8 {
-            let sq = rank * 8 + file;
-            let piece_char = if pos.bitboards[Piece::W_PAWN.as_usize()].test(sq) {
-                '♙'
-            } else if pos.bitboards[Piece::W_KNIGHT.as_usize()].test(sq) {
-                '♘'
-            } else if pos.bitboards[Piece::W_BISHOP.as_usize()].test(sq) {
-                '♗'
-            } else if pos.bitboards[Piece::W_ROOK.as_usize()].test(sq) {
-                '♖'
-            } else if pos.bitboards[Piece::W_QUEEN.as_usize()].test(sq) {
-                '♕'
-            } else if pos.bitboards[Piece::W_KING.as_usize()].test(sq) {
-                '♔'
-            } else if pos.bitboards[Piece::B_PAWN.as_usize()].test(sq) {
-                '♟'
-            } else if pos.bitboards[Piece::B_KNIGHT.as_usize()].test(sq) {
-                '♞'
-            } else if pos.bitboards[Piece::B_BISHOP.as_usize()].test(sq) {
-                '♝'
-            } else if pos.bitboards[Piece::B_ROOK.as_usize()].test(sq) {
-                '♜'
-            } else if pos.bitboards[Piece::B_QUEEN.as_usize()].test(sq) {
-                '♛'
-            } else if pos.bitboards[Piece::B_KING.as_usize()].test(sq) {
-                '♚'
-            } else {
-                '.'
-            };
-
-            if piece_char == '.' {
-                s.push('・');
-            } else {
-                s.push(piece_char);
-                if pad {
-                    s.push(' ');
-                }
-            }
-        }
-        s.push('\n');
-    }
-    s.push_str("  ａｂｃｄｅｆｇｈ\n");
-    s.push_str(format!("Side: {}\n", pos.side_to_move).as_str());
-    s.push_str(format!("Castling: {}\n", castling_to_string(pos.castling)).as_str());
-    match pos.en_passant {
-        Some(ep_sq) => s.push_str(format!("En passant: {}\n", ep_sq).as_str()),
-        None => s.push_str("En passant: -\n"),
-    }
-    s.push_str(format!("Halfmove clock: {}\n", pos.halfmove_clock).as_str());
-    s.push_str(format!("Fullmove number: {}\n", pos.fullmove_number).as_str());
-
-    s
-}
-
-pub fn to_board_string(pos: &Position) -> String {
-    let mut s = String::new();
-    for rank in (0..8).rev() {
-        for file in 0..8 {
-            let sq = rank * 8 + file;
-            let piece = pos.get_piece(Square(sq));
-            s.push(piece.to_char());
-        }
-    }
-    s
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::engine::move_gen::legal_moves;
+
     use super::*;
 
     fn squares_to_bitboard(sqs: &[Square]) -> BitBoard {
@@ -648,12 +570,12 @@ mod tests {
 
         let m = pseudo_legal_move_from_to(&pos, Square::B1, Square::A2);
 
-        assert!(!validate_move(&mut pos, &m), "Move bishop to A2 exposes king to check");
+        assert!(!is_move_legal(&mut pos, &m), "Move bishop to A2 exposes king to check");
     }
 
     #[test]
     fn test_en_passant() {
-        let mut pos = Position::from("4k3/8/8/4Pp2/8/8/8/4K3 w - f6 2 4").unwrap();
+        let pos = Position::from("4k3/8/8/4Pp2/8/8/8/4K3 w - f6 2 4").unwrap();
 
         // 8 . . . . k . . .
         // 7 . . . . . . . .
@@ -675,8 +597,8 @@ mod tests {
             "....k.......................Pp..............................K..."
         );
 
-        let legal_moves = pos.legal_move(Square::E5);
-        assert_eq!(legal_moves, Square::E6.to_bitboard() | Square::F6.to_bitboard());
+        let moves = pseudo_legal_move_from(&pos, Square::E5);
+        assert_eq!(moves, Square::E6.to_bitboard() | Square::F6.to_bitboard());
     }
 }
 
