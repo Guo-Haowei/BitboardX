@@ -267,7 +267,7 @@ fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square,
 
         let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
 
-        move_list.add(Move::new(sq, to_sq, move_type));
+        move_list.add(Move::new(sq, to_sq, move_type, None));
         bb.remove_first_nonzero_sq();
     }
 }
@@ -391,7 +391,7 @@ fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: Bi
     let mut bb = move_mask;
     while bb.any() {
         let target_sq = bb.first_nonzero_sq();
-        move_list.add(Move::new(sq, target_sq, MoveType::Normal));
+        move_list.add(Move::new(sq, target_sq, MoveType::Normal, None));
         bb.remove_first_nonzero_sq();
     }
 }
@@ -629,7 +629,7 @@ pub fn pseudo_legal_move_king<const COLOR: u8>(
             _ => panic!("Invalid castling move from {} to {}", sq, target_sq),
         };
 
-        move_list.add(Move::new(sq, target_sq, move_type));
+        move_list.add(Move::new(sq, target_sq, move_type, None));
         mask.remove_first_nonzero_sq();
     }
 }

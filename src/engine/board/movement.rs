@@ -1,3 +1,5 @@
+use crate::engine::types::PieceType;
+
 use super::square::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,11 +60,28 @@ impl Move {
         Self(0)
     }
 
-    pub fn new(from_sq: Square, to_sq: Square, move_type: MoveType) -> Self {
+    pub fn new(
+        from_sq: Square,
+        to_sq: Square,
+        move_type: MoveType,
+        promotion: Option<PieceType>,
+    ) -> Self {
         let mut data = 0u16;
         data |= from_sq.as_u16();
         data |= to_sq.as_u16() << 6;
         data |= (move_type as u16) << 12;
+
+        if let Some(promo) = promotion {
+            debug_assert!(move_type == MoveType::Promotion);
+            debug_assert!(matches!(
+                promo,
+                PieceType::Knight | PieceType::Bishop | PieceType::Rook | PieceType::Queen
+            ));
+
+            data |= (promo as u16 - 1) << 14; // Promotion piece
+        } else {
+            debug_assert!(move_type != MoveType::Promotion);
+        }
 
         Self(data)
     }
@@ -82,6 +101,21 @@ impl Move {
     pub fn get_type(&self) -> MoveType {
         let bits = (self.0 >> 12) & 0b11;
         unsafe { std::mem::transmute::<u8, MoveType>(bits as u8) }
+    }
+
+    pub fn get_promotion(&self) -> Option<PieceType> {
+        if self.get_type() == MoveType::Promotion {
+            let promo_bits = (self.0 >> 14) & 0b11;
+            match promo_bits {
+                0 => Some(PieceType::Knight),
+                1 => Some(PieceType::Bishop),
+                2 => Some(PieceType::Rook),
+                3 => Some(PieceType::Queen),
+                _ => panic!("Invalid promotion bits: {}", promo_bits), // Should never happen
+            }
+        } else {
+            None
+        }
     }
 
     // @TODO: promotion piece
@@ -126,11 +160,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_move_creation() {
-        let m = Move::new(Square::E2, Square::E4, MoveType::Castling);
+    fn castling_move_creation() {
+        let m = Move::new(Square::E2, Square::E4, MoveType::Castling, None);
         assert_eq!(m.from_sq(), Square::E2);
         assert_eq!(m.to_sq(), Square::E4);
         assert_eq!(m.get_type(), MoveType::Castling);
+    }
+
+    #[test]
+    fn promotion_move_creation() {
+        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::Queen));
+        assert_eq!(m.from_sq(), Square::E7);
+        assert_eq!(m.to_sq(), Square::E8);
+        assert_eq!(m.get_type(), MoveType::Promotion);
+        assert_eq!(m.get_promotion(), Some(PieceType::Queen));
     }
 
     #[test]
