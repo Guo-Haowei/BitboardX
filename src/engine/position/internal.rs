@@ -372,8 +372,9 @@ pub fn pseudo_legal_move_from_to(pos: &Position, from_sq: Square, to_sq: Square)
     );
 
     let is_ep_capture = check_if_is_eq_capture(pos, from_sq, to_sq, from, to);
+    let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
 
-    Move::new(from_sq, to_sq, from, is_ep_capture)
+    Move::new(from_sq, to_sq, move_type)
 }
 
 fn check_if_is_eq_capture(

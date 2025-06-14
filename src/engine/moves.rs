@@ -3,7 +3,6 @@ use crate::engine::position::Snapshot;
 use super::board::{BitBoard, Square, constants::*};
 use super::piece::*;
 use super::position::Position;
-use modular_bitfield::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -28,73 +27,77 @@ impl MoveFlags {
     pub const KQkq: u8 = Self::KQ | Self::kq;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum SpecialMove {
-    None = 0,
+pub enum MoveType {
+    Normal = 0,
     Castling = 1,
     EnPassant = 2,
     Promotion = 3,
 }
 
-/// Flags:
-///   1. 6 bits to store the from square (0-63).
-///   2. 6 bits to store the to square (0-63).
-///   3. 1 bit to store if this move introduces an en passant square,
-///      if the bit is on, we can retreive the square starting square).
-///   4. 1 bit to store if this move drops an en passant square,
-///      and extra 8 bits to store which file it is.
-///   5. 1 bits to store if this move is an en passant capture.
-///   6. 2 bits to store castling right drop, 1 bit for each side.
-///   7. 2 bits to store the promotion piece type (Queen, Rook, Bishop, Knight).
-
-/// 0     6    12       14       15     16
-/// |- 6 -|- 6 -|-- 4 ---|-- 1 --|-- 1 --|- 2 --|- 4 --|
-///   from  to     castle    color   ep_mv
-
-#[bitfield]
-#[derive(Debug, Clone, Copy)]
-struct PackedData {
-    from_sq: B6,
-    to_sq: B6,
-    is_ep_capture: B1, // if this move captures enemy pawn by en passant rule
-    #[skip]
-    __: B19,
-}
+/// Bit layout for a `Move` (16-bit packed):
+///
+/// ```text
+/// 15  14  13  12   11        6   5        0
+/// +---+---+---+---+----------+------------+
+/// | P | P | F | F |  To[5:0] | From[5:0]  |
+/// +---+---+---+---+----------+------------+
+///  2 bits  2 bits    6 bits     6 bits
+///  [14-15] [12-13]   [6–11]     [0–5]
+/// ```
+///
+/// - `from` (0–5): source square (0–63)
+/// - `to` (6–11): destination square (0–63)
+/// - `flag` (12–13): move type (e.g., castle, en passant, promotion)
+/// - `promo` (14–15): promotion piece (0 = knight, 1 = bishop, 2 = rook, 3 = queen)
 
 #[derive(Debug, Clone, Copy)]
-pub struct Move {
-    data: PackedData,
-}
+pub struct Move(u16);
 
 impl Move {
-    pub fn new(from_sq: Square, to_sq: Square, from: Piece, is_ep_capture: bool) -> Self {
-        debug_assert!(from != Piece::NONE);
-        let mut data = PackedData::new();
-        data.set_from_sq(from_sq.as_u8());
-        data.set_to_sq(to_sq.as_u8());
-        data.set_is_ep_capture(is_ep_capture as u8);
+    const SQUARE_MASK: u16 = 0b111111; // 6 bits for square (0-63)
 
-        Self { data }
+    pub fn new(from_sq: Square, to_sq: Square, move_type: MoveType) -> Self {
+        // let mut data = PackedData::new();
+        // data.set_from_sq(from_sq.as_u8());
+        // data.set_to_sq(to_sq.as_u8());
+        // data.set_move_type(move_type as u8);
+
+        let mut data = 0u16;
+        data |= from_sq.as_u16();
+        data |= to_sq.as_u16() << 6;
+        data |= (move_type as u16) << 12;
+
+        Self(data)
     }
 
     fn from_sq(&self) -> Square {
-        Square(self.data.from_sq())
+        Square((self.0 & Self::SQUARE_MASK) as u8)
     }
 
     fn to_sq(&self) -> Square {
-        Square(self.data.to_sq())
+        Square(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
     }
 
-    pub fn is_ep_capture(&self) -> bool {
-        self.data.is_ep_capture() != 0
+    pub fn get_type(&self) -> MoveType {
+        let bits = (self.0 >> 12) & 0b11;
+        unsafe { std::mem::transmute::<u8, MoveType>(bits as u8) }
     }
 
-    pub fn into_bytes(&self) -> [u8; 4] {
-        self.data.into_bytes()
-    }
+    // @TODO: promotion piece
+}
 
-    pub fn from_bytes(bytes: [u8; 4]) -> Self {
-        Self { data: PackedData::from_bytes(bytes) }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_move_creation() {
+        let m = Move::new(Square::E2, Square::E4, MoveType::Castling);
+        assert_eq!(m.from_sq(), Square::E2);
+        assert_eq!(m.to_sq(), Square::E4);
+        assert_eq!(m.get_type(), MoveType::Castling);
     }
 }
 
@@ -241,7 +244,7 @@ fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
     let (to_file, _) = m.to_sq().file_rank();
 
     // check if it's an en passant capture
-    if m.is_ep_capture() {
+    if m.get_type() == MoveType::EnPassant {
         // capture the opponent's pawn passed en passant square
         let (_, from_rank) = m.from_sq().file_rank();
         let enemy_sq = Square::make(to_file, from_rank);
@@ -256,7 +259,7 @@ fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
 }
 
 fn undo_move_ep(pos: &mut Position, m: &Move, from: Piece) {
-    if m.is_ep_capture() {
+    if m.get_type() == MoveType::EnPassant {
         // Restore the captured pawn on the en passant square
         let (to_file, _) = m.to_sq().file_rank();
         let (_, from_rank) = m.from_sq().file_rank();
@@ -329,6 +332,3 @@ fn post_move(pos: &mut Position) {
     pos.change_side();
     pos.update_cache();
 }
-
-#[cfg(test)]
-mod tests {}
