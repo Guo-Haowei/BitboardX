@@ -7,18 +7,19 @@ const enginePath = '"../target/debug/BitboardX.exe"';
 
 function testMove(testCase, fen) {
   fen = fen || testCase.fen;
-  it(testCase.description, (done) => {
+  it(testCase.description, () => {
     const child = exec(`${enginePath}`, (err, stdout, stderr) => {
       if (err) {
         throw new Error(`Error executing engine: ${err.message}`);
       }
 
-      const isInvalidMove = stderr.startsWith('Error: Invalid move');
-      expect(testCase.expect).to.equal(!isInvalidMove);
-      // console.log(`error: ${isInvalidMove ? stderr : 'No error'}`);
-      // console.log(`stdout: ${stdout}`);
-      // console.log(`stderr: ${stderr}`);
-      done(err);
+      if (testCase.invalid === undefined) {
+        expect(stderr).to.equal('');
+      } else {
+        // console.log(`stderr: ${stderr}`);
+        // console.log(`test: ${testCase.invalid}`);
+        expect(stderr).to.contain(`Error: Invalid move '${testCase.invalid}'`);
+      }
     });
     child.stdin.write(`position fen ${fen} moves ${testCase.moves}\n`);
     child.stdin.end();
