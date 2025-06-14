@@ -105,20 +105,15 @@ impl Move {
 
     pub fn get_promotion(&self) -> Option<PieceType> {
         if self.get_type() == MoveType::Promotion {
-            let promo_bits = (self.0 >> 14) & 0b11;
+            let promo_bits = ((self.0 >> 14) & 0b11) + 1;
             match promo_bits {
-                0 => Some(PieceType::Knight),
-                1 => Some(PieceType::Bishop),
-                2 => Some(PieceType::Rook),
-                3 => Some(PieceType::Queen),
+                1..=4 => Some(unsafe { std::mem::transmute::<u8, PieceType>(promo_bits as u8) }),
                 _ => panic!("Invalid promotion bits: {}", promo_bits), // Should never happen
             }
         } else {
             None
         }
     }
-
-    // @TODO: promotion piece
 }
 
 pub struct MoveList {

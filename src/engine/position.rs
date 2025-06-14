@@ -191,7 +191,10 @@ impl Position {
             self.bitboards[to_piece.as_usize()].unset(m.to_sq().as_u8()); // Clear the 'to' square for the captured piece
         }
 
+        do_promotion(self, m, from);
+
         do_castling(self, m, from);
+
         post_move(self);
 
         self.castling &= !disabled_castling;
@@ -202,7 +205,11 @@ impl Position {
 
     pub fn unmake_move(&mut self, m: &Move, snapshot: &Snapshot) {
         let from = self.get_piece(m.to_sq());
+
+        undo_promotion(self, m, from);
+
         undo_move_generic(self, m, from, snapshot.to_piece);
+
         undo_move_ep(self, m, from);
 
         undo_castling(self, m, from);
@@ -424,6 +431,34 @@ fn castling_type(from: Piece, from_sq: Square, to_sq: Square) -> Castling {
         (Piece::B_KING, Square::E8, Square::C8) => Castling::BlackQueenSide,
         _ => Castling::None,
     }
+}
+
+fn do_promotion(pos: &mut Position, m: &Move, from: Piece) {
+    if m.get_type() != MoveType::Promotion {
+        return;
+    }
+
+    let color = from.color();
+    let promotion = m.get_promotion().unwrap();
+    let to_sq = m.to_sq();
+    let to = Piece::get_piece(color, promotion);
+
+    pos.bitboards[from.as_usize()].unset(to_sq.as_u8()); // Remove the pawn from the board
+    pos.bitboards[to.as_usize()].set(to_sq.as_u8()); // Place the promoted piece on the board
+}
+
+fn undo_promotion(pos: &mut Position, m: &Move, from: Piece) {
+    if m.get_type() != MoveType::Promotion {
+        return;
+    }
+
+    let color = from.color();
+    let promotion = m.get_promotion().unwrap();
+    let to_sq = m.to_sq();
+    let to = Piece::get_piece(color, promotion);
+
+    pos.bitboards[from.as_usize()].set(to_sq.as_u8()); // Place the pawn back on the board
+    pos.bitboards[to.as_usize()].unset(to_sq.as_u8()); // Remove the promoted piece from the board
 }
 
 fn do_castling(pos: &mut Position, m: &Move, from: Piece) {

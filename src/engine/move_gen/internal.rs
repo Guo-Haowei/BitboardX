@@ -208,27 +208,6 @@ fn move_mask_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(
         moves |= attack_right;
     }
 
-    // @TODO: handle en passant - BEGIN
-    // @TODO: handle en passant - END
-
-    // @TODO: handle promotion - BEGIN
-    {
-        // let mut promotion = false;
-        // match rank {
-        //     RANK_7 if is_white => {
-        //         promotion = true;
-        //     }
-        //     RANK_2 if is_black => {
-        //         promotion = true;
-        //     }
-        //     _ => {}
-        // }
-        // if promotion {
-        //     println!("TODO: handle promotion for pawn at square {}", sq);
-        // }
-    }
-    // @TODO: handle promotion - END
-
     moves
 }
 
@@ -263,12 +242,29 @@ fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square,
     while bb.any() {
         let to_sq = bb.first_nonzero_sq();
 
-        let is_ep_capture = check_if_eq_capture::<COLOR>(pos, sq, to_sq, pos.get_piece(to_sq));
-
-        let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
-
-        move_list.add(Move::new(sq, to_sq, move_type, None));
+        if check_if_promotion::<COLOR>(to_sq) {
+            // Promotion move
+            let promotion_types =
+                [PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight];
+            for &promotion in &promotion_types {
+                move_list.add(Move::new(sq, to_sq, MoveType::Promotion, Some(promotion)));
+            }
+        } else {
+            let is_ep_capture = check_if_eq_capture::<COLOR>(pos, sq, to_sq, pos.get_piece(to_sq));
+            let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
+            move_list.add(Move::new(sq, to_sq, move_type, None));
+        }
         bb.remove_first_nonzero_sq();
+    }
+}
+
+fn check_if_promotion<const COLOR: u8>(to_sq: Square) -> bool {
+    let (_, to_rank) = to_sq.file_rank();
+
+    match to_rank {
+        RANK_8 if COLOR == Color::WHITE.as_u8() => true,
+        RANK_1 if COLOR == Color::BLACK.as_u8() => true,
+        _ => false,
     }
 }
 

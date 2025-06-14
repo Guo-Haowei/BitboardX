@@ -108,7 +108,7 @@ mod perft {
             let actual = perft_test(&mut pos, test_depth);
             let elapsed = start.elapsed();
             let msg = format!("\nDepth {}: {} nodes, took {:?}", test_depth, actual, elapsed);
-            println!("{}", msg.green());
+            println!("{}", if actual == expected { msg.green() } else { msg.red() });
             assert_eq!(actual, expected);
         }
     }
@@ -149,7 +149,7 @@ mod perft {
             (8, 0u64),
         ];
 
-        const DEPTH: u8 = if cfg!(not(debug_assertions)) { 3 } else { 3 };
+        const DEPTH: u8 = if cfg!(not(debug_assertions)) { 4 } else { 3 };
         perft_test_wrapper(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
             DEPTH,
@@ -210,7 +210,7 @@ mod perft {
             (8, 0u64), // No known results for depth 8
         ];
 
-        perft_test_wrapper("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 0, &tests);
+        perft_test_wrapper("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 4, &tests);
     }
 
     #[test]
