@@ -106,8 +106,8 @@ fn pseudo_legal_from_impl<const ATTACK_ONLY: bool>(
     let enemy_occupancy = pos.occupancies[color.opponent().as_usize()];
 
     match piece {
-        Piece::W_PAWN => move_pawn::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(pos, sq),
-        Piece::B_PAWN => move_pawn::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(pos, sq),
+        Piece::W_PAWN => move_mask_pawn::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(sq, pos),
+        Piece::B_PAWN => move_mask_pawn::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(sq, pos),
         Piece::W_ROOK | Piece::B_ROOK => move_mask_rook(sq, my_occupancy, enemy_occupancy),
         Piece::W_BISHOP | Piece::B_BISHOP => move_mask_bishop(sq, my_occupancy, enemy_occupancy),
         Piece::W_QUEEN | Piece::B_QUEEN => move_mask_queen(sq, my_occupancy, enemy_occupancy),
@@ -142,32 +142,39 @@ pub fn pseudo_legal_attack_from(pos: &Position, sq: Square, color: Color) -> Bit
     pseudo_legal_from_impl::<true>(pos, sq, color)
 }
 
-/// Pseudo-legal move generation for pawns
-fn move_pawn_enpassant<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
-    // Handle en passant
-    let (file, rank) = sq.file_rank();
-    let is_white = COLOR == Color::WHITE.as_u8();
-    let is_black = COLOR != Color::WHITE.as_u8();
+/* #region */
+/// Computes the legal pawn moves from a given bitboard position,
+/// including single and double pushes, captures, promotions, and en passant.
+///
+/// Pawn movement is asymmetric and depends on color. Each pawn moves forward
+/// (toward the opponent’s side), captures diagonally, and promotes on the final rank.
+///
+/// ## Movement Types
+///
+/// - **Single Push**: 1-square forward (N for white, S for black)
+/// - **Double Push**: 2-squares forward from the starting rank
+/// - **Captures**:
+///   - White: NE, NW
+///   - Black: SE, SW
+/// - **Promotion**: On reaching rank 8 (white) or rank 1 (black)
+/// - **En Passant**: Special capture on adjacent file if opponent just advanced a pawn 2 squares
+///
+/// ## Directions
+///
+/// For white pawns:
+/// - N  → Forward (single push)
+/// - 2N → Double push from rank 2
+/// - NE / NW → Diagonal captures
+///
+/// For black pawns:
+/// - S  → Forward (single push)
+/// - 2S → Double push from rank 7
+/// - SE / SW → Diagonal captures
 
-    if let Some(ep_sq) = pos.en_passant {
-        debug_assert!(pos.get_piece(ep_sq) == Piece::NONE, "En passant square must be empty");
-        let (ep_file, ep_rank) = ep_sq.file_rank();
-        if (file as i32 - ep_file as i32).abs() == 1 {
-            if is_white && rank == RANK_5 && ep_rank == RANK_6 {
-                debug_assert!(pos.get_piece(Square(ep_sq.0 - 8)) == Piece::B_PAWN);
-                return ep_sq.to_bitboard();
-            }
-            if is_black && rank == RANK_4 && ep_rank == RANK_3 {
-                debug_assert!(pos.get_piece(Square(ep_sq.0 + 8)) == Piece::W_PAWN);
-                return ep_sq.to_bitboard();
-            }
-        }
-    }
-
-    return BitBoard::new();
-}
-
-fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Square) -> BitBoard {
+fn move_mask_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(
+    sq: Square,
+    pos: &Position,
+) -> BitBoard {
     let (_file, rank) = sq.file_rank();
     let bb = sq.to_bitboard();
     let mut moves = BitBoard::new();
@@ -193,7 +200,7 @@ fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
         }
 
         // Handle en passant
-        moves |= move_pawn_enpassant::<COLOR>(pos, sq);
+        moves |= move_mask_pawn_ep::<COLOR>(pos, sq);
     }
 
     // Handle attacks moves
@@ -229,6 +236,32 @@ fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
 
     moves
 }
+
+fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
+    // Handle en passant
+    let (file, rank) = sq.file_rank();
+    let is_white = COLOR == Color::WHITE.as_u8();
+    let is_black = COLOR != Color::WHITE.as_u8();
+
+    if let Some(ep_sq) = pos.en_passant {
+        debug_assert!(pos.get_piece(ep_sq) == Piece::NONE, "En passant square must be empty");
+        let (ep_file, ep_rank) = ep_sq.file_rank();
+        if (file as i32 - ep_file as i32).abs() == 1 {
+            if is_white && rank == RANK_5 && ep_rank == RANK_6 {
+                debug_assert!(pos.get_piece(Square(ep_sq.0 - 8)) == Piece::B_PAWN);
+                return ep_sq.to_bitboard();
+            }
+            if is_black && rank == RANK_4 && ep_rank == RANK_3 {
+                debug_assert!(pos.get_piece(Square(ep_sq.0 + 8)) == Piece::W_PAWN);
+                return ep_sq.to_bitboard();
+            }
+        }
+    }
+
+    return BitBoard::new();
+}
+
+/* #endregion */
 
 /* #region */
 /// Computes the legal moves for sliding pieces (rook, bishop, and queen) from a given square on a bitboard.
