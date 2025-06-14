@@ -1,7 +1,5 @@
 use crate::engine::board::Move;
-use crate::engine::board::Square;
 use crate::engine::position::Position;
-use crate::engine::utils;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

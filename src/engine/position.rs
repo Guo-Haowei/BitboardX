@@ -1,7 +1,6 @@
 use crate::engine::move_gen;
 
 use super::board::*;
-use super::move_gen::*;
 use super::types::*;
 use super::utils;
 

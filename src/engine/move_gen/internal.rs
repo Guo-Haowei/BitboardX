@@ -182,16 +182,16 @@ fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
 
     // @TODO: handle promotion - BEGIN
     {
-        let mut promotion = false;
-        match rank {
-            RANK_7 if is_white => {
-                promotion = true;
-            }
-            RANK_2 if is_black => {
-                promotion = true;
-            }
-            _ => {}
-        }
+        // let mut promotion = false;
+        // match rank {
+        //     RANK_7 if is_white => {
+        //         promotion = true;
+        //     }
+        //     RANK_2 if is_black => {
+        //         promotion = true;
+        //     }
+        //     _ => {}
+        // }
         // if promotion {
         //     println!("TODO: handle promotion for pawn at square {}", sq);
         // }
@@ -425,19 +425,8 @@ fn check_if_is_eq_capture(
     true
 }
 
-pub fn legal_move_from_to(pos: &mut Position, from_sq: Square, to_sq: Square) -> Option<Move> {
-    // @TODO: this is not technically a legal move check
-    if !pseudo_legal_move_from(pos, from_sq).test(to_sq.as_u8()) {
-        return None;
-    }
-
-    Some(pseudo_legal_move_from_to(pos, from_sq, to_sq))
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::engine::move_gen::legal_moves;
-
     use super::*;
 
     fn squares_to_bitboard(sqs: &[Square]) -> BitBoard {
