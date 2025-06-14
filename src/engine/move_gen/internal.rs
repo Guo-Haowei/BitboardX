@@ -80,6 +80,8 @@ pub fn pseudo_legal_moves_from_sq(
         Piece::W_ROOK | Piece::B_ROOK => pseudo_legal_move_rook(move_list, sq, my, enemy),
         Piece::W_BISHOP | Piece::B_BISHOP => pseudo_legal_move_bishop(move_list, sq, my, enemy),
         Piece::W_QUEEN | Piece::B_QUEEN => pseudo_legal_move_queen(move_list, sq, my, enemy),
+        Piece::W_KING => pseudo_legal_move_king::<{ Color::WHITE.as_u8() }>(move_list, sq, pos),
+        Piece::B_KING => pseudo_legal_move_king::<{ Color::BLACK.as_u8() }>(move_list, sq, pos),
         _ => {
             return false;
         }
@@ -102,7 +104,6 @@ fn pseudo_legal_from_impl<const ATTACK_ONLY: bool>(
 
     let my_occupancy = pos.occupancies[color.as_usize()];
     let enemy_occupancy = pos.occupancies[color.opponent().as_usize()];
-    let any_occupancy = pos.occupancies[Color::BOTH.as_usize()];
 
     match piece {
         Piece::W_PAWN => move_pawn::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(pos, sq),
@@ -111,8 +112,8 @@ fn pseudo_legal_from_impl<const ATTACK_ONLY: bool>(
         Piece::W_BISHOP | Piece::B_BISHOP => move_mask_bishop(sq, my_occupancy, enemy_occupancy),
         Piece::W_QUEEN | Piece::B_QUEEN => move_mask_queen(sq, my_occupancy, enemy_occupancy),
         Piece::W_KNIGHT | Piece::B_KNIGHT => move_mask_knight(sq, my_occupancy),
-        Piece::W_KING => move_king::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(pos, sq),
-        Piece::B_KING => move_king::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(pos, sq),
+        Piece::W_KING => move_mask_king::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(sq, pos),
+        Piece::B_KING => move_mask_king::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(sq, pos),
         Piece::NONE => BitBoard::new(),
         _ => {
             panic!("Invalid piece type: {:?}", piece);
@@ -229,6 +230,7 @@ fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
     moves
 }
 
+/* #region */
 /// Computes the legal moves for sliding pieces (rook, bishop, and queen) from a given square on a bitboard.
 ///
 /// Sliding pieces can move in straight lines across the board until they hit another piece or the board's edge.
@@ -298,6 +300,15 @@ fn move_mask_queen(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard
     move_mask_sliding::<0, 8>(sq, my_occupancy, enemy_occupancy)
 }
 
+fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: BitBoard) {
+    let mut bb = move_mask;
+    while bb.any() {
+        let target_sq = bb.first_nonzero_sq();
+        move_list.add(Move::new(sq, target_sq, MoveType::Normal));
+        bb.remove_first_nonzero_sq();
+    }
+}
+
 fn pseudo_legal_move_rook(
     move_list: &mut MoveList,
     sq: Square,
@@ -327,11 +338,9 @@ fn pseudo_legal_move_queen(
     let mask = move_mask_queen(sq, my_occupancy, enemy_occupancy);
     pseudo_legal_move_general(move_list, sq, mask);
 }
+/* #endregion */
 
-// Piece::W_ROOK | Piece::B_ROOK => move_sliding::<0, 4>(pos, sq, color),
-// Piece::W_BISHOP | Piece::B_BISHOP => move_sliding::<4, 8>(pos, sq, color),
-// Piece::W_QUEEN | Piece::B_QUEEN => move_sliding::<0, 8>(pos, sq, color),
-
+/* #region */
 /// Computes the legal knight moves from a given square on a bitboard.
 ///
 /// The knight moves in an L-shape: two squares in one cardinal direction
@@ -349,6 +358,7 @@ fn pseudo_legal_move_queen(
 /// - SW + W (2W 1S) → West-West-South
 /// - NE + E (2E 1N) → East-East-North
 /// - SE + E (2E 1S) → East-East-South
+
 fn move_mask_knight(sq: Square, my_occupancy: BitBoard) -> BitBoard {
     let mut moves = BitBoard::new();
     let bb = sq.to_bitboard();
@@ -372,19 +382,108 @@ fn pseudo_legal_move_knight(move_list: &mut MoveList, sq: Square, my_occupancy: 
     let mask = move_mask_knight(sq, my_occupancy);
     pseudo_legal_move_general(move_list, sq, mask);
 }
+/* #endregion */
 
-/// Pseudo-legal move generation for a knight, bishop, rook, and queen
-fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: BitBoard) {
-    let mut bb = move_mask;
-    while bb.any() {
-        let target_sq = bb.first_nonzero_sq();
-        move_list.add(Move::new(sq, target_sq, MoveType::Normal));
-        bb.remove_first_nonzero_sq();
+/* #region */
+/// Computes the legal moves for a king from a given square on a bitboard,
+/// including standard single-square moves and optional castling.
+///
+/// The king can move one square in any direction (horizontal, vertical, diagonal),
+/// and under special conditions, can perform a castling move with a rook.
+///
+/// ## Movement Directions
+///
+/// - N  → North
+/// - S  → South
+/// - E  → East
+/// - W  → West
+/// - NE → North-East
+/// - NW → North-West
+/// - SE → South-East
+/// - SW → South-West
+///
+/// ## Standard Movement
+///
+/// The king normally moves to any adjacent square (up to 8 directions), provided
+/// the destination is not occupied by a friendly piece and is not under attack.
+///
+/// ## Castling
+///
+/// Castling is a special move involving the king and one of the rooks. There are
+/// two types of castling:
+///
+/// - Kingside Castling:
+///   - White: King moves from E1 to G1, rook from H1 to F1
+///   - Black: King moves from E8 to G8, rook from H8 to F8
+///
+/// - Queenside Castling:
+///   - White: King moves from E1 to C1, rook from A1 to D1
+///   - Black: King moves from E8 to C8, rook from A8 to D8
+///
+/// ### Castling Conditions
+///
+/// Castling is only legal if all the following are true:
+/// - Neither the king nor the involved rook has previously moved
+/// - The squares between the king and rook are empty
+/// - The king is not currently in check
+/// - The king does not pass through or land on a square that is under attack
+
+fn move_mask_king<const COLOR: u8, const ATTACK_ONLY: bool>(
+    sq: Square,
+    pos: &Position,
+) -> BitBoard {
+    let color = Color::from(COLOR);
+    let is_white = color.is_white();
+
+    let bb = sq.to_bitboard();
+    let mut moves = BitBoard::new();
+    let occupancy = !pos.occupancies[COLOR as usize];
+    moves |= shift_north(bb) & occupancy;
+    moves |= shift_south(bb) & occupancy;
+    moves |= shift_east(bb) & occupancy;
+    moves |= shift_west(bb) & occupancy;
+    moves |= shift_ne(bb) & occupancy;
+    moves |= shift_nw(bb) & occupancy;
+    moves |= shift_se(bb) & occupancy;
+    moves |= shift_sw(bb) & occupancy;
+
+    if !ATTACK_ONLY {
+        // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
+        moves &= !pos.attack_map[color.opponent().as_usize()];
+
+        if is_white {
+            if (pos.castling & MoveFlags::K != 0)
+                && move_mask_castle_check::<COLOR>(pos, sq, Square::G1, Square::H1)
+            {
+                assert!(sq == Square::E1);
+                moves.set_sq(Square::G1);
+            }
+            if (pos.castling & MoveFlags::Q != 0)
+                && move_mask_castle_check::<COLOR>(pos, sq, Square::C1, Square::A1)
+            {
+                assert!(sq == Square::E1);
+                moves.set_sq(Square::C1);
+            }
+        } else {
+            if (pos.castling & MoveFlags::k != 0)
+                && move_mask_castle_check::<COLOR>(pos, sq, Square::G8, Square::H8)
+            {
+                assert!(sq == Square::E8);
+                moves.set_sq(Square::G8);
+            }
+            if (pos.castling & MoveFlags::q != 0)
+                && move_mask_castle_check::<COLOR>(pos, sq, Square::C8, Square::A8)
+            {
+                assert!(sq == Square::E8);
+                moves.set_sq(Square::C8);
+            }
+        }
     }
+
+    moves
 }
 
-/// Pseudo-legal move generation for a king
-fn castling_check<const COLOR: u8>(
+fn move_mask_castle_check<const COLOR: u8>(
     pos: &Position,
     sq: Square,
     dst_sq: Square,
@@ -424,58 +523,31 @@ fn castling_check<const COLOR: u8>(
     true
 }
 
-fn move_king<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Square) -> BitBoard {
-    let color = Color::from(COLOR);
-    let is_white = color.is_white();
+pub fn pseudo_legal_move_king<const COLOR: u8>(
+    move_list: &mut MoveList,
+    sq: Square,
+    pos: &Position,
+) {
+    let mut mask = move_mask_king::<COLOR, false>(sq, pos);
+    while mask.any() {
+        let target_sq = mask.first_nonzero_sq();
 
-    let bb = sq.to_bitboard();
-    let mut moves = BitBoard::new();
-    let occupancy = !pos.occupancies[COLOR as usize];
-    moves |= shift_north(bb) & occupancy;
-    moves |= shift_south(bb) & occupancy;
-    moves |= shift_east(bb) & occupancy;
-    moves |= shift_west(bb) & occupancy;
-    moves |= shift_ne(bb) & occupancy;
-    moves |= shift_nw(bb) & occupancy;
-    moves |= shift_se(bb) & occupancy;
-    moves |= shift_sw(bb) & occupancy;
-    if !ATTACK_ONLY {
-        // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
-        moves &= !pos.attack_map[color.opponent().as_usize()];
+        // check if it's a castling move
+        let (from_file, _) = sq.file_rank();
+        let (to_file, _) = target_sq.file_rank();
+        let diff = from_file as i8 - to_file as i8;
+        let move_type = match diff.abs() {
+            0 | 1 => MoveType::Normal,
+            2 => MoveType::Castling,
+            _ => panic!("Invalid castling move from {} to {}", sq, target_sq),
+        };
 
-        // Castling doesn't form attack
-        // @TODO: refactor this part
-        if is_white {
-            if (pos.castling & MoveFlags::K != 0)
-                && castling_check::<COLOR>(pos, sq, Square::G1, Square::H1)
-            {
-                assert!(sq == Square::E1);
-                moves.set_sq(Square::G1);
-            }
-            if (pos.castling & MoveFlags::Q != 0)
-                && castling_check::<COLOR>(pos, sq, Square::C1, Square::A1)
-            {
-                assert!(sq == Square::E1);
-                moves.set_sq(Square::C1);
-            }
-        } else {
-            if (pos.castling & MoveFlags::k != 0)
-                && castling_check::<COLOR>(pos, sq, Square::G8, Square::H8)
-            {
-                assert!(sq == Square::E8);
-                moves.set_sq(Square::G8);
-            }
-            if (pos.castling & MoveFlags::q != 0)
-                && castling_check::<COLOR>(pos, sq, Square::C8, Square::A8)
-            {
-                assert!(sq == Square::E8);
-                moves.set_sq(Square::C8);
-            }
-        }
+        move_list.add(Move::new(sq, target_sq, move_type));
+        mask.remove_first_nonzero_sq();
     }
-
-    moves
 }
+
+/* #endregion */
 
 /// Pseudo-legal move generation from a square to another
 pub fn pseudo_legal_move_from_to(pos: &Position, from_sq: Square, to_sq: Square) -> Move {
