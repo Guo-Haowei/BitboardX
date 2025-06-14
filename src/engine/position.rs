@@ -191,9 +191,9 @@ impl Position {
             self.bitboards[to_piece.as_usize()].unset(m.to_sq().as_u8()); // Clear the 'to' square for the captured piece
         }
 
-        do_promotion(self, m, from);
-
         do_castling(self, m, from);
+
+        do_promotion(self, m, from);
 
         post_move(self);
 
@@ -206,9 +206,9 @@ impl Position {
     pub fn unmake_move(&mut self, m: &Move, snapshot: &Snapshot) {
         let from = self.get_piece(m.to_sq());
 
-        undo_promotion(self, m, from);
-
         undo_move_generic(self, m, from, snapshot.to_piece);
+
+        undo_promotion(self, m);
 
         undo_move_ep(self, m, from);
 
@@ -438,27 +438,36 @@ fn do_promotion(pos: &mut Position, m: &Move, from: Piece) {
         return;
     }
 
+    assert!(
+        from.piece_type() == PieceType::Pawn,
+        "Promotion must be from a pawm, got '{}'",
+        from.to_char()
+    );
+
     let color = from.color();
-    let promotion = m.get_promotion().unwrap();
     let to_sq = m.to_sq();
-    let to = Piece::get_piece(color, promotion);
+    let promotion = Piece::get_piece(color, m.get_promotion().unwrap());
 
     pos.bitboards[from.as_usize()].unset(to_sq.as_u8()); // Remove the pawn from the board
-    pos.bitboards[to.as_usize()].set(to_sq.as_u8()); // Place the promoted piece on the board
+    pos.bitboards[promotion.as_usize()].set(to_sq.as_u8()); // Place the promoted piece on the board
 }
 
-fn undo_promotion(pos: &mut Position, m: &Move, from: Piece) {
+fn undo_promotion(pos: &mut Position, m: &Move) {
     if m.get_type() != MoveType::Promotion {
         return;
     }
 
-    let color = from.color();
-    let promotion = m.get_promotion().unwrap();
-    let to_sq = m.to_sq();
-    let to = Piece::get_piece(color, promotion);
+    // from square is the square of the promoted piece
+    let from_sq = m.from_sq();
+    let piece = pos.get_piece(from_sq);
+    let color = piece.color();
+    let promotion = Piece::get_piece(color, m.get_promotion().unwrap());
+    let pawn = Piece::get_piece(color, PieceType::Pawn);
 
-    pos.bitboards[from.as_usize()].set(to_sq.as_u8()); // Place the pawn back on the board
-    pos.bitboards[to.as_usize()].unset(to_sq.as_u8()); // Remove the promoted piece from the board
+    // println!("Revert promotion from {} to {} at {}", pawn.to_char(), promotion.to_char(), from_sq);
+
+    pos.bitboards[pawn.as_usize()].set(from_sq.as_u8()); // Place the pawn back on the board
+    pos.bitboards[promotion.as_usize()].unset(from_sq.as_u8()); // Remove the promoted piece from the board
 }
 
 fn do_castling(pos: &mut Position, m: &Move, from: Piece) {

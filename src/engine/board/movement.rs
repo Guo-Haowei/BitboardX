@@ -160,6 +160,7 @@ mod tests {
         assert_eq!(m.from_sq(), Square::E2);
         assert_eq!(m.to_sq(), Square::E4);
         assert_eq!(m.get_type(), MoveType::Castling);
+        assert_eq!(m.get_promotion(), None);
     }
 
     #[test]
@@ -169,6 +170,15 @@ mod tests {
         assert_eq!(m.to_sq(), Square::E8);
         assert_eq!(m.get_type(), MoveType::Promotion);
         assert_eq!(m.get_promotion(), Some(PieceType::Queen));
+
+        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::Rook));
+        assert_eq!(m.get_promotion(), Some(PieceType::Rook));
+
+        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::Knight));
+        assert_eq!(m.get_promotion(), Some(PieceType::Knight));
+
+        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::Bishop));
+        assert_eq!(m.get_promotion(), Some(PieceType::Bishop));
     }
 
     #[test]
