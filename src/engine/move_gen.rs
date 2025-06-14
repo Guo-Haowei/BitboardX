@@ -22,15 +22,7 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
         while bb.any() {
             let sq = bb.first_nonzero_sq();
 
-            if !internal::pseudo_legal_moves_from_sq(&mut move_list, piece, pos, sq) {
-                let mut bb2 = internal::pseudo_legal_move_from(pos, sq);
-
-                while bb2.any() {
-                    let m = internal::pseudo_legal_move_from_to(pos, sq, bb2.first_nonzero_sq());
-                    move_list.add(m);
-                    bb2.remove_first_nonzero_sq();
-                }
-            }
+            internal::pseudo_legal_moves_from_sq(&mut move_list, piece, pos, sq);
 
             bb.remove_first_nonzero_sq();
         }
