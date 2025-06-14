@@ -192,6 +192,9 @@ impl Position {
         }
 
         do_castling(self, m, from);
+
+        do_promotion(self, m, from);
+
         post_move(self);
 
         self.castling &= !disabled_castling;
@@ -202,7 +205,11 @@ impl Position {
 
     pub fn unmake_move(&mut self, m: &Move, snapshot: &Snapshot) {
         let from = self.get_piece(m.to_sq());
+
         undo_move_generic(self, m, from, snapshot.to_piece);
+
+        undo_promotion(self, m);
+
         undo_move_ep(self, m, from);
 
         undo_castling(self, m, from);
@@ -424,6 +431,43 @@ fn castling_type(from: Piece, from_sq: Square, to_sq: Square) -> Castling {
         (Piece::B_KING, Square::E8, Square::C8) => Castling::BlackQueenSide,
         _ => Castling::None,
     }
+}
+
+fn do_promotion(pos: &mut Position, m: &Move, from: Piece) {
+    if m.get_type() != MoveType::Promotion {
+        return;
+    }
+
+    assert!(
+        from.piece_type() == PieceType::Pawn,
+        "Promotion must be from a pawm, got '{}'",
+        from.to_char()
+    );
+
+    let color = from.color();
+    let to_sq = m.to_sq();
+    let promotion = Piece::get_piece(color, m.get_promotion().unwrap());
+
+    pos.bitboards[from.as_usize()].unset(to_sq.as_u8()); // Remove the pawn from the board
+    pos.bitboards[promotion.as_usize()].set(to_sq.as_u8()); // Place the promoted piece on the board
+}
+
+fn undo_promotion(pos: &mut Position, m: &Move) {
+    if m.get_type() != MoveType::Promotion {
+        return;
+    }
+
+    // from square is the square of the promoted piece
+    let from_sq = m.from_sq();
+    let piece = pos.get_piece(from_sq);
+    let color = piece.color();
+    let promotion = Piece::get_piece(color, m.get_promotion().unwrap());
+    let pawn = Piece::get_piece(color, PieceType::Pawn);
+
+    // println!("Revert promotion from {} to {} at {}", pawn.to_char(), promotion.to_char(), from_sq);
+
+    pos.bitboards[pawn.as_usize()].set(from_sq.as_u8()); // Place the pawn back on the board
+    pos.bitboards[promotion.as_usize()].unset(from_sq.as_u8()); // Remove the promoted piece from the board
 }
 
 fn do_castling(pos: &mut Position, m: &Move, from: Piece) {

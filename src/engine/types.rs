@@ -232,7 +232,15 @@ mod tests {
     fn test_get_piece() {
         assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Pawn), Piece::W_PAWN);
         assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Knight), Piece::W_KNIGHT);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Bishop), Piece::W_BISHOP);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Rook), Piece::W_ROOK);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Queen), Piece::W_QUEEN);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::King), Piece::W_KING);
         assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Pawn), Piece::B_PAWN);
         assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Knight), Piece::B_KNIGHT);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Bishop), Piece::B_BISHOP);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Rook), Piece::B_ROOK);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Queen), Piece::B_QUEEN);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::King), Piece::B_KING);
     }
 }

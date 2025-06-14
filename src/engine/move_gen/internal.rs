@@ -2,68 +2,6 @@ use super::super::board::*;
 use super::super::position::Position;
 use super::super::types::{Color, Piece, PieceType};
 
-const NORTH: i32 = 8;
-const SOUTH: i32 = -NORTH;
-const EAST: i32 = 1;
-const WEST: i32 = -EAST;
-const NE: i32 = NORTH + EAST;
-const NW: i32 = NORTH + WEST;
-const SE: i32 = SOUTH + EAST;
-const SW: i32 = SOUTH + WEST;
-
-const BOUND_A: BitBoard = BitBoard::from(0x0101010101010101);
-const BOUND_B: BitBoard = BitBoard::from(0x0202020202020202);
-const BOUND_G: BitBoard = BitBoard::from(0x4040404040404040);
-const BOUND_H: BitBoard = BitBoard::from(0x8080808080808080);
-const BOUND_1: BitBoard = BitBoard::from(0x00000000000000FF);
-const BOUND_2: BitBoard = BitBoard::from(0x000000000000FF00);
-const BOUND_7: BitBoard = BitBoard::from(0x00FF000000000000);
-const BOUND_8: BitBoard = BitBoard::from(0xFF00000000000000);
-const BOUND_AB: BitBoard = BitBoard::from(BOUND_A.get() | BOUND_B.get());
-const BOUND_GH: BitBoard = BitBoard::from(BOUND_G.get() | BOUND_H.get());
-const BOUND_12: BitBoard = BitBoard::from(BOUND_1.get() | BOUND_2.get());
-const BOUND_78: BitBoard = BitBoard::from(BOUND_7.get() | BOUND_8.get());
-
-fn shift(bb: BitBoard, dir: i32) -> BitBoard {
-    // if dir > 0 { bb.get() << dir } else { bb.get() >> -dir }
-    BitBoard::from(if dir < 0 { bb.get() >> -dir } else { bb.get() << dir })
-}
-
-fn shift_east(bb: BitBoard) -> BitBoard {
-    (bb & !BOUND_H).shift(EAST)
-}
-
-fn shift_west(bb: BitBoard) -> BitBoard {
-    (bb & !BOUND_A).shift(WEST)
-}
-
-fn shift_north(bb: BitBoard) -> BitBoard {
-    (bb & !BOUND_8).shift(NORTH)
-}
-
-fn shift_south(bb: BitBoard) -> BitBoard {
-    (bb & !BOUND_1).shift(SOUTH)
-}
-
-fn shift_ne(bb: BitBoard) -> BitBoard {
-    (bb & !(BOUND_H | BOUND_8)).shift(NE)
-}
-
-fn shift_nw(bb: BitBoard) -> BitBoard {
-    (bb & !(BOUND_A | BOUND_8)).shift(NW)
-}
-
-fn shift_se(bb: BitBoard) -> BitBoard {
-    (bb & !(BOUND_H | BOUND_1)).shift(SE)
-}
-
-fn shift_sw(bb: BitBoard) -> BitBoard {
-    (bb & !(BOUND_A | BOUND_1)).shift(SW)
-}
-
-const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
-    [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
-
 pub fn pseudo_legal_moves_from_sq(
     move_list: &mut MoveList,
     piece: Piece,
@@ -208,27 +146,6 @@ fn move_mask_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(
         moves |= attack_right;
     }
 
-    // @TODO: handle en passant - BEGIN
-    // @TODO: handle en passant - END
-
-    // @TODO: handle promotion - BEGIN
-    {
-        // let mut promotion = false;
-        // match rank {
-        //     RANK_7 if is_white => {
-        //         promotion = true;
-        //     }
-        //     RANK_2 if is_black => {
-        //         promotion = true;
-        //     }
-        //     _ => {}
-        // }
-        // if promotion {
-        //     println!("TODO: handle promotion for pawn at square {}", sq);
-        // }
-    }
-    // @TODO: handle promotion - END
-
     moves
 }
 
@@ -263,12 +180,29 @@ fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square,
     while bb.any() {
         let to_sq = bb.first_nonzero_sq();
 
-        let is_ep_capture = check_if_eq_capture::<COLOR>(pos, sq, to_sq, pos.get_piece(to_sq));
-
-        let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
-
-        move_list.add(Move::new(sq, to_sq, move_type));
+        if check_if_promotion::<COLOR>(to_sq) {
+            // Promotion move
+            let promotion_types =
+                [PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight];
+            for &promotion in &promotion_types {
+                move_list.add(Move::new(sq, to_sq, MoveType::Promotion, Some(promotion)));
+            }
+        } else {
+            let is_ep_capture = check_if_eq_capture::<COLOR>(pos, sq, to_sq, pos.get_piece(to_sq));
+            let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
+            move_list.add(Move::new(sq, to_sq, move_type, None));
+        }
         bb.remove_first_nonzero_sq();
+    }
+}
+
+fn check_if_promotion<const COLOR: u8>(to_sq: Square) -> bool {
+    let (_, rank) = to_sq.file_rank();
+
+    match rank {
+        RANK_8 if COLOR == Color::WHITE.as_u8() => true,
+        RANK_1 if COLOR == Color::BLACK.as_u8() => true,
+        _ => false,
     }
 }
 
@@ -391,7 +325,7 @@ fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: Bi
     let mut bb = move_mask;
     while bb.any() {
         let target_sq = bb.first_nonzero_sq();
-        move_list.add(Move::new(sq, target_sq, MoveType::Normal));
+        move_list.add(Move::new(sq, target_sq, MoveType::Normal, None));
         bb.remove_first_nonzero_sq();
     }
 }
@@ -629,7 +563,7 @@ pub fn pseudo_legal_move_king<const COLOR: u8>(
             _ => panic!("Invalid castling move from {} to {}", sq, target_sq),
         };
 
-        move_list.add(Move::new(sq, target_sq, move_type));
+        move_list.add(Move::new(sq, target_sq, move_type, None));
         mask.remove_first_nonzero_sq();
     }
 }
@@ -806,4 +740,64 @@ mod tests {
     }
 }
 
-// @TODO: get rid of these constants
+const NORTH: i32 = 8;
+const SOUTH: i32 = -NORTH;
+const EAST: i32 = 1;
+const WEST: i32 = -EAST;
+const NE: i32 = NORTH + EAST;
+const NW: i32 = NORTH + WEST;
+const SE: i32 = SOUTH + EAST;
+const SW: i32 = SOUTH + WEST;
+
+const BOUND_A: BitBoard = BitBoard::from(0x0101010101010101);
+const BOUND_B: BitBoard = BitBoard::from(0x0202020202020202);
+const BOUND_G: BitBoard = BitBoard::from(0x4040404040404040);
+const BOUND_H: BitBoard = BitBoard::from(0x8080808080808080);
+const BOUND_1: BitBoard = BitBoard::from(0x00000000000000FF);
+const BOUND_2: BitBoard = BitBoard::from(0x000000000000FF00);
+const BOUND_7: BitBoard = BitBoard::from(0x00FF000000000000);
+const BOUND_8: BitBoard = BitBoard::from(0xFF00000000000000);
+const BOUND_AB: BitBoard = BitBoard::from(BOUND_A.get() | BOUND_B.get());
+const BOUND_GH: BitBoard = BitBoard::from(BOUND_G.get() | BOUND_H.get());
+const BOUND_12: BitBoard = BitBoard::from(BOUND_1.get() | BOUND_2.get());
+const BOUND_78: BitBoard = BitBoard::from(BOUND_7.get() | BOUND_8.get());
+
+fn shift(bb: BitBoard, dir: i32) -> BitBoard {
+    // if dir > 0 { bb.get() << dir } else { bb.get() >> -dir }
+    BitBoard::from(if dir < 0 { bb.get() >> -dir } else { bb.get() << dir })
+}
+
+fn shift_east(bb: BitBoard) -> BitBoard {
+    (bb & !BOUND_H).shift(EAST)
+}
+
+fn shift_west(bb: BitBoard) -> BitBoard {
+    (bb & !BOUND_A).shift(WEST)
+}
+
+fn shift_north(bb: BitBoard) -> BitBoard {
+    (bb & !BOUND_8).shift(NORTH)
+}
+
+fn shift_south(bb: BitBoard) -> BitBoard {
+    (bb & !BOUND_1).shift(SOUTH)
+}
+
+fn shift_ne(bb: BitBoard) -> BitBoard {
+    (bb & !(BOUND_H | BOUND_8)).shift(NE)
+}
+
+fn shift_nw(bb: BitBoard) -> BitBoard {
+    (bb & !(BOUND_A | BOUND_8)).shift(NW)
+}
+
+fn shift_se(bb: BitBoard) -> BitBoard {
+    (bb & !(BOUND_H | BOUND_1)).shift(SE)
+}
+
+fn shift_sw(bb: BitBoard) -> BitBoard {
+    (bb & !(BOUND_A | BOUND_1)).shift(SW)
+}
+
+const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
+    [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
