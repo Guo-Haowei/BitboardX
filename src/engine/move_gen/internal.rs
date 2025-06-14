@@ -192,9 +192,9 @@ fn move_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(pos: &Position, sq: Squar
             }
             _ => {}
         }
-        if promotion {
-            println!("TODO: handle promotion for pawn at square {}", sq);
-        }
+        // if promotion {
+        //     println!("TODO: handle promotion for pawn at square {}", sq);
+        // }
     }
     // @TODO: handle promotion - END
 

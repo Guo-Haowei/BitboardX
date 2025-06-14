@@ -94,7 +94,7 @@ fn print_version() {
 }
 
 fn perft_main() {
-    for depth in 1..=6 {
+    for depth in 1..=8 {
         let mut pos = engine::position::Position::new();
         let nodes = perft_test(&mut pos, depth);
         println!("Depth {}: {} nodes", depth, nodes);
