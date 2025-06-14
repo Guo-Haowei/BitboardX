@@ -1,6 +1,4 @@
-use super::super::board::constants::*;
 use super::super::board::*;
-use super::super::move_gen::*;
 use super::super::position::Position;
 use super::super::types::{Color, Piece, PieceType};
 
@@ -338,11 +336,11 @@ pub fn validate_move(pos: &mut Position, m: &Move) -> bool {
     debug_assert!(piece == Piece::W_KING || piece == Piece::B_KING);
     debug_assert!(piece.color() == us);
 
-    let snapshot = make_move(pos, m);
+    let snapshot = pos.make_move(m);
 
     let legal = (pos.bitboards[piece.as_usize()] & pos.attack_map[opponent.as_usize()]).none();
 
-    unmake_move(pos, m, &snapshot);
+    pos.unmake_move(m, &snapshot);
 
     legal
 }

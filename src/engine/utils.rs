@@ -1,4 +1,4 @@
-use super::board::{BitBoard, MoveFlags, Square, constants::*};
+use super::board::*;
 use super::types::*;
 
 pub fn parse_square(input: &str) -> Option<Square> {
