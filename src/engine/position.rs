@@ -1,5 +1,3 @@
-use crate::engine::board::constants::RANK_3;
-
 use super::board::{BitBoard, Square};
 use super::moves::{Move, MoveFlags, make_move, unmake_move};
 use super::piece::{Color, Piece};

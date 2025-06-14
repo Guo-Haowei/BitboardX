@@ -56,11 +56,10 @@ pub enum SpecialMove {
 struct PackedData {
     from_sq: B6,
     to_sq: B6,
-    color: B1,
     capture: B5,       // capture piece is not necessarily on to_sq
     is_ep_capture: B1, // if this move captures enemy pawn by en passant rule
     #[skip]
-    __: B13,
+    __: B14,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -77,12 +76,10 @@ impl Move {
         is_ep_capture: bool,
     ) -> Self {
         debug_assert!(from != Piece::NONE);
-        let color = from.color();
         let mut data = PackedData::new();
         data.set_from_sq(from_sq.as_u8());
         data.set_to_sq(to_sq.as_u8());
         data.set_capture(capture.as_u8());
-        data.set_color(color.as_u8());
         data.set_is_ep_capture(is_ep_capture as u8);
 
         Self { data }
@@ -94,10 +91,6 @@ impl Move {
 
     fn to_sq(&self) -> Square {
         Square(self.data.to_sq())
-    }
-
-    pub fn color(&self) -> Color {
-        if self.data.color() == 0 { Color::WHITE } else { Color::BLACK }
     }
 
     pub fn capture(&self) -> Piece {
@@ -238,7 +231,7 @@ pub fn unmake_move(pos: &mut Position, m: &Move, snapshot: &Snapshot) {
     pos.restore(snapshot);
 }
 
-fn do_move_ep(pos: &mut Position, m: &Move, _: Piece) {
+fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
     let (to_file, _) = m.to_sq().file_rank();
 
     // check if it's an en passant capture
@@ -246,7 +239,7 @@ fn do_move_ep(pos: &mut Position, m: &Move, _: Piece) {
         // capture the opponent's pawn passed en passant square
         let (_, from_rank) = m.from_sq().file_rank();
         let enemy_sq = Square::make(to_file, from_rank);
-        let enemy = Piece::get_piece(m.color().opponent(), PieceType::Pawn);
+        let enemy = Piece::get_piece(from.color().opponent(), PieceType::Pawn);
 
         debug_assert!(pos.get_piece(enemy_sq) == enemy);
         debug_assert!(pos.get_piece(m.to_sq()) == Piece::NONE);
@@ -256,13 +249,13 @@ fn do_move_ep(pos: &mut Position, m: &Move, _: Piece) {
     }
 }
 
-fn undo_move_ep(pos: &mut Position, m: &Move, _from: Piece) {
+fn undo_move_ep(pos: &mut Position, m: &Move, from: Piece) {
     if m.is_ep_capture() {
         // Restore the captured pawn on the en passant square
         let (to_file, _) = m.to_sq().file_rank();
         let (_, from_rank) = m.from_sq().file_rank();
         let enemy_sq = Square::make(to_file, from_rank);
-        let enemy = Piece::get_piece(m.color().opponent(), PieceType::Pawn);
+        let enemy = Piece::get_piece(from.color().opponent(), PieceType::Pawn);
 
         debug_assert!(pos.get_piece(enemy_sq) == Piece::NONE);
 
