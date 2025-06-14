@@ -7,8 +7,8 @@ use super::types::*;
 mod internal;
 
 /// Pseudo-legal move generation
-pub fn pseudo_legal_moves(pos: &Position) -> Vec<Move> {
-    let mut moves = Vec::new();
+pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
+    let mut moves = MoveList::new();
 
     let color = pos.side_to_move;
     let (start, end) = if color == Color::WHITE {
@@ -17,25 +17,20 @@ pub fn pseudo_legal_moves(pos: &Position) -> Vec<Move> {
         (Piece::B_START, Piece::B_END)
     };
 
-    // clear the least-significant bit from a bitboard
-    //           A = 0b1001001000
-    //       A - 1 = 0b1001000111
-    // A & (A - 1) = 0b1001000000
     for i in start..=end {
-        let mut bb = pos.bitboards[i as usize].get();
-        while bb != 0 {
-            let idx = bb.trailing_zeros() as u8;
-            let sq = Square(idx);
-            let mut bb2 = internal::pseudo_legal_move_from(pos, sq).get();
+        let mut bb = pos.bitboards[i as usize];
+        while bb.any() {
+            let sq = bb.first_nonzero_sq();
 
-            while bb2 != 0 {
-                let idx = bb2.trailing_zeros() as u8;
-                let m = pseudo_legal_move_from_to(pos, sq, Square(idx));
-                moves.push(m);
-                bb2 &= bb2 - 1;
+            let mut bb2 = internal::pseudo_legal_move_from(pos, sq);
+
+            while bb2.any() {
+                let m = internal::pseudo_legal_move_from_to(pos, sq, bb2.first_nonzero_sq());
+                moves.add(m);
+                bb2.remove_first_nonzero_sq();
             }
 
-            bb &= bb - 1;
+            bb.remove_first_nonzero_sq();
         }
     }
 
@@ -43,10 +38,14 @@ pub fn pseudo_legal_moves(pos: &Position) -> Vec<Move> {
 }
 
 /// Legal move generation
-pub fn legal_moves(pos: &mut Position) -> Vec<Move> {
-    let mut moves = pseudo_legal_moves(pos);
-
-    moves.retain(|m| internal::is_move_legal(pos, m));
+pub fn legal_moves(pos: &mut Position) -> MoveList {
+    let pseudo_moves = pseudo_legal_moves(pos);
+    let mut moves = MoveList::new();
+    for m in pseudo_moves.iter() {
+        if internal::is_move_legal(pos, m) {
+            moves.add(m.clone());
+        }
+    }
 
     moves
 }
@@ -91,11 +90,11 @@ mod perft {
         let move_list = pos.legal_moves();
 
         if depth == 1 {
-            return move_list.len() as u64;
+            return move_list.count() as u64;
         }
 
         let mut nodes = 0u64;
-        for m in move_list {
+        for m in move_list.iter() {
             let snapshot = pos.make_move(&m);
             nodes += perft_test(pos, depth - 1);
             pos.unmake_move(&m, &snapshot);

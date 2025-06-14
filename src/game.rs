@@ -72,14 +72,14 @@ impl Game {
     }
 
     pub fn legal_moves(&mut self) -> Vec<MoveJs> {
-        let mut res = Vec::new();
-        let moves = self.pos.legal_moves();
+        let move_list = self.pos.legal_moves();
+        let mut moves = Vec::new();
 
-        for m in moves {
-            res.push(MoveJs::new(&m));
+        for m in move_list.iter() {
+            moves.push(MoveJs::new(&m));
         }
 
-        res
+        moves
     }
 }
 

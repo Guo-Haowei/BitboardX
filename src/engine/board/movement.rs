@@ -87,6 +87,38 @@ impl Move {
     // @TODO: promotion piece
 }
 
+pub struct MoveList {
+    moves: [Move; 256],
+    count: usize,
+}
+
+impl MoveList {
+    pub fn new() -> Self {
+        Self { moves: [Move::none(); 256], count: 0 }
+    }
+
+    pub fn add(&mut self, m: Move) {
+        if self.count < self.moves.len() {
+            self.moves[self.count] = m;
+            self.count += 1;
+        } else {
+            panic!("MoveList is full, cannot add more moves");
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.count = 0;
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Move> {
+        self.moves.iter().take(self.count)
+    }
+
+    pub fn count(&self) -> usize {
+        self.count
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::bitboard::BitBoard;

@@ -66,6 +66,18 @@ impl BitBoard {
         let val = if dir < 0 { self.0 >> (-dir) } else { self.0 << dir };
         BitBoard(val)
     }
+
+    pub fn first_nonzero_sq(&self) -> Square {
+        Square(self.0.trailing_zeros() as u8)
+    }
+
+    /// clear the least-significant bit from a bitboard
+    ///           A = 0b1001001000
+    ///       A - 1 = 0b1001000111
+    /// A & (A - 1) = 0b1001000000
+    pub fn remove_first_nonzero_sq(&mut self) {
+        self.0 &= self.0 - 1; // Clear the least significant bit
+    }
 }
 
 /* #region Bitwise Operations */

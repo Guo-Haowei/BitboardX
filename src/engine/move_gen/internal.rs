@@ -72,13 +72,17 @@ fn pseudo_legal_from_impl<const ATTACK_ONLY: bool>(
 ) -> BitBoard {
     let piece = pos.get_piece(sq);
 
+    let my_occupancy = pos.occupancies[color.as_usize()];
+    let enemy_occupancy = pos.occupancies[color.opponent().as_usize()];
+    let any_occupancy = pos.occupancies[Color::BOTH.as_usize()];
+
     match piece {
         Piece::W_PAWN => move_pawn::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(pos, sq),
         Piece::B_PAWN => move_pawn::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(pos, sq),
         Piece::W_ROOK | Piece::B_ROOK => move_sliding::<0, 4>(pos, sq, color),
         Piece::W_BISHOP | Piece::B_BISHOP => move_sliding::<4, 8>(pos, sq, color),
         Piece::W_QUEEN | Piece::B_QUEEN => move_sliding::<0, 8>(pos, sq, color),
-        Piece::W_KNIGHT | Piece::B_KNIGHT => move_knight(pos, sq, color),
+        Piece::W_KNIGHT | Piece::B_KNIGHT => generate_knight_targets(sq, my_occupancy),
         Piece::W_KING => move_king::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(pos, sq),
         Piece::B_KING => move_king::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(pos, sq),
         Piece::NONE => BitBoard::new(),
@@ -234,22 +238,32 @@ fn move_sliding<const START: u8, const END: u8>(
 }
 
 /// Pseudo-legal move generation for a knight
-fn move_knight(pos: &Position, sq: Square, color: Color) -> BitBoard {
+fn generate_knight_targets(sq: Square, my_occupancy: BitBoard) -> BitBoard {
     let mut moves = BitBoard::new();
     let bb = sq.to_bitboard();
-    let occupancy = !pos.occupancies[color.as_usize()];
 
-    moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & occupancy;
-    moves |= shift(bb & !(BOUND_AB | BOUND_8), NW + WEST) & occupancy;
-    moves |= shift(bb & !(BOUND_GH | BOUND_1), SE + EAST) & occupancy;
-    moves |= shift(bb & !(BOUND_GH | BOUND_8), NE + EAST) & occupancy;
+    let mask = !my_occupancy;
 
-    moves |= shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH) & occupancy;
-    moves |= shift(bb & !(BOUND_A | BOUND_78), NW + NORTH) & occupancy;
-    moves |= shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH) & occupancy;
-    moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & occupancy;
+    moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & mask;
+    moves |= shift(bb & !(BOUND_AB | BOUND_8), NW + WEST) & mask;
+    moves |= shift(bb & !(BOUND_GH | BOUND_1), SE + EAST) & mask;
+    moves |= shift(bb & !(BOUND_GH | BOUND_8), NE + EAST) & mask;
+
+    moves |= shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH) & mask;
+    moves |= shift(bb & !(BOUND_A | BOUND_78), NW + NORTH) & mask;
+    moves |= shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH) & mask;
+    moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & mask;
 
     moves
+}
+
+fn generate_knight_moves(move_list: &mut MoveList, sq: Square, my_occupancy: BitBoard) {
+    let mut bb = generate_knight_targets(sq, my_occupancy);
+    while bb.any() {
+        let target_sq = bb.first_nonzero_sq();
+        move_list.add(Move::new(sq, target_sq, MoveType::Normal));
+        bb.remove_first_nonzero_sq();
+    }
 }
 
 /// Pseudo-legal move generation for a king

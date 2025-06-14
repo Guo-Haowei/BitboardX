@@ -128,11 +128,11 @@ impl Position {
         move_gen::is_move_legal(self, &m)
     }
 
-    pub fn pseudo_legal_moves(&self) -> Vec<Move> {
+    pub fn pseudo_legal_moves(&self) -> MoveList {
         move_gen::pseudo_legal_moves(self)
     }
 
-    pub fn legal_moves(&mut self) -> Vec<Move> {
+    pub fn legal_moves(&mut self) -> MoveList {
         move_gen::legal_moves(self)
     }
 
@@ -221,7 +221,7 @@ impl Position {
         let (from, to) = m.unwrap();
 
         let legal_moves = self.legal_moves();
-        for m in legal_moves {
+        for m in legal_moves.iter() {
             if m.from_sq() == from && m.to_sq() == to {
                 self.make_move(&m);
                 return true;

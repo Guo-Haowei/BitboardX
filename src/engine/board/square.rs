@@ -1,11 +1,6 @@
+use super::bitboard::BitBoard;
 use paste::paste;
 use std::fmt;
-
-// @TODO: remove
-use super::bitboard::BitBoard;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Square(pub u8);
 
 macro_rules! square_consts {
     ($($rank:literal),*) => {
@@ -23,6 +18,9 @@ macro_rules! square_consts {
         }
     };
 }
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Square(pub u8);
 
 impl Square {
     square_consts!(1, 2, 3, 4, 5, 6, 7, 8);
