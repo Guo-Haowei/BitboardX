@@ -1,4 +1,4 @@
-use super::super::board::*;
+use super::super::board::{BitBoard, Square, constants::*};
 use super::super::moves::*;
 use super::super::piece::{Color, Piece, PieceType};
 use super::super::position::Position;

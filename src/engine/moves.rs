@@ -1,4 +1,4 @@
-use super::board::{BitBoard, RANK_3, RANK_4, RANK_5, RANK_6, Square};
+use super::board::{BitBoard, Square, constants::*};
 use super::piece::*;
 use super::position::Position;
 use modular_bitfield::prelude::*;

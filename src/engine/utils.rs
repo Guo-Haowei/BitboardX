@@ -1,7 +1,4 @@
-use crate::engine::board::{RANK_3, RANK_6};
-
-use super::board::BitBoard;
-use super::board::Square;
+use super::board::{BitBoard, Square, constants::*};
 use super::moves::MoveFlags;
 use super::piece::*;
 
