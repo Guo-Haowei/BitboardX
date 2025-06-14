@@ -1,32 +1,11 @@
-pub mod undo_redo;
-
 use crate::engine::board::Square;
-use crate::engine::moves;
 use crate::engine::position::Position;
 use crate::engine::utils;
-use std::cell::RefCell;
-use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Game {
-    pos: Rc<RefCell<Position>>,
-    manager: undo_redo::CommandManager,
-}
-
-struct MoveCommand {
-    pos: Rc<RefCell<Position>>,
-    move_: moves::Move,
-}
-
-impl undo_redo::Command for MoveCommand {
-    fn execute(&mut self) {
-        moves::do_move(&mut self.pos.borrow_mut(), &self.move_);
-    }
-
-    fn undo(&mut self) {
-        moves::undo_move(&mut self.pos.borrow_mut(), &self.move_);
-    }
+    pos: Position,
 }
 
 #[wasm_bindgen]
@@ -41,31 +20,31 @@ impl Game {
             }
         };
 
-        Self { pos: Rc::new(RefCell::new(pos)), manager: undo_redo::CommandManager::new() }
+        Self { pos }
     }
 
     pub fn to_string(&self, pad: bool) -> String {
-        self.pos.borrow().to_string(pad)
+        self.pos.to_string(pad)
     }
 
     pub fn to_board_string(&self) -> String {
-        self.pos.borrow().to_board_string()
+        self.pos.to_board_string()
     }
 
     pub fn can_undo(&self) -> bool {
-        self.manager.can_undo()
+        self.pos.can_undo()
     }
 
     pub fn can_redo(&self) -> bool {
-        self.manager.can_redo()
+        self.pos.can_redo()
     }
 
     pub fn undo(&mut self) -> bool {
-        self.manager.undo()
+        self.pos.undo()
     }
 
     pub fn redo(&mut self) -> bool {
-        self.manager.redo()
+        self.pos.redo()
     }
 
     pub fn execute(&mut self, move_str: &str) -> bool {
@@ -75,20 +54,19 @@ impl Game {
         }
 
         let (from, to) = squares.unwrap();
-        let move_ = self.pos.borrow_mut().legal_move_from_to(from, to);
+        let move_ = self.pos.legal_move_from_to(from, to);
         if move_.is_none() {
             return false;
         }
 
-        let cmd = Box::new(MoveCommand { pos: Rc::clone(&self.pos), move_: move_.unwrap() });
-        self.manager.execute(cmd);
+        self.pos.do_move(&move_.unwrap());
 
         true
     }
 
-    pub fn legal_move(&self, sq: u8) -> u64 {
+    pub fn legal_move(&mut self, sq: u8) -> u64 {
         // self.pos.borrow_mut().pseudo_legal_move(square).get()
-        self.pos.borrow_mut().legal_move(Square(sq)).get()
+        self.pos.legal_move(Square(sq)).get()
     }
 }
 

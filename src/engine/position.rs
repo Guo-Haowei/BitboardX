@@ -1,9 +1,14 @@
 use super::board::{BitBoard, Square};
-use super::moves::{Move, MoveFlags, do_move};
+use super::moves::{Move, MoveFlags, do_move, undo_move};
 use super::piece::{Color, Piece};
 use super::utils;
 
 mod internal;
+
+#[derive(Clone, Copy)]
+pub struct Snapshot {
+    pub castling: u8,
+}
 
 pub struct Position {
     /// Data used to serialize/deserialize FEN.
@@ -18,6 +23,11 @@ pub struct Position {
     /// Data can be computed from the FEN state.
     pub occupancies: [BitBoard; 3],
     pub attack_map: [BitBoard; Color::COUNT],
+
+    /// @TODO: remove undo/redo stack out of Postion,
+    /// so position is stateless.
+    undo_stack: Vec<(Move, Snapshot)>,
+    redo_stack: Vec<(Move, Snapshot)>,
 }
 
 impl Position {
@@ -49,6 +59,8 @@ impl Position {
             fullmove_number: 1,
             occupancies,
             attack_map,
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
         }
     }
 
@@ -82,6 +94,8 @@ impl Position {
             fullmove_number,
             occupancies,
             attack_map: [BitBoard::new(); 2],
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
         };
 
         pos.attack_map = pos.calc_attack_map();
@@ -174,6 +188,62 @@ impl Position {
         ]
     }
 
+    fn gen_snapshot(&self) -> Snapshot {
+        Snapshot { castling: self.castling }
+    }
+
+    fn restore_snapshot(&mut self, snapshot: Snapshot) {
+        self.castling = snapshot.castling;
+    }
+
+    // TODO: move UndoRedo to other module
+    pub fn can_undo(&self) -> bool {
+        self.undo_stack.len() > 0
+    }
+
+    pub fn can_redo(&self) -> bool {
+        self.redo_stack.len() > 0
+    }
+
+    pub fn do_move(&mut self, m: &Move) -> Snapshot {
+        let snapshot = self.gen_snapshot();
+
+        do_move(self, m);
+
+        self.undo_stack.push((m.clone(), snapshot));
+        self.redo_stack.clear();
+
+        snapshot
+    }
+
+    pub fn undo(&mut self) -> bool {
+        if !self.can_undo() {
+            return false;
+        }
+
+        let (m, snapshot) = self.undo_stack.pop().unwrap();
+
+        undo_move(self, &m);
+
+        self.redo_stack.push((m, snapshot));
+        true
+    }
+
+    pub fn redo(&mut self) -> bool {
+        if !self.can_redo() {
+            return false;
+        }
+
+        let (m, snapshot) = self.redo_stack.pop().unwrap();
+        // self.restore_snapshot(snapshot);
+
+        do_move(self, &m);
+
+        self.undo_stack.push((m, snapshot));
+        true
+    }
+
+    /// @TODO: get rid of this method
     pub fn apply_move_str(&mut self, move_str: &str) -> bool {
         match utils::parse_move(move_str) {
             None => false,
@@ -187,12 +257,12 @@ impl Position {
         }
     }
 
-    // @TODO: move to internal module
+    // @TODO: move to utils
     pub fn to_string(&self, pad: bool) -> String {
         internal::to_string(self, pad)
     }
 
-    // @TODO: move to internal module
+    // @TODO: move to utils
     pub fn to_board_string(&self) -> String {
         internal::to_board_string(self)
     }
