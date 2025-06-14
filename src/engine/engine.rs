@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 pub const NAME: &str = "BitboardX";
 pub const VERSION_MAJOR: u32 = 0;
 pub const VERSION_MINOR: u32 = 1;
-pub const VERSION_PATCH: u32 = 5;
+pub const VERSION_PATCH: u32 = 2;
 
 pub fn version() -> String {
     format!("{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
@@ -53,7 +53,8 @@ impl Engine {
                 parts.remove(0);
             }
             ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => {
-                match Position::from_parts(p1, p2, p3, p4, p5, p6) {
+                let result = [*p1, *p2, *p3, *p4, *p5, *p6].join(" ");
+                match Position::from(result.as_str()) {
                     Ok(pos) => {
                         self.pos = pos;
                         parts.drain(0..=6); // remove the FEN parts

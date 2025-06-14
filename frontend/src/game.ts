@@ -18,6 +18,7 @@ export class Game implements EventListener, RuntimeModule {
   private _selected: SelectedPiece | null;
   private canvas: HTMLCanvasElement | null;
   private _board: string;
+  private legalMoves: BitboardX.MoveJs[] = [];
 
   public constructor() {
     this.reset();
@@ -29,6 +30,9 @@ export class Game implements EventListener, RuntimeModule {
 
   public set board(value) {
     this._board = value;
+    this.legalMoves = this.game!.legal_moves();
+    console.log(`Legal moves: ${this.legalMoves.length}`);
+
     // eslint-disable-next-line no-console
     console.log(this.game!.to_string(false));
     const undoButton = document.getElementById('undoButton') as HTMLButtonElement;
@@ -100,7 +104,7 @@ export class Game implements EventListener, RuntimeModule {
 
     this.canvas!.style.cursor = 'grabbing';
 
-    const moves = this.game!.legal_move(square);
+    const moves = 0n;
     this._selected = { piece, ...event, moves, rank, file };
   }
 

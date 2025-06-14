@@ -8,10 +8,10 @@ use std::io::{self, Write};
 
 fn game_main() {
     let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    let mut game = game::Game::new(fen);
+    let mut _game = game::Game::new(fen);
 
     loop {
-        let board = game.to_string(true);
+        let board = _game.to_string(true);
         println!("{}------", board);
 
         loop {
@@ -30,12 +30,13 @@ fn game_main() {
                 return;
             }
 
-            if game.execute(input) {
-                break;
-            }
+            // if game.execute(input) {
+            //     break;
+            // }
 
             println!("Invalid move: {}", input);
             println!("------");
+            panic!("Game execution not implemented yet");
         }
     }
 }

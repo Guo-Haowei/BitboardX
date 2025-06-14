@@ -1,9 +1,17 @@
-use super::board::{BitBoard, Square};
-use super::moves::{Move, MoveFlags, do_move};
-use super::piece::{Color, Piece};
+use crate::engine::move_gen;
+
+use super::board::*;
+use super::types::*;
 use super::utils;
 
-mod internal;
+#[derive(Clone, Copy)]
+pub struct Snapshot {
+    pub castling: u8,
+    pub en_passant: Option<Square>,
+    pub halfmove_clock: u32,
+    pub fullmove_number: u32,
+    pub to_piece: Piece,
+}
 
 pub struct Position {
     /// Data used to serialize/deserialize FEN.
@@ -11,13 +19,18 @@ pub struct Position {
 
     pub side_to_move: Color,
     pub castling: u8,
-    pub ep_sq: Option<Square>,
+    pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
 
     /// Data can be computed from the FEN state.
     pub occupancies: [BitBoard; 3],
     pub attack_map: [BitBoard; Color::COUNT],
+
+    /// @TODO: remove undo/redo stack out of Postion,
+    /// so position is stateless.
+    undo_stack: Vec<(Move, Snapshot)>,
+    redo_stack: Vec<(Move, Snapshot)>,
 }
 
 impl Position {
@@ -44,48 +57,15 @@ impl Position {
             bitboards,
             side_to_move: Color::WHITE,
             castling: MoveFlags::KQkq,
-            ep_sq: None,
+            en_passant: None,
             halfmove_clock: 0,
             fullmove_number: 1,
             occupancies,
             attack_map,
+            // @TODO: refactor
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
         }
-    }
-
-    pub fn from_parts(
-        piece_placement: &str,
-        side_to_move: &str,
-        castling_rights: &str,
-        en_passant_target: &str,
-        halfmove_clock: &str,
-        fullmove_number: &str,
-    ) -> Result<Self, &'static str> {
-        let bitboards = utils::parse_board(piece_placement)?;
-        let side_to_move = match Color::parse(side_to_move) {
-            Some(color) => color,
-            None => return Err("Invalid side to move in FEN"),
-        };
-        let castling = utils::parse_castling(castling_rights)?;
-        let halfmove_clock = utils::parse_halfmove_clock(halfmove_clock)?;
-        let fullmove_number = utils::parse_fullmove_number(fullmove_number)?;
-
-        let occupancies = utils::calc_occupancies(&bitboards);
-
-        let en_passant = utils::parse_en_passant(en_passant_target)?;
-
-        let mut pos = Self {
-            bitboards,
-            side_to_move,
-            castling,
-            ep_sq: en_passant,
-            halfmove_clock,
-            fullmove_number,
-            occupancies,
-            attack_map: [BitBoard::new(); 2],
-        };
-
-        pos.attack_map = pos.calc_attack_map();
-        Ok(pos)
     }
 
     pub fn from(fen: &str) -> Result<Self, &'static str> {
@@ -94,7 +74,35 @@ impl Position {
             return Err("Invalid FEN: must have 6 fields");
         }
 
-        Self::from_parts(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+        let bitboards = utils::parse_board(parts[0])?;
+        let side_to_move = match Color::parse(parts[1]) {
+            Some(color) => color,
+            None => return Err("Invalid side to move in FEN"),
+        };
+        let castling = utils::parse_castling(parts[2])?;
+
+        let en_passant = utils::parse_en_passant(parts[3])?;
+
+        let halfmove_clock = utils::parse_halfmove_clock(parts[4])?;
+        let fullmove_number = utils::parse_fullmove_number(parts[5])?;
+
+        let occupancies = utils::calc_occupancies(&bitboards);
+
+        let mut pos = Self {
+            bitboards,
+            side_to_move,
+            castling,
+            en_passant,
+            halfmove_clock,
+            fullmove_number,
+            occupancies,
+            attack_map: [BitBoard::new(); 2],
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+        };
+
+        pos.attack_map = pos.calc_attack_map();
+        Ok(pos)
     }
 
     pub fn update_cache(&mut self) {
@@ -116,85 +124,165 @@ impl Position {
         Piece::NONE
     }
 
-    pub fn is_legal_move(&mut self, m: &Move) -> bool {
-        internal::validate_move(self, &m)
+    pub fn is_move_legal(&mut self, m: &Move) -> bool {
+        move_gen::is_move_legal(self, &m)
     }
 
-    pub fn legal_move_from_to(&mut self, from_sq: Square, to_sq: Square) -> Option<Move> {
-        internal::legal_move_from_to(self, from_sq, to_sq)
+    pub fn pseudo_legal_moves(&self) -> MoveList {
+        move_gen::pseudo_legal_moves(self)
     }
 
-    pub fn pseudo_legal_move(&self, sq: Square) -> BitBoard {
-        if self.occupancies[self.side_to_move.as_usize()].test(sq.as_u8()) {
-            return internal::pseudo_legal_move_from(self, sq);
-        }
-        BitBoard::new()
-    }
-
-    pub fn legal_move(&mut self, sq: Square) -> BitBoard {
-        let mut pseudo_legal = self.pseudo_legal_move(sq);
-
-        let mut bits = pseudo_legal.get();
-
-        while bits != 0 {
-            let dst_sq = bits.trailing_zeros();
-
-            let m = internal::pseudo_legal_move_from_to(self, sq, Square(dst_sq as u8));
-            if !self.is_legal_move(&m) {
-                pseudo_legal.unset(dst_sq as u8);
-            }
-
-            bits &= bits - 1;
-        }
-
-        pseudo_legal
-    }
-
-    fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(&self) -> BitBoard {
-        let mut attack_map = BitBoard::new();
-
-        for i in START..=END {
-            // pieces from W to B
-            let bb = self.bitboards[i as usize];
-            for sq in 0..64 {
-                if bb.test(sq) {
-                    attack_map |=
-                        internal::pseudo_legal_attack_from(self, Square(sq), Color::from(COLOR));
-                }
-            }
-        }
-
-        attack_map
+    pub fn legal_moves(&mut self) -> MoveList {
+        move_gen::legal_moves(self)
     }
 
     pub fn calc_attack_map(&self) -> [BitBoard; Color::COUNT] {
         [
-            self.calc_attack_map_impl::<{ Color::WHITE.as_u8() }, { Piece::W_START }, { Piece::W_END }>(),
-            self.calc_attack_map_impl::<{ Color::BLACK.as_u8() }, { Piece::B_START }, { Piece::B_END }>(),
+            move_gen::calc_attack_map_impl::<
+                { Color::WHITE.as_u8() },
+                { Piece::W_START },
+                { Piece::W_END },
+            >(self),
+            move_gen::calc_attack_map_impl::<
+                { Color::BLACK.as_u8() },
+                { Piece::B_START },
+                { Piece::B_END },
+            >(self),
         ]
     }
 
-    pub fn apply_move_str(&mut self, move_str: &str) -> bool {
-        match utils::parse_move(move_str) {
-            None => false,
-            Some((from, to)) => match self.legal_move_from_to(from, to) {
-                None => false,
-                Some(m) => {
-                    do_move(self, &m);
-                    true
-                }
-            },
+    pub fn restore(&mut self, snapshot: &Snapshot) {
+        self.castling = snapshot.castling;
+        self.en_passant = snapshot.en_passant;
+
+        self.halfmove_clock = snapshot.halfmove_clock;
+        self.fullmove_number = snapshot.fullmove_number;
+    }
+
+    pub fn make_move(&mut self, m: &Move) -> Snapshot {
+        // @TODO: refactor this code, pretty please
+
+        let castling = self.castling;
+        let en_passant = self.en_passant;
+        let halfmove_clock = self.halfmove_clock;
+        let fullmove_number = self.fullmove_number;
+
+        let disabled_castling = drop_castling(
+            self,
+            m.from_sq(),
+            m.to_sq(),
+            self.get_piece(m.from_sq()),
+            self.get_piece(m.to_sq()),
+        );
+
+        let from = self.get_piece(m.from_sq());
+        do_move_ep(self, m, from);
+
+        debug_assert!(self.occupancies[self.side_to_move.as_usize()].test(m.from_sq().as_u8()));
+
+        let from_sq = m.from_sq();
+        let to_sq = m.to_sq();
+
+        let to_piece = self.get_piece(to_sq);
+
+        move_piece(&mut self.bitboards[from.as_usize()], from_sq, to_sq);
+
+        if to_piece != Piece::NONE {
+            self.bitboards[to_piece.as_usize()].unset(m.to_sq().as_u8()); // Clear the 'to' square for the captured piece
         }
+
+        do_castling(self, m, from);
+        post_move(self);
+
+        self.castling &= !disabled_castling;
+        self.en_passant = update_en_passant_square(self, m.from_sq(), m.to_sq(), from);
+
+        Snapshot { castling, en_passant, halfmove_clock, fullmove_number, to_piece }
     }
 
-    // @TODO: move to internal module
+    pub fn unmake_move(&mut self, m: &Move, snapshot: &Snapshot) {
+        let from = self.get_piece(m.to_sq());
+        undo_move_generic(self, m, from, snapshot.to_piece);
+        undo_move_ep(self, m, from);
+
+        undo_castling(self, m, from);
+        post_move(self);
+
+        self.restore(snapshot);
+    }
+
+    /// @TODO: get rid of this method
+    pub fn apply_move_str(&mut self, move_str: &str) -> bool {
+        let m = utils::parse_move(move_str);
+        if m.is_none() {
+            return false;
+        }
+
+        let (from, to) = m.unwrap();
+
+        let legal_moves = self.legal_moves();
+        for m in legal_moves.iter() {
+            if m.from_sq() == from && m.to_sq() == to {
+                self.make_move(&m);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // TODO: move UndoRedo to other module
+    pub fn can_undo(&self) -> bool {
+        self.undo_stack.len() > 0
+    }
+
+    pub fn can_redo(&self) -> bool {
+        self.redo_stack.len() > 0
+    }
+
+    pub fn do_move(&mut self, m: &Move) -> Snapshot {
+        let snapshot = self.make_move(m);
+
+        self.undo_stack.push((m.clone(), snapshot));
+        self.redo_stack.clear();
+
+        snapshot
+    }
+
+    pub fn undo(&mut self) -> bool {
+        if !self.can_undo() {
+            return false;
+        }
+
+        let (m, snapshot) = self.undo_stack.pop().unwrap();
+
+        self.unmake_move(&m, &snapshot);
+
+        self.redo_stack.push((m, snapshot));
+        true
+    }
+
+    pub fn redo(&mut self) -> bool {
+        if !self.can_redo() {
+            return false;
+        }
+
+        let (m, snapshot) = self.redo_stack.pop().unwrap();
+        // self.restore_snapshot(snapshot);
+
+        self.make_move(&m);
+
+        self.undo_stack.push((m, snapshot));
+        true
+    }
+    // @TODO: move to utils
     pub fn to_string(&self, pad: bool) -> String {
-        internal::to_string(self, pad)
+        utils::to_string(self, pad)
     }
 
-    // @TODO: move to internal module
+    // @TODO: move to utils
     pub fn to_board_string(&self) -> String {
-        internal::to_board_string(self)
+        utils::to_board_string(self)
     }
 }
 
@@ -212,7 +300,7 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
-        assert!(pos.ep_sq.is_none());
+        assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
         assert_eq!(
@@ -223,15 +311,8 @@ mod tests {
 
     #[test]
     fn test_constructor_from_parts() {
-        let pos = Position::from_parts(
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",
-            "w",
-            "KQkq",
-            "-",
-            "0",
-            "1",
-        )
-        .unwrap();
+        let pos =
+            Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
         assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
         assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
         assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
@@ -239,7 +320,7 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::KQkq);
-        assert!(pos.ep_sq.is_none());
+        assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
         assert_eq!(
@@ -255,7 +336,7 @@ mod tests {
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
-        assert!(pos.ep_sq.is_none());
+        assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 6);
         assert_eq!(pos.fullmove_number, 7);
         assert_eq!(
@@ -274,18 +355,186 @@ mod tests {
         assert_eq!(attack_maps[Color::WHITE.as_usize()].get(), 0x0000000000FF0000);
         assert_eq!(attack_maps[Color::BLACK.as_usize()].get(), 0x0000FF0000000000);
     }
+}
 
-    #[test]
-    fn test_trailing_zeros() {
-        let mut bits: u64 = 0b10101000;
-        let mut count = 0;
-        let expect = [3, 5, 7];
-        while bits != 0 {
-            let tz = bits.trailing_zeros();
-            bits &= bits - 1;
-            assert_eq!(tz, expect[count]);
-            count += 1;
-        }
-        assert_eq!(count, expect.len());
+////////////////////////////
+////////////////////////////
+fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
+    let (to_file, _) = m.to_sq().file_rank();
+
+    // check if it's an en passant capture
+    if m.get_type() == MoveType::EnPassant {
+        // capture the opponent's pawn passed en passant square
+        let (_, from_rank) = m.from_sq().file_rank();
+        let enemy_sq = Square::make(to_file, from_rank);
+        let enemy = Piece::get_piece(from.color().opponent(), PieceType::Pawn);
+
+        debug_assert!(pos.get_piece(enemy_sq) == enemy);
+        debug_assert!(pos.get_piece(m.to_sq()) == Piece::NONE);
+
+        // Remove the captured pawn from the board
+        pos.bitboards[enemy.as_usize()].unset(enemy_sq.as_u8());
     }
+}
+
+fn undo_move_ep(pos: &mut Position, m: &Move, from: Piece) {
+    if m.get_type() == MoveType::EnPassant {
+        // Restore the captured pawn on the en passant square
+        let (to_file, _) = m.to_sq().file_rank();
+        let (_, from_rank) = m.from_sq().file_rank();
+        let enemy_sq = Square::make(to_file, from_rank);
+        let enemy = Piece::get_piece(from.color().opponent(), PieceType::Pawn);
+
+        debug_assert!(pos.get_piece(enemy_sq) == Piece::NONE);
+
+        // Place the captured pawn back on the board
+        pos.bitboards[enemy.as_usize()].set(enemy_sq.as_u8());
+    }
+}
+
+fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {
+    debug_assert!(board.test(from_sq.as_u8()), "No piece found on 'from' square");
+    board.unset(from_sq.as_u8());
+    board.set(to_sq.as_u8());
+}
+
+fn undo_move_generic(pos: &mut Position, m: &Move, from: Piece, to: Piece) {
+    let from_sq = m.from_sq();
+    let to_sq = m.to_sq();
+
+    move_piece(&mut pos.bitboards[from.as_usize()], to_sq, from_sq);
+
+    if to != Piece::NONE {
+        pos.bitboards[to.as_usize()].set(m.to_sq().as_u8()); // Place captured piece back on 'to' square
+    }
+}
+
+const CASTLING_ROOK_SQUARES: [(Piece, Square, Square); 4] = [
+    (Piece::W_ROOK, Square::H1, Square::F1), // White King-side
+    (Piece::W_ROOK, Square::A1, Square::D1), // White Queen-side
+    (Piece::B_ROOK, Square::H8, Square::F8), // Black King-side
+    (Piece::B_ROOK, Square::A8, Square::D8), // Black Queen-side
+];
+
+fn castling_type(from: Piece, from_sq: Square, to_sq: Square) -> Castling {
+    match (from, from_sq, to_sq) {
+        (Piece::W_KING, Square::E1, Square::G1) => Castling::WhiteKingSide,
+        (Piece::W_KING, Square::E1, Square::C1) => Castling::WhiteQueenSide,
+        (Piece::B_KING, Square::E8, Square::G8) => Castling::BlackKingSide,
+        (Piece::B_KING, Square::E8, Square::C8) => Castling::BlackQueenSide,
+        _ => Castling::None,
+    }
+}
+
+fn do_castling(pos: &mut Position, m: &Move, from: Piece) {
+    // Restore Rook position
+    let index = castling_type(from, m.from_sq(), m.to_sq());
+    if index == Castling::None {
+        return;
+    }
+    let (piece, from_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
+    move_piece(&mut pos.bitboards[piece.as_usize()], from_sq, to_sq);
+}
+
+fn undo_castling(pos: &mut Position, m: &Move, from: Piece) {
+    // Restore Rook position
+    let index = castling_type(from, m.from_sq(), m.to_sq());
+    if index == Castling::None {
+        return;
+    }
+
+    let (piece, from_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
+    move_piece(&mut pos.bitboards[piece.as_usize()], to_sq, from_sq);
+}
+
+fn post_move(pos: &mut Position) {
+    pos.change_side();
+    pos.update_cache();
+}
+
+// if castling rights are already disabled, return
+// if king moved, disable castling rights, return
+// if rook moved, disable castling rights, return
+// if rook taken out, disable castling rights, return
+fn drop_castling(pos: &Position, from_sq: Square, to_sq: Square, from: Piece, to: Piece) -> u8 {
+    fn helper<const BIT: u8>(
+        pos: &Position,
+        from_sq: Square,
+        to_sq: Square,
+        from: Piece,
+        to: Piece,
+    ) -> u8 {
+        if pos.castling & BIT == 0 {
+            return 0;
+        }
+
+        if from == Piece::W_KING && (BIT & MoveFlags::KQ) != 0 {
+            return BIT;
+        }
+
+        if from == Piece::B_KING && (BIT & MoveFlags::kq) != 0 {
+            return BIT;
+        }
+
+        match (from, from_sq) {
+            (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+            (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+            (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+            (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+            _ => {}
+        }
+
+        match (to, to_sq) {
+            (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+            (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+            (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+            (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+            _ => {}
+        }
+
+        0
+    }
+
+    let mut drop_castling = 0;
+    drop_castling |= helper::<{ MoveFlags::K }>(pos, from_sq, to_sq, from, to);
+    drop_castling |= helper::<{ MoveFlags::Q }>(pos, from_sq, to_sq, from, to);
+    drop_castling |= helper::<{ MoveFlags::k }>(pos, from_sq, to_sq, from, to);
+    drop_castling |= helper::<{ MoveFlags::q }>(pos, from_sq, to_sq, from, to);
+    drop_castling
+}
+
+fn update_en_passant_square(
+    pos: &Position,
+    from_sq: Square,
+    to_sq: Square,
+    from: Piece,
+) -> Option<Square> {
+    if from.piece_type() != PieceType::Pawn {
+        return None;
+    }
+
+    let (file, from_rank) = from_sq.file_rank();
+    let (_file, to_rank) = to_sq.file_rank();
+
+    if match (from, from_rank, to_rank) {
+        (Piece::W_PAWN, RANK_2, RANK_4) => true,
+        (Piece::B_PAWN, RANK_7, RANK_5) => true,
+        _ => false,
+    } {
+        assert_eq!(file, _file);
+        // check if there's opponent's pawn on the left or right of 'to' square
+        let board = &pos.bitboards[if from == Piece::W_PAWN {
+            Piece::B_PAWN.as_usize()
+        } else {
+            Piece::W_PAWN.as_usize()
+        }];
+
+        if (file < FILE_H && board.test(Square::make(file + 1, to_rank).as_u8()))
+            || (file > FILE_A && board.test(Square::make(file - 1, to_rank).as_u8()))
+        {
+            return Some(Square::make(file, (from_rank + to_rank) / 2));
+        }
+    }
+
+    None
 }

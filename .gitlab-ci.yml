@@ -16,7 +16,7 @@ build-wasm:
 unit-test:
   stage: test
   script:
-    - cargo test
+    - cargo test --release -- --nocapture
 
 functional-test:
   stage: test

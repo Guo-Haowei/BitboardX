@@ -1,6 +1,6 @@
-use super::board::{BitBoard, Square, constants::*};
-use super::moves::MoveFlags;
-use super::piece::*;
+use super::board::*;
+use super::position::Position;
+use super::types::*;
 
 pub fn parse_square(input: &str) -> Option<Square> {
     if input.len() != 2 {
@@ -121,6 +121,87 @@ pub fn calc_occupancies(bitboards: &[BitBoard; Piece::COUNT]) -> [BitBoard; 3] {
         | bitboards[Piece::B_QUEEN.as_usize()]
         | bitboards[Piece::B_KING.as_usize()];
     [white_pieces, black_pieces, white_pieces | black_pieces]
+}
+
+pub fn to_string(pos: &Position, pad: bool) -> String {
+    let mut s = String::new();
+    for rank in (0..8).rev() {
+        s.push((rank as u8 + b'1') as char);
+        s.push(' ');
+        for file in 0..8 {
+            let sq = rank * 8 + file;
+            let piece_char = if pos.bitboards[Piece::W_PAWN.as_usize()].test(sq) {
+                '♙'
+            } else if pos.bitboards[Piece::W_KNIGHT.as_usize()].test(sq) {
+                '♘'
+            } else if pos.bitboards[Piece::W_BISHOP.as_usize()].test(sq) {
+                '♗'
+            } else if pos.bitboards[Piece::W_ROOK.as_usize()].test(sq) {
+                '♖'
+            } else if pos.bitboards[Piece::W_QUEEN.as_usize()].test(sq) {
+                '♕'
+            } else if pos.bitboards[Piece::W_KING.as_usize()].test(sq) {
+                '♔'
+            } else if pos.bitboards[Piece::B_PAWN.as_usize()].test(sq) {
+                '♟'
+            } else if pos.bitboards[Piece::B_KNIGHT.as_usize()].test(sq) {
+                '♞'
+            } else if pos.bitboards[Piece::B_BISHOP.as_usize()].test(sq) {
+                '♝'
+            } else if pos.bitboards[Piece::B_ROOK.as_usize()].test(sq) {
+                '♜'
+            } else if pos.bitboards[Piece::B_QUEEN.as_usize()].test(sq) {
+                '♛'
+            } else if pos.bitboards[Piece::B_KING.as_usize()].test(sq) {
+                '♚'
+            } else {
+                '.'
+            };
+
+            if piece_char == '.' {
+                s.push('・');
+            } else {
+                s.push(piece_char);
+                if pad {
+                    s.push(' ');
+                }
+            }
+        }
+        s.push('\n');
+    }
+    s.push_str("  ａｂｃｄｅｆｇｈ\n");
+    s.push_str(format!("Side: {}\n", pos.side_to_move).as_str());
+    s.push_str(format!("Castling: {}\n", castling_to_string(pos.castling)).as_str());
+    match pos.en_passant {
+        Some(ep_sq) => s.push_str(format!("En passant: {}\n", ep_sq).as_str()),
+        None => s.push_str("En passant: -\n"),
+    }
+    s.push_str(format!("Halfmove clock: {}\n", pos.halfmove_clock).as_str());
+    s.push_str(format!("Fullmove number: {}\n", pos.fullmove_number).as_str());
+
+    s
+}
+
+fn castling_to_string(castling: u8) -> String {
+    let mut result = String::new();
+    for (i, c) in ['K', 'Q', 'k', 'q'].iter().enumerate() {
+        if castling & (1 << i) != 0 {
+            result.push(*c);
+        }
+    }
+    if result.is_empty() { "-".to_string() } else { result }
+}
+
+pub fn to_board_string(pos: &Position) -> String {
+    let mut s = String::new();
+    for rank in (0..8).rev() {
+        for file in 0..8 {
+            let sq = rank * 8 + file;
+            let piece = pos.get_piece(Square(sq));
+            s.push(piece.to_char());
+        }
+    }
+    s
 }
 
 #[cfg(test)]
