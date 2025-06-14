@@ -10,25 +10,32 @@ mod internal;
 pub fn pseudo_legal_moves(pos: &Position) -> Vec<Move> {
     let mut moves = Vec::new();
 
-    for i in 0..64 {
-        let sq = Square(i);
-        let piece = pos.get_piece(sq);
-        if piece.color() != pos.side_to_move {
-            continue;
-        }
+    let color = pos.side_to_move;
+    let (start, end) = if color == Color::WHITE {
+        (Piece::W_START, Piece::W_END)
+    } else {
+        (Piece::B_START, Piece::B_END)
+    };
 
-        let bitboard = internal::pseudo_legal_move_from(pos, sq);
-        if bitboard.none() {
-            continue;
-        }
+    // clear the least-significant bit from a bitboard
+    //           A = 0b1001001000
+    //       A - 1 = 0b1001000111
+    // A & (A - 1) = 0b1001000000
+    for i in start..=end {
+        let mut bb = pos.bitboards[i as usize].get();
+        while bb != 0 {
+            let idx = bb.trailing_zeros() as u8;
+            let sq = Square(idx);
+            let mut bb2 = internal::pseudo_legal_move_from(pos, sq).get();
 
-        // @TODO: use trialing zeroes to optimize
-        for j in 0..64 {
-            if bitboard.test(j) {
-                let to_sq = Square(j);
-                let m = pseudo_legal_move_from_to(pos, sq, to_sq);
+            while bb2 != 0 {
+                let idx = bb2.trailing_zeros() as u8;
+                let m = pseudo_legal_move_from_to(pos, sq, Square(idx));
                 moves.push(m);
+                bb2 &= bb2 - 1;
             }
+
+            bb &= bb - 1;
         }
     }
 
@@ -67,7 +74,6 @@ pub fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(
     attack_map
 }
 
-#[cfg(not(debug_assertions))]
 #[cfg(test)]
 /// Test cases: https://www.chessprogramming.org/Perft_Results
 mod perft {
@@ -128,7 +134,12 @@ mod perft {
             (8, 84998978956),
         ];
 
-        perft_test_wrapper("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 4, &tests);
+        const DEPTH: u8 = if cfg!(not(debug_assertions)) { 4 } else { 3 };
+        perft_test_wrapper(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            DEPTH,
+            &tests,
+        );
     }
 
     #[test]
@@ -145,9 +156,10 @@ mod perft {
             (8, 0u64),
         ];
 
+        const DEPTH: u8 = if cfg!(not(debug_assertions)) { 3 } else { 3 };
         perft_test_wrapper(
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-            3,
+            DEPTH,
             &tests,
         );
     }
@@ -166,7 +178,8 @@ mod perft {
             (8, 3009794393u64),
         ];
 
-        perft_test_wrapper("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 ", 4, &tests);
+        const DEPTH: u8 = if cfg!(not(debug_assertions)) { 4 } else { 3 };
+        perft_test_wrapper("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 ", DEPTH, &tests);
     }
 
     #[test]
@@ -221,9 +234,11 @@ mod perft {
             (8, 11923589843526u64),
         ];
 
+        const DEPTH: u8 = if cfg!(not(debug_assertions)) { 4 } else { 3 };
+
         perft_test_wrapper(
             "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
-            4,
+            DEPTH,
             &tests,
         );
     }
