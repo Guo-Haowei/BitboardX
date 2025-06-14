@@ -114,7 +114,7 @@ fn move_pawn_enpassant<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard 
             }
             if is_black && rank == RANK_4 && ep_rank == RANK_3 {
                 debug_assert!(pos.get_piece(Square(ep_sq.0 + 8)) == Piece::W_PAWN);
-                ep_sq.to_bitboard();
+                return ep_sq.to_bitboard();
             }
         }
     }
@@ -371,27 +371,65 @@ pub fn pseudo_legal_move_from_to(pos: &Position, from_sq: Square, to_sq: Square)
         "Piece on 'to' square is of the same color as the piece on 'from' square"
     );
 
-    // check if move disables castling
-    let mut flags = 0;
-    flags |= move_disable_castling::<{ MoveFlags::K }>(pos, from, to, from_sq, to_sq);
-    flags |= move_disable_castling::<{ MoveFlags::Q }>(pos, from, to, from_sq, to_sq);
-    flags |= move_disable_castling::<{ MoveFlags::k }>(pos, from, to, from_sq, to_sq);
-    flags |= move_disable_castling::<{ MoveFlags::q }>(pos, from, to, from_sq, to_sq);
+    let drop_ep_sq = pos.ep_sq;
 
-    // check if move creates en passant right
-    let create_ep_right = check_if_move_creates_ep_right(pos, from_sq, to_sq, from);
+    let drop_castling = check_dropped_castling_flags(pos, from_sq, to_sq, from, to);
+    let add_ep_sq = check_if_add_eq_sq(pos, from_sq, to_sq, from);
 
-    // panic!("Check if it's an en passant move is not implemented yet");
+    let is_ep_capture = check_if_is_eq_capture(pos, from_sq, to_sq, from, to);
 
-    Move::new(from_sq, to_sq, from, to, flags, pos.ep_sq, create_ep_right)
+    Move::new(from_sq, to_sq, from, to, drop_castling, drop_ep_sq, add_ep_sq, is_ep_capture)
 }
 
-fn check_if_move_creates_ep_right(
+fn check_if_is_eq_capture(
     pos: &Position,
     from_sq: Square,
     to_sq: Square,
     from: Piece,
+    to: Piece,
 ) -> bool {
+    if from.piece_type() != PieceType::Pawn {
+        return false;
+    }
+
+    if to.piece_type() != PieceType::None {
+        return false;
+    }
+
+    // 8 . . . . . k . . black pawn c7c5, c6 is empty, c5 has black pawn
+    // 7 . . . . . . . .
+    // 6 . . . . . . . .
+    // 5 . . p P . . . .
+    // 4 . . . . . . . .
+    // 3 . . . . . . . .
+    // 2 . . . . . . . .
+    // 1 . . . . K . . .
+    //   a b c d e f g h
+
+    // if the to square is empty, but it still moves diagonally, then
+    let (from_file, from_rank) = from_sq.file_rank();
+    let (to_file, to_rank) = to_sq.file_rank();
+    if from_file == to_file {
+        return false;
+    }
+    debug_assert!((from_file as i8 - to_file as i8).abs() == 1);
+    debug_assert!((from_rank as i8 - to_rank as i8).abs() == 1);
+
+    if cfg!(debug_assertions) {
+        let color = from.color();
+        let enemy = if color == Color::WHITE { Piece::B_PAWN } else { Piece::W_PAWN };
+        let enemy_sq = Square::make(to_file, from_rank);
+
+        debug_assert!(
+            pos.bitboards[enemy.as_usize()].test(enemy_sq.as_u8()),
+            "En passant capture must have an enemy pawn on the square to capture"
+        );
+    }
+
+    true
+}
+
+fn check_if_add_eq_sq(pos: &Position, from_sq: Square, to_sq: Square, from: Piece) -> bool {
     if from.piece_type() != PieceType::Pawn {
         return false;
     }
@@ -411,11 +449,6 @@ fn check_if_move_creates_ep_right(
         } else {
             Piece::W_PAWN.as_usize()
         }];
-
-        println!("Checking if move creates en passant right: from {} to {}", from_sq, to_sq);
-        println!("Piece: {}, From rank: {}, To rank: {}", from, from_rank, to_rank);
-        println!("from_sq: {}, to_sq: {}", from_sq.0, to_sq.0);
-        println!("???????????????????????????????????????????");
 
         if file < FILE_H && board.test(Square::make(file + 1, to_rank).as_u8()) {
             return true;
@@ -441,42 +474,57 @@ pub fn legal_move_from_to(pos: &mut Position, from_sq: Square, to_sq: Square) ->
 // if king moved, disable castling rights, return
 // if rook moved, disable castling rights, return
 // if rook taken out, disable castling rights, return
-fn move_disable_castling<const BIT: u8>(
+fn check_dropped_castling_flags(
     pos: &Position,
-    from: Piece,
-    to: Piece,
     from_sq: Square,
     to_sq: Square,
+    from: Piece,
+    to: Piece,
 ) -> u8 {
-    if pos.castling & BIT == 0 {
-        return 0;
+    fn helper<const BIT: u8>(
+        pos: &Position,
+        from_sq: Square,
+        to_sq: Square,
+        from: Piece,
+        to: Piece,
+    ) -> u8 {
+        if pos.castling & BIT == 0 {
+            return 0;
+        }
+
+        if from == Piece::W_KING && (BIT & MoveFlags::KQ) != 0 {
+            return BIT;
+        }
+
+        if from == Piece::B_KING && (BIT & MoveFlags::kq) != 0 {
+            return BIT;
+        }
+
+        match (from, from_sq) {
+            (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+            (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+            (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+            (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+            _ => {}
+        }
+
+        match (to, to_sq) {
+            (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
+            (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
+            (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
+            (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
+            _ => {}
+        }
+
+        0
     }
 
-    if from == Piece::W_KING && (BIT & MoveFlags::KQ) != 0 {
-        return BIT;
-    }
-
-    if from == Piece::B_KING && (BIT & MoveFlags::kq) != 0 {
-        return BIT;
-    }
-
-    match (from, from_sq) {
-        (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-        (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-        (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-        (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
-        _ => {}
-    }
-
-    match (to, to_sq) {
-        (Piece::W_ROOK, Square::A1) if (BIT & MoveFlags::Q) != 0 => return BIT,
-        (Piece::W_ROOK, Square::H1) if (BIT & MoveFlags::K) != 0 => return BIT,
-        (Piece::B_ROOK, Square::A8) if (BIT & MoveFlags::q) != 0 => return BIT,
-        (Piece::B_ROOK, Square::H8) if (BIT & MoveFlags::k) != 0 => return BIT,
-        _ => {}
-    }
-
-    0
+    let mut drop_castling = 0;
+    drop_castling |= helper::<{ MoveFlags::K }>(pos, from_sq, to_sq, from, to);
+    drop_castling |= helper::<{ MoveFlags::Q }>(pos, from_sq, to_sq, from, to);
+    drop_castling |= helper::<{ MoveFlags::k }>(pos, from_sq, to_sq, from, to);
+    drop_castling |= helper::<{ MoveFlags::q }>(pos, from_sq, to_sq, from, to);
+    drop_castling
 }
 
 fn castling_to_string(castling: u8) -> String {
@@ -700,6 +748,16 @@ mod tests {
     #[test]
     fn test_en_passant() {
         let mut pos = Position::from("4k3/8/8/4Pp2/8/8/8/4K3 w - f6 2 4").unwrap();
+
+        // 8 . . . . k . . .
+        // 7 . . . . . . . .
+        // 6 . . . . . . . .
+        // 5 . . . . P p . .
+        // 4 . . . . . . . .
+        // 3 . . . . . . . .
+        // 2 . . . . . . . .
+        // 1 . . . . K . . .
+        //   a b c d e f g h
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, 0);

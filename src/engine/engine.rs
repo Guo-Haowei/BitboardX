@@ -3,11 +3,9 @@ use std::io::{self, Write};
 use wasm_bindgen::prelude::*;
 
 pub const NAME: &str = "BitboardX";
-/// version: 0.1.5: en passant legal move generation
-/// version: 0.1.6: changed Move to bitfield
 pub const VERSION_MAJOR: u32 = 0;
 pub const VERSION_MINOR: u32 = 1;
-pub const VERSION_PATCH: u32 = 6;
+pub const VERSION_PATCH: u32 = 5;
 
 pub fn version() -> String {
     format!("{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
