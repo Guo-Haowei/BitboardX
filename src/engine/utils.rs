@@ -1,6 +1,5 @@
-use super::board::{BitBoard, Square, constants::*};
-use super::moves::MoveFlags;
-use super::piece::*;
+use super::board::{BitBoard, MoveFlags, Square, constants::*};
+use super::types::*;
 
 pub fn parse_square(input: &str) -> Option<Square> {
     if input.len() != 2 {

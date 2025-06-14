@@ -1,7 +1,8 @@
+use paste::paste;
 use std::fmt;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
-use crate::engine::piece::Piece;
+use crate::engine::types::Piece;
 
 pub mod constants {
     pub const RANK_1: u8 = 0;
@@ -149,78 +150,25 @@ impl fmt::Display for BitBoard {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Square(pub u8);
 
+macro_rules! square_consts {
+    ($($rank:literal),*) => {
+        paste! {
+            $(
+                pub const [<A $rank>]: Square = Square(8 * ($rank - 1) + 0);
+                pub const [<B $rank>]: Square = Square(8 * ($rank - 1) + 1);
+                pub const [<C $rank>]: Square = Square(8 * ($rank - 1) + 2);
+                pub const [<D $rank>]: Square = Square(8 * ($rank - 1) + 3);
+                pub const [<E $rank>]: Square = Square(8 * ($rank - 1) + 4);
+                pub const [<F $rank>]: Square = Square(8 * ($rank - 1) + 5);
+                pub const [<G $rank>]: Square = Square(8 * ($rank - 1) + 6);
+                pub const [<H $rank>]: Square = Square(8 * ($rank - 1) + 7);
+            )*
+        }
+    };
+}
+
 impl Square {
-    pub const A1: Square = Square(0);
-    pub const B1: Square = Square(1);
-    pub const C1: Square = Square(2);
-    pub const D1: Square = Square(3);
-    pub const E1: Square = Square(4);
-    pub const F1: Square = Square(5);
-    pub const G1: Square = Square(6);
-    pub const H1: Square = Square(7);
-
-    pub const A2: Square = Square(8);
-    pub const B2: Square = Square(9);
-    pub const C2: Square = Square(10);
-    pub const D2: Square = Square(11);
-    pub const E2: Square = Square(12);
-    pub const F2: Square = Square(13);
-    pub const G2: Square = Square(14);
-    pub const H2: Square = Square(15);
-
-    pub const A3: Square = Square(16);
-    pub const B3: Square = Square(17);
-    pub const C3: Square = Square(18);
-    pub const D3: Square = Square(19);
-    pub const E3: Square = Square(20);
-    pub const F3: Square = Square(21);
-    pub const G3: Square = Square(22);
-    pub const H3: Square = Square(23);
-
-    pub const A4: Square = Square(24);
-    pub const B4: Square = Square(25);
-    pub const C4: Square = Square(26);
-    pub const D4: Square = Square(27);
-    pub const E4: Square = Square(28);
-    pub const F4: Square = Square(29);
-    pub const G4: Square = Square(30);
-    pub const H4: Square = Square(31);
-
-    pub const A5: Square = Square(32);
-    pub const B5: Square = Square(33);
-    pub const C5: Square = Square(34);
-    pub const D5: Square = Square(35);
-    pub const E5: Square = Square(36);
-    pub const F5: Square = Square(37);
-    pub const G5: Square = Square(38);
-    pub const H5: Square = Square(39);
-
-    pub const A6: Square = Square(40);
-    pub const B6: Square = Square(41);
-    pub const C6: Square = Square(42);
-    pub const D6: Square = Square(43);
-    pub const E6: Square = Square(44);
-    pub const F6: Square = Square(45);
-    pub const G6: Square = Square(46);
-    pub const H6: Square = Square(47);
-
-    pub const A7: Square = Square(48);
-    pub const B7: Square = Square(49);
-    pub const C7: Square = Square(50);
-    pub const D7: Square = Square(51);
-    pub const E7: Square = Square(52);
-    pub const F7: Square = Square(53);
-    pub const G7: Square = Square(54);
-    pub const H7: Square = Square(55);
-
-    pub const A8: Square = Square(56);
-    pub const B8: Square = Square(57);
-    pub const C8: Square = Square(58);
-    pub const D8: Square = Square(59);
-    pub const E8: Square = Square(60);
-    pub const F8: Square = Square(61);
-    pub const G8: Square = Square(62);
-    pub const H8: Square = Square(63);
+    square_consts!(1, 2, 3, 4, 5, 6, 7, 8);
 
     pub const fn make(file: u8, rank: u8) -> Square {
         debug_assert!(file < 8 && rank < 8);
@@ -255,10 +203,97 @@ impl fmt::Display for Square {
 }
 /* #endregion Square */
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Castling {
+    WhiteKingSide,
+    WhiteQueenSide,
+    BlackKingSide,
+    BlackQueenSide,
+    None,
+}
+
+pub struct MoveFlags;
+
+#[allow(non_upper_case_globals)]
+impl MoveFlags {
+    pub const K: u8 = 1u8 << Castling::WhiteKingSide as u8;
+    pub const Q: u8 = 1u8 << Castling::WhiteQueenSide as u8;
+    pub const k: u8 = 1u8 << Castling::BlackKingSide as u8;
+    pub const q: u8 = 1u8 << Castling::BlackQueenSide as u8;
+    pub const KQ: u8 = Self::K | Self::Q;
+    pub const kq: u8 = Self::k | Self::q;
+    pub const KQkq: u8 = Self::KQ | Self::kq;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum MoveType {
+    Normal = 0,
+    Castling = 1,
+    EnPassant = 2,
+    Promotion = 3,
+}
+
+/// Bit layout for a `Move` (16-bit packed):
+///
+/// ```text
+/// 15  14  13  12   11        6   5        0
+/// +---+---+---+---+----------+------------+
+/// | P | P | F | F |  To[5:0] | From[5:0]  |
+/// +---+---+---+---+----------+------------+
+///  2 bits  2 bits    6 bits     6 bits
+///  [14-15] [12-13]   [6–11]     [0–5]
+/// ```
+///
+/// - `from` (0–5): source square (0–63)
+/// - `to` (6–11): destination square (0–63)
+/// - `flag` (12–13): move type (e.g., castle, en passant, promotion)
+/// - `promo` (14–15): promotion piece (0 = knight, 1 = bishop, 2 = rook, 3 = queen)
+
+#[derive(Debug, Clone, Copy)]
+pub struct Move(u16);
+
+impl Move {
+    const SQUARE_MASK: u16 = 0b111111; // 6 bits for square (0-63)
+
+    pub fn new(from_sq: Square, to_sq: Square, move_type: MoveType) -> Self {
+        let mut data = 0u16;
+        data |= from_sq.as_u16();
+        data |= to_sq.as_u16() << 6;
+        data |= (move_type as u16) << 12;
+
+        Self(data)
+    }
+
+    pub fn from_sq(&self) -> Square {
+        Square((self.0 & Self::SQUARE_MASK) as u8)
+    }
+
+    pub fn to_sq(&self) -> Square {
+        Square(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
+    }
+
+    pub fn get_type(&self) -> MoveType {
+        let bits = (self.0 >> 12) & 0b11;
+        unsafe { std::mem::transmute::<u8, MoveType>(bits as u8) }
+    }
+
+    // @TODO: promotion piece
+}
+
 #[cfg(test)]
 mod tests {
     use super::constants::*;
     use super::*;
+
+    #[test]
+    fn test_move_creation() {
+        let m = Move::new(Square::E2, Square::E4, MoveType::Castling);
+        assert_eq!(m.from_sq(), Square::E2);
+        assert_eq!(m.to_sq(), Square::E4);
+        assert_eq!(m.get_type(), MoveType::Castling);
+    }
 
     #[test]
     fn make_square_test() {

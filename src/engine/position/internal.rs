@@ -1,7 +1,8 @@
-use super::super::board::{BitBoard, Square, constants::*};
+use super::super::board::constants::*;
+use super::super::board::*;
 use super::super::moves::*;
-use super::super::piece::{Color, Piece, PieceType};
 use super::super::position::Position;
+use super::super::types::{Color, Piece, PieceType};
 
 const NORTH: i32 = 8;
 const SOUTH: i32 = -NORTH;

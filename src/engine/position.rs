@@ -1,6 +1,6 @@
-use super::board::{BitBoard, Square};
-use super::moves::{Move, MoveFlags, make_move, unmake_move};
-use super::piece::{Color, Piece};
+use super::board::{BitBoard, Move, MoveFlags, Square};
+use super::moves::{make_move, unmake_move};
+use super::types::{Color, Piece};
 use super::utils;
 
 mod internal;
