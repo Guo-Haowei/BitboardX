@@ -4,6 +4,36 @@ use super::board::*;
 use super::types::*;
 use super::utils;
 
+#[derive(Clone, Copy, Debug)]
+pub struct CheckerList {
+    squares: [Option<Square>; 2],
+    count: u8,
+}
+
+impl CheckerList {
+    pub fn new() -> Self {
+        Self { squares: [None; 2], count: 0 }
+    }
+
+    pub fn count(&self) -> u8 {
+        self.count
+    }
+
+    pub fn add(&mut self, sq: Square) -> bool {
+        if self.count == 2 {
+            return false;
+        }
+        self.squares[self.count as usize] = Some(sq);
+        self.count += 1;
+        return true;
+    }
+
+    pub fn get(&self, index: usize) -> Option<Square> {
+        assert!(index < 2, "Index out of bounds for CheckerList: {}", index);
+        self.squares[index]
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Snapshot {
     pub castling: u8,
@@ -27,7 +57,7 @@ pub struct Position {
     pub occupancies: [BitBoard; 3],
     pub attack_map_color: [BitBoard; Color::COUNT],
     pub pin_map: [BitBoard; Color::COUNT],
-    pub checkers: [[Option<Square>; 2]; Color::COUNT],
+    pub checkers: [CheckerList; Color::COUNT],
 
     /// @TODO: remove undo/redo stack out of Postion,
     /// so position is stateless.
@@ -66,7 +96,7 @@ impl Position {
             occupancies: [BitBoard::new(); 3],
             attack_map_color: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
-            checkers: [[None; 2]; Color::COUNT],
+            checkers: [CheckerList::new(); Color::COUNT],
             // @TODO: refactor
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
@@ -104,7 +134,7 @@ impl Position {
             occupancies: [BitBoard::new(); 3],
             attack_map_color: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
-            checkers: [[None; 2]; Color::COUNT],
+            checkers: [CheckerList::new(); Color::COUNT],
             // @TODO: move away
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
@@ -133,6 +163,30 @@ impl Position {
         }
 
         Piece::NONE
+    }
+
+    pub fn get_color_at(&self, sq: Square) -> Color {
+        if !self.occupancies[Color::BOTH.as_usize()].test(sq.as_u8()) {
+            return Color::NONE;
+        }
+
+        let is_white = self.occupancies[Color::WHITE.as_usize()].test(sq.as_u8());
+        if cfg!(debug_assertions) {
+            let is_black = self.occupancies[Color::BLACK.as_usize()].test(sq.as_u8());
+            debug_assert!(is_white ^ is_black, "Square {} has both colors", sq);
+            let piece = self.get_piece_at(sq);
+            let debug_color = piece.color();
+            debug_assert!(
+                (is_white && debug_color == Color::WHITE)
+                    || (is_black && debug_color == Color::BLACK),
+                "Square {} has color {:?}, but piece is {:?}",
+                sq,
+                debug_color,
+                piece
+            );
+        }
+
+        if is_white { Color::WHITE } else { Color::BLACK }
     }
 
     pub fn get_king_square(&self, color: Color) -> Square {
@@ -172,14 +226,21 @@ impl Position {
     }
 
     pub fn update_attack_map_and_checker(&mut self) {
-        let mut checkers: [[Option<Square>; 2]; Color::COUNT] = [[None; 2]; Color::COUNT];
+        let mut checkers: [CheckerList; Color::COUNT] = [CheckerList::new(); Color::COUNT];
 
         for color in [Color::WHITE, Color::BLACK] {
             let mut attack_mask = BitBoard::new();
+            let opponent = color.opponent();
+            let king_sq = self.get_king_square(opponent);
             for i in 0..PieceType::None as u8 {
                 let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
                 let piece = Piece::get_piece(color, piece_type);
-                attack_mask |= move_gen::calc_attack_map_impl(self, piece);
+                attack_mask |= move_gen::calc_attack_map_impl(
+                    self,
+                    piece,
+                    king_sq,
+                    &mut checkers[opponent.as_usize()],
+                );
             }
             self.attack_map_color[color.as_usize()] = attack_mask;
         }
@@ -327,80 +388,6 @@ impl Position {
     // @TODO: move to utils
     pub fn to_board_string(&self) -> String {
         utils::to_board_string(self)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_constructor_new() {
-        let pos = Position::new();
-        assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
-        assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
-        assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
-        assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
-
-        assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, MoveFlags::KQkq);
-        assert!(pos.en_passant.is_none());
-        assert_eq!(pos.halfmove_clock, 0);
-        assert_eq!(pos.fullmove_number, 1);
-        assert_eq!(
-            pos.to_board_string(),
-            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
-        );
-    }
-
-    #[test]
-    fn test_constructor_from_parts() {
-        let pos =
-            Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-        assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
-        assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
-        assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
-        assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
-
-        assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, MoveFlags::KQkq);
-        assert!(pos.en_passant.is_none());
-        assert_eq!(pos.halfmove_clock, 0);
-        assert_eq!(pos.fullmove_number, 1);
-        assert_eq!(
-            pos.to_board_string(),
-            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
-        );
-    }
-
-    #[test]
-    fn test_constructor_from() {
-        let pos = Position::from("r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7")
-            .unwrap();
-
-        assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
-        assert!(pos.en_passant.is_none());
-        assert_eq!(pos.halfmove_clock, 6);
-        assert_eq!(pos.fullmove_number, 7);
-        assert_eq!(
-            pos.to_board_string(),
-            "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R"
-        );
-
-        assert_eq!(pos.get_king_square(Color::WHITE), Square::E1);
-        assert_eq!(pos.get_king_square(Color::BLACK), Square::E8);
-    }
-
-    #[test]
-    fn test_calc_attack_map() {
-        let pos =
-            Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-
-        let attack_maps = pos.attack_map_color;
-
-        assert_eq!(attack_maps[Color::WHITE.as_usize()].get(), 0x0000000000FF0000);
-        assert_eq!(attack_maps[Color::BLACK.as_usize()].get(), 0x0000FF0000000000);
     }
 }
 
@@ -616,4 +603,94 @@ fn update_en_passant_square(
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_constructor_new() {
+        let pos = Position::new();
+        assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
+
+        assert_eq!(pos.side_to_move, Color::WHITE);
+        assert_eq!(pos.castling, MoveFlags::KQkq);
+        assert!(pos.en_passant.is_none());
+        assert_eq!(pos.halfmove_clock, 0);
+        assert_eq!(pos.fullmove_number, 1);
+        assert_eq!(
+            pos.to_board_string(),
+            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
+        );
+    }
+
+    #[test]
+    fn test_constructor_from_parts() {
+        let pos =
+            Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
+        assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
+        assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
+        assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
+
+        assert_eq!(pos.side_to_move, Color::WHITE);
+        assert_eq!(pos.castling, MoveFlags::KQkq);
+        assert!(pos.en_passant.is_none());
+        assert_eq!(pos.halfmove_clock, 0);
+        assert_eq!(pos.fullmove_number, 1);
+        assert_eq!(
+            pos.to_board_string(),
+            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
+        );
+    }
+
+    #[test]
+    fn test_constructor_from() {
+        let pos = Position::from("r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7")
+            .unwrap();
+
+        assert_eq!(pos.side_to_move, Color::WHITE);
+        assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
+        assert!(pos.en_passant.is_none());
+        assert_eq!(pos.halfmove_clock, 6);
+        assert_eq!(pos.fullmove_number, 7);
+        assert_eq!(
+            pos.to_board_string(),
+            "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R"
+        );
+
+        assert_eq!(pos.get_king_square(Color::WHITE), Square::E1);
+        assert_eq!(pos.get_king_square(Color::BLACK), Square::E8);
+    }
+
+    #[test]
+    fn test_calc_attack_map() {
+        let pos =
+            Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+
+        let attack_maps = pos.attack_map_color;
+
+        assert_eq!(attack_maps[Color::WHITE.as_usize()].get(), 0x0000000000FF0000);
+        assert_eq!(attack_maps[Color::BLACK.as_usize()].get(), 0x0000FF0000000000);
+    }
+
+    #[test]
+    fn test_checkers() {
+        let pos = Position::from("r3k3/8/4B3/8/4r3/8/2n5/R3K2R w - - 0 1").unwrap();
+
+        let checkers = pos.checkers[Color::WHITE.as_usize()];
+        assert_eq!(checkers.count(), 2);
+        let sq1 = checkers.get(0).unwrap();
+        let sq2 = checkers.get(1).unwrap();
+        assert!(
+            matches!((sq1, sq2), (Square::C2, Square::E4) | (Square::E4, Square::C2)),
+            "Checkers should be at C2 and E4, got {:?} and {:?}",
+            sq1,
+            sq2
+        );
+    }
 }

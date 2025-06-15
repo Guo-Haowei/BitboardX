@@ -1,3 +1,5 @@
+use crate::engine::position::CheckerList;
+
 use super::board::*;
 use super::position::Position;
 use super::types::*;
@@ -52,7 +54,12 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
     detail::generate_pin_map(pos, color)
 }
 
-pub fn calc_attack_map_impl(pos: &Position, piece: Piece) -> BitBoard {
+pub fn calc_attack_map_impl(
+    pos: &Position,
+    piece: Piece,
+    opponent_king: Square,
+    checkers: &mut CheckerList,
+) -> BitBoard {
     let mut attack_map = BitBoard::new();
 
     let color = piece.color();
@@ -60,6 +67,12 @@ pub fn calc_attack_map_impl(pos: &Position, piece: Piece) -> BitBoard {
     while bb.any() {
         let sq = bb.first_nonzero_sq();
         attack_map |= detail::pseudo_legal_from_sq_impl::<true>(pos, sq, color);
+        if attack_map.test(opponent_king.as_u8()) {
+            debug_assert!(pos.occupancies[color.opponent().as_usize()].test(opponent_king.as_u8()));
+            debug_assert!(pos.get_color_at(opponent_king) == piece.color().opponent());
+            checkers.add(sq);
+        }
+
         bb.remove_first_nonzero_sq();
     }
 
