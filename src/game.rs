@@ -1,6 +1,9 @@
 use crate::engine::board::Move;
-use crate::engine::position::Position;
+use crate::engine::move_gen;
+use crate::engine::position::*;
+use crate::engine::utils;
 use wasm_bindgen::prelude::*;
+use web_sys::console;
 
 #[wasm_bindgen]
 pub struct MoveJs {
@@ -17,7 +20,7 @@ impl MoveJs {
         self.internal.from_sq().as_u8()
     }
 
-    pub fn to(&self) -> u8 {
+    pub fn to_sq(&self) -> u8 {
         self.internal.to_sq().as_u8()
     }
 }
@@ -25,6 +28,9 @@ impl MoveJs {
 #[wasm_bindgen]
 pub struct Game {
     pos: Position,
+
+    undo_stack: Vec<(Move, Snapshot)>,
+    redo_stack: Vec<(Move, Snapshot)>,
 }
 
 #[wasm_bindgen]
@@ -39,7 +45,7 @@ impl Game {
             }
         };
 
-        Self { pos }
+        Self { pos, undo_stack: Vec::new(), redo_stack: Vec::new() }
     }
 
     pub fn to_string(&self, pad: bool) -> String {
@@ -51,35 +57,55 @@ impl Game {
     }
 
     pub fn can_undo(&self) -> bool {
-        self.pos.can_undo()
+        self.undo_stack.len() > 0
     }
 
     pub fn can_redo(&self) -> bool {
-        self.pos.can_redo()
+        self.redo_stack.len() > 0
+    }
+
+    pub fn do_move(&mut self, string: String) {
+        let m = utils::parse_move(string.as_str());
+        if m.is_none() {
+            return;
+        }
+
+        let (from, to) = m.unwrap();
+        let legal_moves = move_gen::legal_moves(&self.pos);
+        for m in legal_moves.iter() {
+            if m.from_sq() == from && m.to_sq() == to {
+                console::log_1(&format!("move '{}'", string).into());
+                let m = m.clone();
+                let snapshot = self.pos.make_move(m);
+
+                self.undo_stack.push((m, snapshot));
+                self.redo_stack.clear();
+            }
+        }
     }
 
     pub fn undo(&mut self) -> bool {
-        self.pos.undo()
+        if let Some((m, snapshot)) = self.undo_stack.pop() {
+            self.pos.unmake_move(m, &snapshot);
+            self.redo_stack.push((m, snapshot));
+            return true;
+        }
+
+        false
     }
 
     pub fn redo(&mut self) -> bool {
-        self.pos.redo()
-    }
-
-    pub fn execute(&mut self, m: MoveJs) -> bool {
-        self.pos.do_move(m.internal.clone());
-        true
-    }
-
-    pub fn legal_moves(&mut self) -> Vec<MoveJs> {
-        let move_list = self.pos.legal_moves();
-        let mut moves = Vec::new();
-
-        for m in move_list.iter() {
-            moves.push(MoveJs::new(&m));
+        if let Some((m, snapshot)) = self.redo_stack.pop() {
+            self.pos.make_move(m);
+            self.undo_stack.push((m, snapshot));
+            return true;
         }
 
-        moves
+        false
+    }
+
+    pub fn legal_moves(&self) -> Vec<MoveJs> {
+        move_gen::legal_moves(&self.pos).iter().map(|m| MoveJs::new(m)).collect()
     }
 }
 

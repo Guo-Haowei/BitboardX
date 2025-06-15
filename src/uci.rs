@@ -1,21 +1,6 @@
-use super::engine::position::Position;
+use super::engine::{move_gen, name, position::Position};
 use rustyline::{DefaultEditor, Result};
 use std::io::{self, Write};
-use wasm_bindgen::prelude::*;
-
-pub const NAME: &str = "BitboardX";
-pub const VERSION_MAJOR: u32 = 0;
-pub const VERSION_MINOR: u32 = 1;
-pub const VERSION_PATCH: u32 = 2;
-
-pub fn version() -> String {
-    format!("{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
-}
-
-#[wasm_bindgen]
-pub fn name() -> String {
-    format!("{} {}", NAME, version())
-}
 
 pub struct UCI {
     pos: Position,
@@ -121,7 +106,7 @@ fn perft_test(pos: &mut Position, depth: u8, max_depth: u8) -> u64 {
         return 1;
     }
 
-    let move_list = pos.legal_moves();
+    let move_list = move_gen::legal_moves(pos);
 
     let mut nodes = 0u64;
     let should_print = depth == max_depth;

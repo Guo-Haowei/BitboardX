@@ -60,52 +60,13 @@ pub struct Position {
     pub attack_mask: [BitBoard; Color::COUNT],
     pub pin_map: [BitBoard; Color::COUNT],
     pub checkers: [CheckerList; Color::COUNT],
-
-    /// @TODO: remove undo/redo stack out of Postion,
-    /// so position is stateless.
-    undo_stack: Vec<(Move, Snapshot)>,
-    redo_stack: Vec<(Move, Snapshot)>,
 }
+
+const DEFAULT_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 impl Position {
     pub fn new() -> Self {
-        let bitboards = [
-            BitBoard::from(0x000000000000FF00), // White Pawns
-            BitBoard::from(0x0000000000000042), // White Knights
-            BitBoard::from(0x0000000000000024), // White Bishops
-            BitBoard::from(0x0000000000000081), // White Rooks
-            BitBoard::from(0x0000000000000008), // White Queens
-            BitBoard::from(0x0000000000000010), // White King
-            BitBoard::from(0x00FF000000000000), // Black Pawns
-            BitBoard::from(0x4200000000000000), // Black Knights
-            BitBoard::from(0x2400000000000000), // Black Bishops
-            BitBoard::from(0x8100000000000000), // Black Rooks
-            BitBoard::from(0x0800000000000000), // Black Queens
-            BitBoard::from(0x1000000000000000), // Black King
-        ];
-
-        // @NOTE: this is a bit hacky, to set the side to move to opposite color
-        // because post_move() will change the side to move
-        let side_to_move = Color::BLACK;
-
-        let mut result = Self {
-            bitboards,
-            side_to_move,
-            castling: MoveFlags::KQkq,
-            en_passant: None,
-            halfmove_clock: 0,
-            fullmove_number: 1,
-            occupancies: [BitBoard::new(); 3],
-            attack_mask: [BitBoard::new(); Color::COUNT],
-            pin_map: [BitBoard::new(); Color::COUNT],
-            checkers: [CheckerList::new(); Color::COUNT],
-            // @TODO: refactor
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
-        };
-
-        result.post_move();
-        result
+        Self::from(DEFAULT_FEN).unwrap()
     }
 
     pub fn from(fen: &str) -> Result<Self, &'static str> {
@@ -137,9 +98,6 @@ impl Position {
             attack_mask: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
-            // @TODO: move away
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
         };
 
         pos.post_move();
@@ -168,13 +126,9 @@ impl Position {
     }
 
     pub fn get_color_at(&self, sq: Square) -> Color {
-        if !self.occupancies[Color::BOTH.as_usize()].test(sq.as_u8()) {
-            return Color::NONE;
-        }
-
         let is_white = self.occupancies[Color::WHITE.as_usize()].test(sq.as_u8());
+        let is_black = self.occupancies[Color::BLACK.as_usize()].test(sq.as_u8());
         if cfg!(debug_assertions) {
-            let is_black = self.occupancies[Color::BLACK.as_usize()].test(sq.as_u8());
             debug_assert!(is_white ^ is_black, "Square {} has both colors", sq);
             let piece = self.get_piece_at(sq);
             let debug_color = piece.color();
@@ -186,6 +140,11 @@ impl Position {
                 debug_color,
                 piece
             );
+        }
+
+        if !is_white && !is_black {
+            assert!(self.occupancies[Color::BOTH.as_usize()].test(sq.as_u8()) == false);
+            return Color::NONE;
         }
 
         if is_white { Color::WHITE } else { Color::BLACK }
@@ -225,19 +184,6 @@ impl Position {
     }
 
     // @TODO: remove these methods, call move_gen directly
-
-    pub fn is_move_legal(&mut self, m: &Move) -> bool {
-        move_gen::is_pseudo_move_legal(self, &m)
-    }
-
-    pub fn pseudo_legal_moves(&self) -> MoveList {
-        move_gen::pseudo_legal_moves(self)
-    }
-
-    pub fn legal_moves(&mut self) -> MoveList {
-        move_gen::legal_moves(self)
-    }
-
     pub fn update_attack_map_and_checker(&mut self) {
         let mut checkers: [CheckerList; Color::COUNT] = [CheckerList::new(); Color::COUNT];
 
@@ -338,7 +284,7 @@ impl Position {
 
         let (from, to) = m.unwrap();
 
-        let legal_moves = self.legal_moves();
+        let legal_moves = move_gen::legal_moves(&self);
         for m in legal_moves.iter() {
             if m.from_sq() == from && m.to_sq() == to {
                 self.make_move(m.clone());
@@ -349,50 +295,6 @@ impl Position {
         return false;
     }
 
-    // TODO: move UndoRedo to other module
-    pub fn can_undo(&self) -> bool {
-        self.undo_stack.len() > 0
-    }
-
-    pub fn can_redo(&self) -> bool {
-        self.redo_stack.len() > 0
-    }
-
-    pub fn do_move(&mut self, m: Move) -> Snapshot {
-        let snapshot = self.make_move(m);
-
-        self.undo_stack.push((m.clone(), snapshot));
-        self.redo_stack.clear();
-
-        snapshot
-    }
-
-    pub fn undo(&mut self) -> bool {
-        if !self.can_undo() {
-            return false;
-        }
-
-        let (m, snapshot) = self.undo_stack.pop().unwrap();
-
-        self.unmake_move(m, &snapshot);
-
-        self.redo_stack.push((m, snapshot));
-        true
-    }
-
-    pub fn redo(&mut self) -> bool {
-        if !self.can_redo() {
-            return false;
-        }
-
-        let (m, snapshot) = self.redo_stack.pop().unwrap();
-        // self.restore_snapshot(snapshot);
-
-        self.make_move(m);
-
-        self.undo_stack.push((m, snapshot));
-        true
-    }
     // @TODO: move to utils
     pub fn to_string(&self, pad: bool) -> String {
         utils::to_string(self, pad)
