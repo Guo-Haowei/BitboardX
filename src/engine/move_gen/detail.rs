@@ -140,6 +140,12 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
 
     match checker.get(0) {
         Some(checker_sq) => {
+            if m.get_type() == MoveType::EnPassant {
+                let captured_sq = m.get_en_passant_capture();
+                if checker_sq == captured_sq {
+                    return true;
+                }
+            }
             // if the move captures the checking piece, it is legal
             // otherwise if it blocks the check, it's still legal
             if to_sq == checker_sq { true } else { to_sq.same_line_inclusive(king_sq, checker_sq) }
@@ -202,22 +208,21 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
 fn is_pseudo_en_passant_legal(pos: &Position, m: &Move, mover_color: Color) -> bool {
     debug_assert!(m.get_type() == MoveType::EnPassant, "Move must be an en passant move");
 
-    let (from_file, from_rank) = m.from_sq().file_rank();
-    let (to_file, _) = m.to_sq().file_rank();
-
-    let captured = Square::make(to_file, from_rank);
+    let captured_sq = m.get_en_passant_capture();
+    let (from_file, _) = m.from_sq().file_rank();
+    let (captured_file, captured_rank) = captured_sq.file_rank();
 
     debug_assert!(
-        pos.get_piece_at(captured) == Piece::get_piece(mover_color.opponent(), PieceType::Pawn),
+        pos.get_piece_at(captured_sq) == Piece::get_piece(mover_color.opponent(), PieceType::Pawn),
         "En passant capture must have an enemy pawn on the square to capture"
     );
 
-    let (f_min, f_max) = utils::min_max(from_file as u8, to_file as u8);
+    let (f_min, f_max) = utils::min_max(from_file as u8, captured_file as u8);
 
     let mut pieces = [Piece::NONE; 2];
 
     for file in (RANK_1..f_min).rev() {
-        let sq = Square::make(file, from_rank);
+        let sq = Square::make(file, captured_rank);
         let piece = pos.get_piece_at(sq);
         if piece.get_type() != PieceType::None {
             pieces[0] = piece;
@@ -225,7 +230,7 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: &Move, mover_color: Color) -> b
         }
     }
     for file in f_max + 1..=RANK_8 {
-        let sq = Square::make(file, from_rank);
+        let sq = Square::make(file, captured_rank);
         let piece = pos.get_piece_at(sq);
         if piece.get_type() != PieceType::None {
             pieces[1] = piece;
@@ -992,15 +997,13 @@ mod tests {
         assert!(is_pseudo_move_legal(&mut pos, &m));
         pos.make_move(m);
 
-        println!("{}", pos.to_string(true));
-
         let m = Move::new(Square::F2, Square::E3, MoveType::Normal, None);
         let legal = is_pseudo_move_legal(&mut pos, &m);
         assert!(legal, "Capture on E3 should resolve check");
     }
 
     #[test]
-    fn edge_case_en_passant_expose_check() {
+    fn en_passant_expose_check() {
         let mut pos = Position::from("8/8/8/KP5r/1R3p1k/8/4P3/8 w - - 0 1").unwrap();
         let m = Move::new(Square::E2, Square::E4, MoveType::Normal, None);
         assert!(is_pseudo_move_legal(&mut pos, &m), "E2 to E4 should be legal");
@@ -1010,6 +1013,20 @@ mod tests {
         assert!(
             !is_pseudo_move_legal(&mut pos, &m),
             "En passant is illegal because it exposes king to check"
+        );
+    }
+
+    #[test]
+    fn en_passant_capture_checker() {
+        let mut pos = Position::from("8/8/8/KP1k3r/1R3p2/8/4P3/8 w - - 0 1").unwrap();
+        let m = Move::new(Square::E2, Square::E4, MoveType::Normal, None);
+        assert!(is_pseudo_move_legal(&mut pos, &m), "E2 to E4 should be legal");
+        pos.make_move(m);
+
+        let m = Move::new(Square::F4, Square::E3, MoveType::EnPassant, None);
+        assert!(
+            is_pseudo_move_legal(&mut pos, &m),
+            "En passant is illegal it captures the attacking pawn"
         );
     }
 }

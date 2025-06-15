@@ -144,7 +144,7 @@ fn perft_test(pos: &mut Position, depth: u8, max_depth: u8) -> u64 {
 }
 
 pub fn uci_main() -> Result<()> {
-    println!("{}", name());
+    eprintln!("{}", name());
     let mut stdout = io::stdout();
     let mut uci = UCI::new();
     let mut rl = DefaultEditor::new()?;

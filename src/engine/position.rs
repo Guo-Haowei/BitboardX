@@ -155,18 +155,6 @@ impl Position {
         // maybe only need to update the side to move attack map?
         self.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(self, Color::WHITE);
         self.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(self, Color::BLACK);
-
-        // println!(
-        //     "white attack map:\n{}\n",
-        //     self.attack_map_color[Color::WHITE.as_usize()].to_string()
-        // );
-        // println!("black pin map:\n{}\n", self.pin_map[Color::BLACK.as_usize()].to_string());
-
-        // println!(
-        //     "black attack map:\n{}\n",
-        //     self.attack_map_color[Color::BLACK.as_usize()].to_string()
-        // );
-        // println!("white pin map:\n{}\n", self.pin_map[Color::WHITE.as_usize()].to_string());
     }
 
     pub fn get_piece_at(&self, sq: Square) -> Piece {
@@ -515,8 +503,6 @@ fn undo_promotion(pos: &mut Position, m: Move) {
     let color = piece.color();
     let promotion = Piece::get_piece(color, m.get_promotion().unwrap());
     let pawn = Piece::get_piece(color, PieceType::Pawn);
-
-    // println!("Revert promotion from {} to {} at {}", pawn.to_char(), promotion.to_char(), from_sq);
 
     pos.bitboards[pawn.as_usize()].set(from_sq.as_u8()); // Place the pawn back on the board
     pos.bitboards[promotion.as_usize()].unset(from_sq.as_u8()); // Remove the promoted piece from the board
