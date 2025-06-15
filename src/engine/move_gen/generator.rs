@@ -573,6 +573,7 @@ fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
     moves
 }
 
+/// @TODO: refactor this
 fn move_mask_castle_check<const COLOR: u8>(
     pos: &Position,
     sq: Square,
@@ -595,18 +596,19 @@ fn move_mask_castle_check<const COLOR: u8>(
     }
 
     // check if the cells are under attack
-    let (start, end) = min_max(sq, dst_sq);
-    for i in start.0..=end.0 {
-        if pos.attack_mask[opponent.as_usize()].test(i) {
-            return false;
-        }
-    }
+    let (s1, e1) = min_max(sq, dst_sq);
+    let (s2, e2) = min_max(sq, rook_sq);
 
-    // check if any piece is in the way
-    let (start, end) = min_max(sq, rook_sq);
-    for i in start.0 + 1..end.0 {
-        if (pos.occupancies[Color::BOTH.as_usize()]).test(i) {
-            return false;
+    let checks = [
+        (s1.0, e1.0 + 1, pos.attack_mask[opponent.as_usize()]),
+        (s2.0 + 1, e2.0, pos.occupancies[Color::BOTH.as_usize()]),
+    ];
+
+    for (start, end, mask) in checks {
+        for i in start..end {
+            if mask.test(i) {
+                return false;
+            }
         }
     }
 

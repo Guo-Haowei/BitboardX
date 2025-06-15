@@ -67,45 +67,11 @@ pub struct Position {
     redo_stack: Vec<(Move, Snapshot)>,
 }
 
+const DEFAULT_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 impl Position {
     pub fn new() -> Self {
-        let bitboards = [
-            BitBoard::from(0x000000000000FF00), // White Pawns
-            BitBoard::from(0x0000000000000042), // White Knights
-            BitBoard::from(0x0000000000000024), // White Bishops
-            BitBoard::from(0x0000000000000081), // White Rooks
-            BitBoard::from(0x0000000000000008), // White Queens
-            BitBoard::from(0x0000000000000010), // White King
-            BitBoard::from(0x00FF000000000000), // Black Pawns
-            BitBoard::from(0x4200000000000000), // Black Knights
-            BitBoard::from(0x2400000000000000), // Black Bishops
-            BitBoard::from(0x8100000000000000), // Black Rooks
-            BitBoard::from(0x0800000000000000), // Black Queens
-            BitBoard::from(0x1000000000000000), // Black King
-        ];
-
-        // @NOTE: this is a bit hacky, to set the side to move to opposite color
-        // because post_move() will change the side to move
-        let side_to_move = Color::BLACK;
-
-        let mut result = Self {
-            bitboards,
-            side_to_move,
-            castling: MoveFlags::KQkq,
-            en_passant: None,
-            halfmove_clock: 0,
-            fullmove_number: 1,
-            occupancies: [BitBoard::new(); 3],
-            attack_mask: [BitBoard::new(); Color::COUNT],
-            pin_map: [BitBoard::new(); Color::COUNT],
-            checkers: [CheckerList::new(); Color::COUNT],
-            // @TODO: refactor
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
-        };
-
-        result.post_move();
-        result
+        Self::from(DEFAULT_FEN).unwrap()
     }
 
     pub fn from(fen: &str) -> Result<Self, &'static str> {
