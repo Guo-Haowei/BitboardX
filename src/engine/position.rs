@@ -25,7 +25,8 @@ pub struct Position {
 
     /// Data can be computed from the FEN state.
     pub occupancies: [BitBoard; 3],
-    pub attack_map: [BitBoard; Color::COUNT],
+    pub attack_map_piece: [BitBoard; Piece::COUNT],
+    pub attack_map_color: [BitBoard; Color::COUNT],
     pub pin_map: [BitBoard; Color::COUNT],
 
     /// @TODO: remove undo/redo stack out of Postion,
@@ -52,9 +53,8 @@ impl Position {
         ];
 
         let occupancies = utils::calc_occupancies(&bitboards);
-        let attack_map = [BitBoard::from(0x0000000000FF0000), BitBoard::from(0x0000FF0000000000)];
 
-        Self {
+        let mut result = Self {
             bitboards,
             side_to_move: Color::WHITE,
             castling: MoveFlags::KQkq,
@@ -62,12 +62,16 @@ impl Position {
             halfmove_clock: 0,
             fullmove_number: 1,
             occupancies,
-            attack_map,
+            attack_map_piece: [BitBoard::new(); Piece::COUNT],
+            attack_map_color: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
             // @TODO: refactor
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
-        }
+        };
+
+        result.update_cache();
+        result
     }
 
     pub fn from(fen: &str) -> Result<Self, &'static str> {
@@ -98,26 +102,29 @@ impl Position {
             halfmove_clock,
             fullmove_number,
             occupancies,
-            attack_map: [BitBoard::new(); Color::COUNT],
+            attack_map_piece: [BitBoard::new(); Piece::COUNT],
+            attack_map_color: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         };
 
-        pos.attack_map = pos.calc_attack_map();
+        pos.update_attack_map();
         Ok(pos)
     }
 
+    // @TODO: make private
     pub fn update_cache(&mut self) {
         self.occupancies = utils::calc_occupancies(&self.bitboards);
-        self.attack_map = self.calc_attack_map();
+        self.update_attack_map();
     }
 
+    // @TODO: make private
     pub fn change_side(&mut self) {
         self.side_to_move = self.side_to_move.opponent()
     }
 
-    pub fn get_piece(&self, sq: Square) -> Piece {
+    pub fn get_piece_at(&self, sq: Square) -> Piece {
         for i in 0..Piece::COUNT {
             if self.bitboards[i].test(sq.as_u8()) {
                 return unsafe { std::mem::transmute(i as u8) };
@@ -139,7 +146,7 @@ impl Position {
         sq
     }
 
-    pub fn is_pinned(&self, sq: Square, color: Color) -> bool {
+    pub fn is_square_pinned(&self, sq: Square, color: Color) -> bool {
         self.pin_map[color.as_usize()].test(sq.as_u8())
     }
 
@@ -157,19 +164,18 @@ impl Position {
         move_gen::legal_moves(self)
     }
 
-    pub fn calc_attack_map(&self) -> [BitBoard; Color::COUNT] {
-        [
-            move_gen::calc_attack_map_impl::<
-                { Color::WHITE.as_u8() },
-                { Piece::W_START },
-                { Piece::W_END },
-            >(self),
-            move_gen::calc_attack_map_impl::<
-                { Color::BLACK.as_u8() },
-                { Piece::B_START },
-                { Piece::B_END },
-            >(self),
-        ]
+    pub fn update_attack_map(&mut self) {
+        let mut attack_map_piece = [BitBoard::new(); Piece::COUNT];
+        let mut attack_map_color = [BitBoard::new(); Color::COUNT];
+
+        for i in 0..Piece::COUNT {
+            let piece = unsafe { std::mem::transmute::<u8, Piece>(i as u8) };
+            attack_map_piece[i] = move_gen::calc_attack_map_impl(self, piece);
+            attack_map_color[piece.color().as_usize()] |= attack_map_piece[i];
+        }
+
+        self.attack_map_piece = attack_map_piece;
+        self.attack_map_color = attack_map_color;
     }
 
     pub fn restore(&mut self, snapshot: &Snapshot) {
@@ -192,11 +198,11 @@ impl Position {
             self,
             m.from_sq(),
             m.to_sq(),
-            self.get_piece(m.from_sq()),
-            self.get_piece(m.to_sq()),
+            self.get_piece_at(m.from_sq()),
+            self.get_piece_at(m.to_sq()),
         );
 
-        let from = self.get_piece(m.from_sq());
+        let from = self.get_piece_at(m.from_sq());
         do_move_ep(self, m, from);
 
         debug_assert!(self.occupancies[self.side_to_move.as_usize()].test(m.from_sq().as_u8()));
@@ -204,7 +210,7 @@ impl Position {
         let from_sq = m.from_sq();
         let to_sq = m.to_sq();
 
-        let to_piece = self.get_piece(to_sq);
+        let to_piece = self.get_piece_at(to_sq);
 
         move_piece(&mut self.bitboards[from.as_usize()], from_sq, to_sq);
 
@@ -225,7 +231,7 @@ impl Position {
     }
 
     pub fn unmake_move(&mut self, m: &Move, snapshot: &Snapshot) {
-        let from = self.get_piece(m.to_sq());
+        let from = self.get_piece_at(m.to_sq());
 
         undo_move_generic(self, m, from, snapshot.to_piece);
 
@@ -381,7 +387,7 @@ mod tests {
         let pos =
             Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
-        let attack_maps = pos.calc_attack_map();
+        let attack_maps = pos.attack_map_color;
 
         assert_eq!(attack_maps[Color::WHITE.as_usize()].get(), 0x0000000000FF0000);
         assert_eq!(attack_maps[Color::BLACK.as_usize()].get(), 0x0000FF0000000000);
@@ -400,8 +406,8 @@ fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
         let enemy_sq = Square::make(to_file, from_rank);
         let enemy = Piece::get_piece(from.color().opponent(), PieceType::Pawn);
 
-        debug_assert!(pos.get_piece(enemy_sq) == enemy);
-        debug_assert!(pos.get_piece(m.to_sq()) == Piece::NONE);
+        debug_assert!(pos.get_piece_at(enemy_sq) == enemy);
+        debug_assert!(pos.get_piece_at(m.to_sq()) == Piece::NONE);
 
         // Remove the captured pawn from the board
         pos.bitboards[enemy.as_usize()].unset(enemy_sq.as_u8());
@@ -416,7 +422,7 @@ fn undo_move_ep(pos: &mut Position, m: &Move, from: Piece) {
         let enemy_sq = Square::make(to_file, from_rank);
         let enemy = Piece::get_piece(from.color().opponent(), PieceType::Pawn);
 
-        debug_assert!(pos.get_piece(enemy_sq) == Piece::NONE);
+        debug_assert!(pos.get_piece_at(enemy_sq) == Piece::NONE);
 
         // Place the captured pawn back on the board
         pos.bitboards[enemy.as_usize()].set(enemy_sq.as_u8());
@@ -483,7 +489,7 @@ fn undo_promotion(pos: &mut Position, m: &Move) {
 
     // from square is the square of the promoted piece
     let from_sq = m.from_sq();
-    let piece = pos.get_piece(from_sq);
+    let piece = pos.get_piece_at(from_sq);
     let color = piece.color();
     let promotion = Piece::get_piece(color, m.get_promotion().unwrap());
     let pawn = Piece::get_piece(color, PieceType::Pawn);

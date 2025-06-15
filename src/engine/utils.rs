@@ -197,7 +197,7 @@ pub fn to_board_string(pos: &Position) -> String {
     for rank in (0..8).rev() {
         for file in 0..8 {
             let sq = rank * 8 + file;
-            let piece = pos.get_piece(Square(sq));
+            let piece = pos.get_piece_at(Square(sq));
             s.push(piece.to_char());
         }
     }

@@ -33,7 +33,7 @@ fn pseudo_legal_from_sq_impl<const ATTACK_ONLY: bool>(
     sq: Square,
     color: Color,
 ) -> BitBoard {
-    let piece = pos.get_piece(sq);
+    let piece = pos.get_piece_at(sq);
 
     let my_occupancy = pos.occupancies[color.as_usize()];
     let enemy_occupancy = pos.occupancies[color.opponent().as_usize()];
@@ -84,7 +84,8 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
 
     let snapshot = pos.make_move(m);
 
-    let legal = (pos.bitboards[piece.as_usize()] & pos.attack_map[opponent.as_usize()]).none();
+    let legal =
+        (pos.bitboards[piece.as_usize()] & pos.attack_map_color[opponent.as_usize()]).none();
 
     pos.unmake_move(m, &snapshot);
 
@@ -199,15 +200,15 @@ fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
     let is_black = COLOR != Color::WHITE.as_u8();
 
     if let Some(ep_sq) = pos.en_passant {
-        debug_assert!(pos.get_piece(ep_sq) == Piece::NONE, "En passant square must be empty");
+        debug_assert!(pos.get_piece_at(ep_sq) == Piece::NONE, "En passant square must be empty");
         let (ep_file, ep_rank) = ep_sq.file_rank();
         if (file as i32 - ep_file as i32).abs() == 1 {
             if is_white && rank == RANK_5 && ep_rank == RANK_6 {
-                debug_assert!(pos.get_piece(Square(ep_sq.0 - 8)) == Piece::B_PAWN);
+                debug_assert!(pos.get_piece_at(Square(ep_sq.0 - 8)) == Piece::B_PAWN);
                 return ep_sq.to_bitboard();
             }
             if is_black && rank == RANK_4 && ep_rank == RANK_3 {
-                debug_assert!(pos.get_piece(Square(ep_sq.0 + 8)) == Piece::W_PAWN);
+                debug_assert!(pos.get_piece_at(Square(ep_sq.0 + 8)) == Piece::W_PAWN);
                 return ep_sq.to_bitboard();
             }
         }
@@ -231,7 +232,8 @@ fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square,
                 move_list.add(Move::new(sq, to_sq, MoveType::Promotion, Some(promotion)));
             }
         } else {
-            let is_ep_capture = check_if_eq_capture::<COLOR>(pos, sq, to_sq, pos.get_piece(to_sq));
+            let is_ep_capture =
+                check_if_eq_capture::<COLOR>(pos, sq, to_sq, pos.get_piece_at(to_sq));
             let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
             move_list.add(Move::new(sq, to_sq, move_type, None));
         }
@@ -381,8 +383,8 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
         }
 
         debug_assert!(squares[0].is_some() && squares[1].is_some());
-        let pinned = pos.get_piece(squares[0].unwrap());
-        let attacked = pos.get_piece(squares[1].unwrap());
+        let pinned = pos.get_piece_at(squares[0].unwrap());
+        let attacked = pos.get_piece_at(squares[1].unwrap());
 
         // pinned piece must be of the same color as the king
         // and the attacked piece must be of the opposite color
@@ -565,7 +567,7 @@ fn move_mask_king<const COLOR: u8, const ATTACK_ONLY: bool>(
 
     if !ATTACK_ONLY {
         // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
-        moves &= !pos.attack_map[color.opponent().as_usize()];
+        moves &= !pos.attack_map_color[color.opponent().as_usize()];
 
         if is_white {
             if (pos.castling & MoveFlags::K != 0)
@@ -623,7 +625,7 @@ fn move_mask_castle_check<const COLOR: u8>(
     // check if the cells are under attack
     let (start, end) = min_max(sq, dst_sq);
     for i in start.0..=end.0 {
-        if pos.attack_map[opponent.as_usize()].test(i) {
+        if pos.attack_map_color[opponent.as_usize()].test(i) {
             return false;
         }
     }
@@ -797,11 +799,11 @@ mod tests {
         let pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
 
         assert_eq!(
-            pos.attack_map[Color::BLACK.as_usize()],
+            pos.attack_map_color[Color::BLACK.as_usize()],
             BitBoard::from(0b11000000_01000000_01111110)
         );
 
-        let is_pinned = pos.is_pinned(Square::B1, Color::WHITE);
+        let is_pinned = pos.is_square_pinned(Square::B1, Color::WHITE);
 
         assert_eq!(!is_pinned, true, "Move bishop to A2 exposes king to check");
     }

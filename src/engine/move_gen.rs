@@ -52,19 +52,15 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
     detail::generate_pin_map(pos, color)
 }
 
-pub fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(
-    pos: &Position,
-) -> BitBoard {
+pub fn calc_attack_map_impl(pos: &Position, piece: Piece) -> BitBoard {
     let mut attack_map = BitBoard::new();
 
-    for i in START..=END {
-        // pieces from W to B
-        let bb = pos.bitboards[i as usize];
-        for sq in 0..64 {
-            if bb.test(sq) {
-                attack_map |= detail::pseudo_legal_attack_from(pos, Square(sq), Color::from(COLOR));
-            }
-        }
+    let color = piece.color();
+    let mut bb = pos.bitboards[piece.as_usize()];
+    while bb.any() {
+        let sq = bb.first_nonzero_sq();
+        attack_map |= detail::pseudo_legal_attack_from(pos, sq, color);
+        bb.remove_first_nonzero_sq();
     }
 
     attack_map
