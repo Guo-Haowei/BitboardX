@@ -679,17 +679,6 @@ mod tests {
     }
 
     #[test]
-    fn test_calc_attack_map() {
-        let pos =
-            Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
-
-        let attack_maps = pos.attack_mask;
-
-        assert_eq!(attack_maps[Color::WHITE.as_usize()].get(), 0x0000000000FF0000);
-        assert_eq!(attack_maps[Color::BLACK.as_usize()].get(), 0x0000FF0000000000);
-    }
-
-    #[test]
     fn test_checkers() {
         let pos = Position::from("r3k3/8/4B3/8/4r3/8/2n5/R3K2R w - - 0 1").unwrap();
 

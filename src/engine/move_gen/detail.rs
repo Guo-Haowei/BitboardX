@@ -27,8 +27,7 @@ pub fn pseudo_legal_moves_from_sq(
     }
 }
 
-// @TODO: deprecate this
-/// Pseudo-legal move generation for a square
+/// Attack mask generation for a square
 pub fn attack_mask_from_sq<const ATTACK_MASK: bool>(
     pos: &Position,
     sq: Square,
@@ -42,12 +41,12 @@ pub fn attack_mask_from_sq<const ATTACK_MASK: bool>(
     match piece {
         Piece::W_PAWN => pawn_mask::<{ Color::WHITE.as_u8() }, ATTACK_MASK>(sq, pos),
         Piece::B_PAWN => pawn_mask::<{ Color::BLACK.as_u8() }, ATTACK_MASK>(sq, pos),
-        Piece::W_ROOK | Piece::B_ROOK => rook_mask(sq, my_occupancy, enemy_occupancy),
-        Piece::W_BISHOP | Piece::B_BISHOP => bishop_mask(sq, my_occupancy, enemy_occupancy),
-        Piece::W_QUEEN | Piece::B_QUEEN => queen_mask(sq, my_occupancy, enemy_occupancy),
-        Piece::W_KNIGHT | Piece::B_KNIGHT => move_mask_knight(sq, my_occupancy),
-        Piece::W_KING => move_mask_king::<{ Color::WHITE.as_u8() }, ATTACK_MASK>(sq, pos),
-        Piece::B_KING => move_mask_king::<{ Color::BLACK.as_u8() }, ATTACK_MASK>(sq, pos),
+        Piece::W_ROOK | Piece::B_ROOK => rook_mask::<true>(sq, my_occupancy, enemy_occupancy),
+        Piece::W_BISHOP | Piece::B_BISHOP => bishop_mask::<true>(sq, my_occupancy, enemy_occupancy),
+        Piece::W_QUEEN | Piece::B_QUEEN => queen_mask::<true>(sq, my_occupancy, enemy_occupancy),
+        Piece::W_KNIGHT | Piece::B_KNIGHT => knight_mask::<true>(sq, my_occupancy),
+        Piece::W_KING => king_mask::<{ Color::WHITE.as_u8() }, ATTACK_MASK>(sq, pos),
+        Piece::B_KING => king_mask::<{ Color::BLACK.as_u8() }, ATTACK_MASK>(sq, pos),
         Piece::NONE => BitBoard::new(),
         _ => {
             panic!("Invalid piece type: {:?}", piece);
@@ -106,9 +105,31 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
     debug_assert!(mover.color() == mover_color, "Mover color must match position side to move");
     let attacker_color = mover_color.opponent();
 
+    // if there are two checkers, only moving the king solves the check
+    let checker = &pos.checkers[mover_color.as_usize()];
+    let checker_count = checker.count();
+
+    let from_sq = m.from_sq();
     let to_sq = m.to_sq();
     // if move king, check if the destination square is safe
     if mover_type == PieceType::King {
+        for i in 0..1 {
+            let checker = checker.get(i);
+            if let Some(checker_sq) = checker {
+                if checker_sq != to_sq {
+                    let checker = pos.get_piece_at(checker_sq);
+                    match checker.get_type() {
+                        PieceType::Bishop | PieceType::Rook | PieceType::Queen => {
+                            if from_sq.same_line(to_sq, checker_sq) {
+                                return false; // can't move the king along the line of the checker, unless it's a capture
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
         let to_sq_under_attack = pos.attack_mask[attacker_color.as_usize()].test(to_sq.as_u8());
         assert!(
             !to_sq_under_attack,
@@ -117,15 +138,10 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
         return !to_sq_under_attack;
     }
 
-    // if there are two checkers, only moving the king solves the check
-    let checker = &pos.checkers[mover_color.as_usize()];
-    let checker_count = checker.count();
-
     if checker_count == 2 {
         return false;
     }
 
-    let from_sq = m.from_sq();
     let is_pinned = pos.is_square_pinned(from_sq, mover_color);
     let king_sq = pos.get_king_square(mover_color);
     if is_pinned {
@@ -456,13 +472,13 @@ fn check_if_eq_capture<const COLOR: u8>(
 ///   - All 8 directions: N, S, E, W, NE, NW, SE, SW
 
 /// Pseudo-legal move generation for a sliding piece (rook, bishop, queen)
-fn sliding_mask<const START: u8, const END: u8>(
+fn sliding_mask<const START: u8, const END: u8, const ATTACK_MASK: bool>(
     sq: Square,
     my_occupancy: BitBoard,
     enemy_occupancy: BitBoard,
     // color: Color,
 ) -> BitBoard {
-    let mut moves = BitBoard::new();
+    let mut masks = BitBoard::new();
     let bb = sq.to_bitboard();
 
     for i in START..END {
@@ -470,21 +486,24 @@ fn sliding_mask<const START: u8, const END: u8>(
 
         while next_bb.any() {
             if (next_bb & my_occupancy).any() {
+                if ATTACK_MASK {
+                    masks |= next_bb;
+                }
                 break;
             }
 
             if (next_bb & enemy_occupancy).any() {
-                moves |= next_bb;
+                masks |= next_bb;
                 break;
             }
 
-            moves |= next_bb;
+            masks |= next_bb;
 
             next_bb = SHIFT_FUNCS[i as usize](next_bb);
         }
     }
 
-    moves
+    masks
 }
 
 pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
@@ -539,16 +558,28 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
     pin_map
 }
 
-fn rook_mask(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
-    sliding_mask::<0, 4>(sq, my_occupancy, enemy_occupancy)
+fn rook_mask<const ATTACK_MASK: bool>(
+    sq: Square,
+    my_occupancy: BitBoard,
+    enemy_occupancy: BitBoard,
+) -> BitBoard {
+    sliding_mask::<0, 4, ATTACK_MASK>(sq, my_occupancy, enemy_occupancy)
 }
 
-fn bishop_mask(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
-    sliding_mask::<4, 8>(sq, my_occupancy, enemy_occupancy)
+fn bishop_mask<const ATTACK_MASK: bool>(
+    sq: Square,
+    my_occupancy: BitBoard,
+    enemy_occupancy: BitBoard,
+) -> BitBoard {
+    sliding_mask::<4, 8, ATTACK_MASK>(sq, my_occupancy, enemy_occupancy)
 }
 
-fn queen_mask(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
-    sliding_mask::<0, 8>(sq, my_occupancy, enemy_occupancy)
+fn queen_mask<const ATTACK_MASK: bool>(
+    sq: Square,
+    my_occupancy: BitBoard,
+    enemy_occupancy: BitBoard,
+) -> BitBoard {
+    sliding_mask::<0, 8, ATTACK_MASK>(sq, my_occupancy, enemy_occupancy)
 }
 
 fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: BitBoard) {
@@ -566,7 +597,7 @@ fn pseudo_legal_move_rook(
     my_occupancy: BitBoard,
     enemy_occupancy: BitBoard,
 ) {
-    let mask = rook_mask(sq, my_occupancy, enemy_occupancy);
+    let mask = rook_mask::<false>(sq, my_occupancy, enemy_occupancy);
     pseudo_legal_move_general(move_list, sq, mask);
 }
 
@@ -576,7 +607,7 @@ fn pseudo_legal_move_bishop(
     my_occupancy: BitBoard,
     enemy_occupancy: BitBoard,
 ) {
-    let mask = bishop_mask(sq, my_occupancy, enemy_occupancy);
+    let mask = bishop_mask::<false>(sq, my_occupancy, enemy_occupancy);
     pseudo_legal_move_general(move_list, sq, mask);
 }
 
@@ -586,7 +617,7 @@ fn pseudo_legal_move_queen(
     my_occupancy: BitBoard,
     enemy_occupancy: BitBoard,
 ) {
-    let mask = queen_mask(sq, my_occupancy, enemy_occupancy);
+    let mask = queen_mask::<false>(sq, my_occupancy, enemy_occupancy);
     pseudo_legal_move_general(move_list, sq, mask);
 }
 /* #endregion */
@@ -610,11 +641,12 @@ fn pseudo_legal_move_queen(
 /// - NE + E (2E 1N) → East-East-North
 /// - SE + E (2E 1S) → East-East-South
 
-fn move_mask_knight(sq: Square, my_occupancy: BitBoard) -> BitBoard {
+fn knight_mask<const ATTACK_MASK: bool>(sq: Square, my_occupancy: BitBoard) -> BitBoard {
     let mut moves = BitBoard::new();
     let bb = sq.to_bitboard();
 
-    let mask = !my_occupancy;
+    let mask = if ATTACK_MASK { 0u64 } else { my_occupancy.get() };
+    let mask = BitBoard::from(!mask);
 
     moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & mask;
     moves |= shift(bb & !(BOUND_A | BOUND_78), NW + NORTH) & mask;
@@ -630,7 +662,7 @@ fn move_mask_knight(sq: Square, my_occupancy: BitBoard) -> BitBoard {
 }
 
 fn pseudo_legal_move_knight(move_list: &mut MoveList, sq: Square, my_occupancy: BitBoard) {
-    let mask = move_mask_knight(sq, my_occupancy);
+    let mask = knight_mask::<false>(sq, my_occupancy);
     pseudo_legal_move_general(move_list, sq, mask);
 }
 /* #endregion */
@@ -679,16 +711,13 @@ fn pseudo_legal_move_knight(move_list: &mut MoveList, sq: Square, my_occupancy: 
 /// - The king is not currently in check
 /// - The king does not pass through or land on a square that is under attack
 
-fn move_mask_king<const COLOR: u8, const ATTACK_MASK: bool>(
-    sq: Square,
-    pos: &Position,
-) -> BitBoard {
+fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Position) -> BitBoard {
     let color = Color::from(COLOR);
     let is_white = color.is_white();
 
     let bb = sq.to_bitboard();
     let mut moves = BitBoard::new();
-    let occupancy = !pos.occupancies[COLOR as usize];
+    let occupancy = !(if ATTACK_MASK { BitBoard::new() } else { pos.occupancies[COLOR as usize] });
     moves |= shift_north(bb) & occupancy;
     moves |= shift_south(bb) & occupancy;
     moves |= shift_east(bb) & occupancy;
@@ -779,7 +808,7 @@ pub fn pseudo_legal_move_king<const COLOR: u8>(
     sq: Square,
     pos: &Position,
 ) {
-    let mut mask = move_mask_king::<COLOR, false>(sq, pos);
+    let mut mask = king_mask::<COLOR, false>(sq, pos);
     while mask.any() {
         let target_sq = mask.first_nonzero_sq();
 
@@ -810,11 +839,6 @@ mod tests {
         // 1 K B . . . . . r
         //   a b c d e f g h
         let pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
-
-        assert_eq!(
-            pos.attack_mask[Color::BLACK.as_usize()],
-            BitBoard::from(0b11000000_01000000_01111110)
-        );
 
         let is_pinned = pos.is_square_pinned(Square::B1, Color::WHITE);
 
@@ -876,6 +900,26 @@ mod tests {
             is_pseudo_move_legal(&mut pos, &m),
             "En passant is illegal it captures the attacking pawn"
         );
+    }
+
+    #[test]
+    fn move_king_along_the_checker_line() {
+        let mut pos =
+            Position::from("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").unwrap();
+
+        let m = Move::new(Square::E1, Square::F2, MoveType::Normal, None);
+        assert!(is_pseudo_move_legal(&mut pos, &m));
+        pos.make_move(m);
+
+        let m = Move::new(Square::E7, Square::H4, MoveType::Normal, None);
+        assert!(is_pseudo_move_legal(&mut pos, &m),);
+        pos.make_move(m);
+        let m = Move::new(Square::F2, Square::E1, MoveType::Normal, None);
+        assert!(
+            !is_pseudo_move_legal(&mut pos, &m),
+            "King cannot move along the line of the checking piece, in this case from F2 to E1"
+        );
+        pos.make_move(m);
     }
 }
 
