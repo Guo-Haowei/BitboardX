@@ -38,7 +38,10 @@ pub fn legal_moves(pos: &mut Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
     for m in pseudo_moves.iter() {
+        println!("white pins:\n{}\n", pos.pin_map[0].to_string());
+        println!("black pins:\n{}\n", pos.pin_map[1].to_string());
         if detail::is_pseudo_move_legal(pos, m) {
+            println!("move is legal: {}", m.to_string());
             moves.add(m.clone());
         }
     }
@@ -187,7 +190,7 @@ mod perft {
             (8, 3009794393u64),
         ];
 
-        perft_test_wrapper("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 ", DEFAULT_DEPTH, &tests);
+        perft_test_wrapper("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", DEFAULT_DEPTH, &tests);
     }
 
     #[test]

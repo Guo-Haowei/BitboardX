@@ -844,6 +844,15 @@ mod tests {
     }
 
     #[test]
+    fn test_rook_pin_pawn() {
+        let pos = Position::from("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
+
+        let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
+
+        assert_eq!(!is_pinned, true, "Pawn B5 is pinned by rook on H5");
+    }
+
+    #[test]
     fn test_en_passant() {
         let pos = Position::from("4k3/8/8/4Pp2/8/8/8/4K3 w - f6 2 4").unwrap();
 
