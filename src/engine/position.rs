@@ -52,16 +52,18 @@ impl Position {
             BitBoard::from(0x1000000000000000), // Black King
         ];
 
-        let occupancies = utils::calc_occupancies(&bitboards);
+        // @NOTE: this is a bit hacky, to set the side to move to opposite color
+        // because post_move() will change the side to move
+        let side_to_move = Color::BLACK;
 
         let mut result = Self {
             bitboards,
-            side_to_move: Color::WHITE,
+            side_to_move,
             castling: MoveFlags::KQkq,
             en_passant: None,
             halfmove_clock: 0,
             fullmove_number: 1,
-            occupancies,
+            occupancies: [BitBoard::new(); 3],
             attack_map_piece: [BitBoard::new(); Piece::COUNT],
             attack_map_color: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
@@ -70,7 +72,7 @@ impl Position {
             redo_stack: Vec::new(),
         };
 
-        result.update_cache();
+        result.post_move();
         result
     }
 
@@ -82,7 +84,7 @@ impl Position {
 
         let bitboards = utils::parse_board(parts[0])?;
         let side_to_move = match Color::parse(parts[1]) {
-            Some(color) => color,
+            Some(color) => color.opponent(),
             None => return Err("Invalid side to move in FEN"),
         };
         let castling = utils::parse_castling(parts[2])?;
@@ -92,8 +94,6 @@ impl Position {
         let halfmove_clock = utils::parse_halfmove_clock(parts[4])?;
         let fullmove_number = utils::parse_fullmove_number(parts[5])?;
 
-        let occupancies = utils::calc_occupancies(&bitboards);
-
         let mut pos = Self {
             bitboards,
             side_to_move,
@@ -101,27 +101,28 @@ impl Position {
             en_passant,
             halfmove_clock,
             fullmove_number,
-            occupancies,
+            occupancies: [BitBoard::new(); 3],
             attack_map_piece: [BitBoard::new(); Piece::COUNT],
             attack_map_color: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
+
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         };
 
-        pos.update_attack_map();
+        pos.post_move();
         Ok(pos)
     }
 
     // @TODO: make private
-    pub fn update_cache(&mut self) {
+    pub fn post_move(&mut self) {
+        self.side_to_move = self.side_to_move.opponent();
         self.occupancies = utils::calc_occupancies(&self.bitboards);
         self.update_attack_map();
-    }
 
-    // @TODO: make private
-    pub fn change_side(&mut self) {
-        self.side_to_move = self.side_to_move.opponent()
+        // maybe only need to update the side to move attack map?
+        self.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(self, Color::WHITE);
+        self.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(self, Color::BLACK);
     }
 
     pub fn get_piece_at(&self, sq: Square) -> Piece {
@@ -148,6 +149,12 @@ impl Position {
 
     pub fn is_square_pinned(&self, sq: Square, color: Color) -> bool {
         self.pin_map[color.as_usize()].test(sq.as_u8())
+    }
+
+    pub fn is_in_check(&self, color: Color) -> bool {
+        let king_sq = self.get_king_square(color);
+        let attack_map = self.attack_map_color[color.opponent().as_usize()];
+        attack_map.test(king_sq.as_u8())
     }
 
     // @TODO: remove these methods, call move_gen directly
@@ -222,7 +229,7 @@ impl Position {
 
         do_promotion(self, m, from);
 
-        post_move(self);
+        self.post_move();
 
         self.castling &= !disabled_castling;
         self.en_passant = update_en_passant_square(self, m.from_sq(), m.to_sq(), from);
@@ -240,7 +247,8 @@ impl Position {
         undo_move_ep(self, m, from);
 
         undo_castling(self, m, from);
-        post_move(self);
+
+        self.post_move();
 
         self.restore(snapshot);
     }
@@ -519,15 +527,6 @@ fn undo_castling(pos: &mut Position, m: &Move, from: Piece) {
 
     let (piece, from_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
     move_piece(&mut pos.bitboards[piece.as_usize()], to_sq, from_sq);
-}
-
-fn post_move(pos: &mut Position) {
-    pos.change_side();
-    pos.update_cache();
-
-    // maybe only need to update the side to move attack map?
-    pos.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);
-    pos.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(pos, Color::BLACK);
 }
 
 // if castling rights are already disabled, return
