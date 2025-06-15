@@ -54,8 +54,28 @@ fn pseudo_legal_from_sq_impl<const ATTACK_ONLY: bool>(
     }
 }
 
-/// @TODO: remove mut
-pub fn is_move_legal(pos: &mut Position, m: &Move) -> bool {
+/// Checks whether a given pseudo move is legal in the current position.
+///
+/// 1. Determine whether the king is currently in check.
+/// 2. If the king is NOT in check:
+///    - a. If the moving piece is pinned, the move must be along the line between the king and the pinner.
+///    - b. If the moving piece is not pinned, the move can be made freely.
+/// 3. If the king is in check:
+///    - Identify all checking pieces.
+///
+///    - If there is a single check:
+///      - The move must either:
+///        - Capture the checking piece, or
+///        - Block the check by moving to a square between the king and the attacker (if the attacker is a sliding piece), or
+///        - Move the king to a safe square.
+///
+///    - If there is a double check:
+///      - Only king moves are allowed. (there's no way to block or capture in a double check)
+///      - The king’s destination square must not be attacked.
+///
+///
+/// 6. Optionally, verify after applying the move that the king is not left in check.
+pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
     let us = pos.side_to_move;
     let opponent = us.opponent();
     let piece: Piece = Piece::get_piece(us, PieceType::King);
@@ -69,6 +89,29 @@ pub fn is_move_legal(pos: &mut Position, m: &Move) -> bool {
     pos.unmake_move(m, &snapshot);
 
     legal
+
+    // let color = pos.side_to_move;
+    // assert!(color == pos.get_piece(m.from_sq()).color());
+
+    // let pinned_square = m.from_sq();
+    // if !pos.is_pinned(pinned_square, color) {
+    //     return true;
+    // }
+
+    // // Shoelace Formula (also called the Surveyor's Formula) for the area of a triangle in 2D space.
+    // // area = [ Ax * (By - Cy) + Bx * (Cy - Ay) + Cx * (Ay - By) ] / 2
+    // // but we only cares about the sign of the area, so we can skip the division by 2.
+
+    // let king_sq = pos.get_king_square(color);
+    // let (ax, ay) = king_sq.file_rank();
+    // let (bx, by) = pinned_square.file_rank();
+    // let (cx, cy) = m.to_sq().file_rank();
+
+    // let two_signed_area = ax as i32 * (by as i32 - cy as i32)
+    //     + bx as i32 * (cy as i32 - ay as i32)
+    //     + cx as i32 * (ay as i32 - by as i32);
+
+    // two_signed_area == 0
 }
 
 pub fn pseudo_legal_attack_from(pos: &Position, sq: Square, color: Color) -> BitBoard {
@@ -307,6 +350,58 @@ fn move_mask_sliding<const START: u8, const END: u8>(
     }
 
     moves
+}
+
+pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
+    let king_sq = pos.get_king_square(color);
+    let mut pin_map = BitBoard::new();
+
+    let empty_mask = !pos.occupancies[Color::BOTH.as_usize()];
+
+    for i in 0..8 {
+        let mut next_bb = SHIFT_FUNCS[i as usize](king_sq.to_bitboard());
+
+        let mut squares: [Option<Square>; 2] = [None; 2];
+        let mut count = 0;
+
+        while next_bb.any() {
+            if (next_bb & empty_mask).none() {
+                squares[count] = Some(next_bb.first_nonzero_sq());
+                count += 1;
+                if count == 2 {
+                    break;
+                }
+            }
+
+            next_bb = SHIFT_FUNCS[i as usize](next_bb);
+        }
+
+        if count != 2 {
+            continue; // No pin found in this direction
+        }
+
+        debug_assert!(squares[0].is_some() && squares[1].is_some());
+        let pinned = pos.get_piece(squares[0].unwrap());
+        let attacked = pos.get_piece(squares[1].unwrap());
+
+        // pinned piece must be of the same color as the king
+        // and the attacked piece must be of the opposite color
+        if !(pinned.color() == color && attacked.color() == color.opponent()) {
+            continue;
+        }
+        let pinned = match pinned.piece_type() {
+            PieceType::Queen => true,
+            PieceType::Rook => i < 4, // Rook moves in 0-3 directions
+            PieceType::Bishop => i >= 4 && i < 8, // Bishop moves in 4-7 directions
+            _ => false,
+        };
+        if pinned {
+            // If the pinned piece is a rook or bishop, add the pin mask
+            pin_map |= squares[0].unwrap().to_bitboard();
+        }
+    }
+
+    pin_map
 }
 
 fn move_mask_rook(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
@@ -694,22 +789,22 @@ mod tests {
         assert!(moves.test(Square::C1.as_u8()))
     }
 
-    // #[test]
-    // fn test_move_validation() {
-    //     // 2 . . . . . . . k
-    //     // 1 K B . . . . . r
-    //     //   a b c d e f g h
-    //     let mut pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
+    #[test]
+    fn test_pin() {
+        // 2 . . . . . . . k
+        // 1 K B . . . . . r
+        //   a b c d e f g h
+        let pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
 
-    //     assert_eq!(
-    //         pos.attack_map[Color::BLACK.as_usize()],
-    //         BitBoard::from(0b11000000_01000000_01111110)
-    //     );
+        assert_eq!(
+            pos.attack_map[Color::BLACK.as_usize()],
+            BitBoard::from(0b11000000_01000000_01111110)
+        );
 
-    //     let m = pseudo_legal_move_from_to(&pos, Square::B1, Square::A2);
+        let is_pinned = pos.is_pinned(Square::B1, Color::WHITE);
 
-    //     assert!(!is_move_legal(&mut pos, &m), "Move bishop to A2 exposes king to check");
-    // }
+        assert_eq!(!is_pinned, true, "Move bishop to A2 exposes king to check");
+    }
 
     #[test]
     fn test_en_passant() {
@@ -739,6 +834,8 @@ mod tests {
         assert_eq!(moves, Square::E6.to_bitboard() | Square::F6.to_bitboard());
     }
 }
+
+/* #region */
 
 const NORTH: i32 = 8;
 const SOUTH: i32 = -NORTH;
@@ -801,3 +898,5 @@ fn shift_sw(bb: BitBoard) -> BitBoard {
 
 const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
     [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
+
+/* #endregion */

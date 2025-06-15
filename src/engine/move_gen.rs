@@ -2,7 +2,7 @@ use super::board::*;
 use super::position::Position;
 use super::types::*;
 
-mod internal;
+mod detail;
 
 /// Pseudo-legal move generation
 pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
@@ -22,7 +22,7 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
         while bb.any() {
             let sq = bb.first_nonzero_sq();
 
-            internal::pseudo_legal_moves_from_sq(&mut move_list, piece, pos, sq);
+            detail::pseudo_legal_moves_from_sq(&mut move_list, piece, pos, sq);
 
             bb.remove_first_nonzero_sq();
         }
@@ -36,7 +36,7 @@ pub fn legal_moves(pos: &mut Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
     for m in pseudo_moves.iter() {
-        if internal::is_move_legal(pos, m) {
+        if detail::is_pseudo_move_legal(pos, m) {
             moves.add(m.clone());
         }
     }
@@ -44,8 +44,12 @@ pub fn legal_moves(pos: &mut Position) -> MoveList {
     moves
 }
 
-pub fn is_move_legal(pos: &mut Position, m: &Move) -> bool {
-    internal::is_move_legal(pos, m)
+pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
+    detail::is_pseudo_move_legal(pos, m)
+}
+
+pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
+    detail::generate_pin_map(pos, color)
 }
 
 pub fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(
@@ -58,8 +62,7 @@ pub fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(
         let bb = pos.bitboards[i as usize];
         for sq in 0..64 {
             if bb.test(sq) {
-                attack_map |=
-                    internal::pseudo_legal_attack_from(pos, Square(sq), Color::from(COLOR));
+                attack_map |= detail::pseudo_legal_attack_from(pos, Square(sq), Color::from(COLOR));
             }
         }
     }

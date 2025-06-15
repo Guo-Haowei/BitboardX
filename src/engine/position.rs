@@ -26,6 +26,7 @@ pub struct Position {
     /// Data can be computed from the FEN state.
     pub occupancies: [BitBoard; 3],
     pub attack_map: [BitBoard; Color::COUNT],
+    pub pin_map: [BitBoard; Color::COUNT],
 
     /// @TODO: remove undo/redo stack out of Postion,
     /// so position is stateless.
@@ -62,6 +63,7 @@ impl Position {
             fullmove_number: 1,
             occupancies,
             attack_map,
+            pin_map: [BitBoard::new(); Color::COUNT],
             // @TODO: refactor
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
@@ -96,7 +98,8 @@ impl Position {
             halfmove_clock,
             fullmove_number,
             occupancies,
-            attack_map: [BitBoard::new(); 2],
+            attack_map: [BitBoard::new(); Color::COUNT],
+            pin_map: [BitBoard::new(); Color::COUNT],
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         };
@@ -124,7 +127,7 @@ impl Position {
         Piece::NONE
     }
 
-    pub fn get_king(&self, color: Color) -> Square {
+    pub fn get_king_square(&self, color: Color) -> Square {
         let piece = Piece::get_piece(color, PieceType::King);
         let mut bb = self.bitboards[piece.as_usize()];
         debug_assert!(bb.any(), "No king found for color {:?}", color);
@@ -136,10 +139,14 @@ impl Position {
         sq
     }
 
+    pub fn is_pinned(&self, sq: Square, color: Color) -> bool {
+        self.pin_map[color.as_usize()].test(sq.as_u8())
+    }
+
     // @TODO: remove these methods, call move_gen directly
 
     pub fn is_move_legal(&mut self, m: &Move) -> bool {
-        move_gen::is_move_legal(self, &m)
+        move_gen::is_pseudo_move_legal(self, &m)
     }
 
     pub fn pseudo_legal_moves(&self) -> MoveList {
@@ -365,8 +372,8 @@ mod tests {
             "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R"
         );
 
-        assert_eq!(pos.get_king(Color::WHITE), Square::E1);
-        assert_eq!(pos.get_king(Color::BLACK), Square::E8);
+        assert_eq!(pos.get_king_square(Color::WHITE), Square::E1);
+        assert_eq!(pos.get_king_square(Color::BLACK), Square::E8);
     }
 
     #[test]
@@ -511,6 +518,10 @@ fn undo_castling(pos: &mut Position, m: &Move, from: Piece) {
 fn post_move(pos: &mut Position) {
     pos.change_side();
     pos.update_cache();
+
+    // maybe only need to update the side to move attack map?
+    pos.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);
+    pos.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(pos, Color::BLACK);
 }
 
 // if castling rights are already disabled, return
