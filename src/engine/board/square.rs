@@ -79,7 +79,7 @@ impl Square {
 impl fmt::Display for Square {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (file, rank) = self.file_rank();
-        write!(f, "{}{}", (b'a' + file) as char, rank + 1)
+        write!(f, "{}{}", (b'A' + file) as char, rank + 1)
     }
 }
 

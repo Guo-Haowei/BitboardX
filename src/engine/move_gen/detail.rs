@@ -1,3 +1,5 @@
+use crate::engine::position::SmallSquareList;
+
 use super::super::board::*;
 use super::super::position::Position;
 use super::super::types::{Color, Piece, PieceType};
@@ -390,43 +392,43 @@ fn move_mask_sliding<const START: u8, const END: u8>(
 }
 
 pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
-    let king_sq = pos.get_king_square(color);
     let mut pin_map = BitBoard::new();
 
-    let empty_mask = !pos.occupancies[Color::BOTH.as_usize()];
+    let occupied = pos.occupancies[Color::BOTH.as_usize()];
+    let king_bb = pos.bitboards[Piece::get_piece(color, PieceType::King).as_usize()];
 
     for i in 0..8 {
-        let mut next_bb = SHIFT_FUNCS[i as usize](king_sq.to_bitboard());
+        let mut next_bb = SHIFT_FUNCS[i as usize](king_bb);
 
-        let mut squares: [Option<Square>; 2] = [None; 2];
-        let mut count = 0;
+        let mut squares = SmallSquareList::new();
 
         while next_bb.any() {
-            if (next_bb & empty_mask).none() {
-                squares[count] = Some(next_bb.first_nonzero_sq());
-                count += 1;
-                if count == 2 {
-                    break;
+            if (next_bb & occupied).any() {
+                squares.add(next_bb.first_nonzero_sq());
+                if squares.count() == 2 {
+                    break; // Found two pieces in this direction
                 }
             }
 
             next_bb = SHIFT_FUNCS[i as usize](next_bb);
         }
 
-        if count != 2 {
+        if squares.count() != 2 {
             continue; // No pin found in this direction
         }
 
-        debug_assert!(squares[0].is_some() && squares[1].is_some());
-        let pinned = pos.get_piece_at(squares[0].unwrap());
-        let attacked = pos.get_piece_at(squares[1].unwrap());
+        let sq0 = squares.get(0).unwrap();
+        let sq1 = squares.get(1).unwrap();
+        let pinned = pos.get_piece_at(sq0);
+        let attacker = pos.get_piece_at(sq1);
 
         // pinned piece must be of the same color as the king
         // and the attacked piece must be of the opposite color
-        if !(pinned.color() == color && attacked.color() == color.opponent()) {
+        if !(pinned.color() == color && attacker.color() == color.opponent()) {
             continue;
         }
-        let pinned = match pinned.get_type() {
+
+        let pinned = match attacker.get_type() {
             PieceType::Queen => true,
             PieceType::Rook => i < 4, // Rook moves in 0-3 directions
             PieceType::Bishop => i >= 4 && i < 8, // Bishop moves in 4-7 directions
@@ -434,7 +436,7 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
         };
         if pinned {
             // If the pinned piece is a rook or bishop, add the pin mask
-            pin_map |= squares[0].unwrap().to_bitboard();
+            pin_map |= sq0.to_bitboard();
         }
     }
 
@@ -840,7 +842,7 @@ mod tests {
 
         let is_pinned = pos.is_square_pinned(Square::B1, Color::WHITE);
 
-        assert_eq!(!is_pinned, true, "Move bishop to A2 exposes king to check");
+        assert!(is_pinned, "Move bishop to A2 exposes king to check");
     }
 
     #[test]
@@ -849,7 +851,7 @@ mod tests {
 
         let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
 
-        assert_eq!(!is_pinned, true, "Pawn B5 is pinned by rook on H5");
+        assert!(is_pinned, "Pawn B5 is pinned by rook on H5");
     }
 
     #[test]

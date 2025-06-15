@@ -5,10 +5,12 @@ use super::types::*;
 use super::utils;
 
 #[derive(Clone, Copy, Debug)]
-pub struct CheckerList {
+pub struct SmallSquareList {
     squares: [Option<Square>; 2],
     count: u8,
 }
+
+pub type CheckerList = SmallSquareList;
 
 impl CheckerList {
     pub fn new() -> Self {
@@ -153,6 +155,18 @@ impl Position {
         // maybe only need to update the side to move attack map?
         self.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(self, Color::WHITE);
         self.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(self, Color::BLACK);
+
+        // println!(
+        //     "white attack map:\n{}\n",
+        //     self.attack_map_color[Color::WHITE.as_usize()].to_string()
+        // );
+        // println!("black pin map:\n{}\n", self.pin_map[Color::BLACK.as_usize()].to_string());
+
+        // println!(
+        //     "black attack map:\n{}\n",
+        //     self.attack_map_color[Color::BLACK.as_usize()].to_string()
+        // );
+        // println!("white pin map:\n{}\n", self.pin_map[Color::WHITE.as_usize()].to_string());
     }
 
     pub fn get_piece_at(&self, sq: Square) -> Piece {
@@ -202,7 +216,8 @@ impl Position {
     }
 
     pub fn is_square_pinned(&self, sq: Square, color: Color) -> bool {
-        self.pin_map[color.as_usize()].test(sq.as_u8())
+        let pin_map = &self.pin_map[color.as_usize()];
+        pin_map.test(sq.as_u8())
     }
 
     pub fn is_in_check(&self, color: Color) -> bool {

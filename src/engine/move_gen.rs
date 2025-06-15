@@ -38,10 +38,7 @@ pub fn legal_moves(pos: &mut Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
     for m in pseudo_moves.iter() {
-        println!("white pins:\n{}\n", pos.pin_map[0].to_string());
-        println!("black pins:\n{}\n", pos.pin_map[1].to_string());
         if detail::is_pseudo_move_legal(pos, m) {
-            println!("move is legal: {}", m.to_string());
             moves.add(m.clone());
         }
     }
