@@ -37,7 +37,7 @@ impl Color {
         match color {
             "w" => Some(Self::WHITE),
             "b" => Some(Self::BLACK),
-            _ => panic!("Invalid color string: {}", color),
+            _ => None,
         }
     }
 

@@ -66,7 +66,7 @@ pub fn calc_attack_map_impl(
     let mut bb = pos.bitboards[piece.as_usize()];
     while bb.any() {
         let sq = bb.first_nonzero_sq();
-        let attack_mask = detail::pseudo_legal_from_sq_impl::<true>(pos, sq, color);
+        let attack_mask = detail::attack_mask_from_sq::<true>(pos, sq, color);
 
         if attack_mask.test(opponent_king.as_u8()) {
             debug_assert!(pos.occupancies[color.opponent().as_usize()].test(opponent_king.as_u8()));

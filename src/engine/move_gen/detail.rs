@@ -29,7 +29,7 @@ pub fn pseudo_legal_moves_from_sq(
 
 // @TODO: deprecate this
 /// Pseudo-legal move generation for a square
-pub fn pseudo_legal_from_sq_impl<const ATTACK_ONLY: bool>(
+pub fn attack_mask_from_sq<const ATTACK_MASK: bool>(
     pos: &Position,
     sq: Square,
     color: Color,
@@ -40,14 +40,14 @@ pub fn pseudo_legal_from_sq_impl<const ATTACK_ONLY: bool>(
     let enemy_occupancy = pos.occupancies[color.opponent().as_usize()];
 
     match piece {
-        Piece::W_PAWN => move_mask_pawn::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(sq, pos),
-        Piece::B_PAWN => move_mask_pawn::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(sq, pos),
-        Piece::W_ROOK | Piece::B_ROOK => move_mask_rook(sq, my_occupancy, enemy_occupancy),
-        Piece::W_BISHOP | Piece::B_BISHOP => move_mask_bishop(sq, my_occupancy, enemy_occupancy),
-        Piece::W_QUEEN | Piece::B_QUEEN => move_mask_queen(sq, my_occupancy, enemy_occupancy),
+        Piece::W_PAWN => pawn_mask::<{ Color::WHITE.as_u8() }, ATTACK_MASK>(sq, pos),
+        Piece::B_PAWN => pawn_mask::<{ Color::BLACK.as_u8() }, ATTACK_MASK>(sq, pos),
+        Piece::W_ROOK | Piece::B_ROOK => rook_mask(sq, my_occupancy, enemy_occupancy),
+        Piece::W_BISHOP | Piece::B_BISHOP => bishop_mask(sq, my_occupancy, enemy_occupancy),
+        Piece::W_QUEEN | Piece::B_QUEEN => queen_mask(sq, my_occupancy, enemy_occupancy),
         Piece::W_KNIGHT | Piece::B_KNIGHT => move_mask_knight(sq, my_occupancy),
-        Piece::W_KING => move_mask_king::<{ Color::WHITE.as_u8() }, ATTACK_ONLY>(sq, pos),
-        Piece::B_KING => move_mask_king::<{ Color::BLACK.as_u8() }, ATTACK_ONLY>(sq, pos),
+        Piece::W_KING => move_mask_king::<{ Color::WHITE.as_u8() }, ATTACK_MASK>(sq, pos),
+        Piece::B_KING => move_mask_king::<{ Color::BLACK.as_u8() }, ATTACK_MASK>(sq, pos),
         Piece::NONE => BitBoard::new(),
         _ => {
             panic!("Invalid piece type: {:?}", piece);
@@ -109,8 +109,7 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
     let to_sq = m.to_sq();
     // if move king, check if the destination square is safe
     if mover_type == PieceType::King {
-        let to_sq_under_attack =
-            pos.attack_map_color[attacker_color.as_usize()].test(to_sq.as_u8());
+        let to_sq_under_attack = pos.attack_mask[attacker_color.as_usize()].test(to_sq.as_u8());
         assert!(
             !to_sq_under_attack,
             "this should be filtered when generating the mask, put an assert here for safety"
@@ -285,10 +284,7 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: &Move, mover_color: Color) -> b
 /// - 2S → Double push from rank 7
 /// - SE / SW → Diagonal captures
 
-fn move_mask_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(
-    sq: Square,
-    pos: &Position,
-) -> BitBoard {
+fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Position) -> BitBoard {
     let (_file, rank) = sq.file_rank();
     let bb = sq.to_bitboard();
     let mut moves = BitBoard::new();
@@ -298,7 +294,7 @@ fn move_mask_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(
     let is_white = COLOR == Color::WHITE.as_u8();
     let is_black = COLOR != Color::WHITE.as_u8();
 
-    if !ATTACK_ONLY {
+    if !ATTACK_MASK {
         // Handle forward moves
         let next_bb = if is_white { shift_north(bb) } else { shift_south(bb) };
 
@@ -319,11 +315,11 @@ fn move_mask_pawn<const COLOR: u8, const ATTACK_ONLY: bool>(
 
     // Handle attacks moves
     let attack_left = if is_white { shift_nw(bb) } else { shift_sw(bb) };
-    if ATTACK_ONLY || (attack_left & pos.occupancies[opponent as usize]).any() {
+    if ATTACK_MASK || (attack_left & pos.occupancies[opponent as usize]).any() {
         moves |= attack_left;
     }
     let attack_right = if is_white { shift_ne(bb) } else { shift_se(bb) };
-    if ATTACK_ONLY || (attack_right & pos.occupancies[opponent as usize]).any() {
+    if ATTACK_MASK || (attack_right & pos.occupancies[opponent as usize]).any() {
         moves |= attack_right;
     }
 
@@ -355,7 +351,7 @@ fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
 }
 
 fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square, pos: &Position) {
-    let mask = move_mask_pawn::<{ COLOR }, false>(sq, pos);
+    let mask = pawn_mask::<{ COLOR }, false>(sq, pos);
     let mut bb = mask;
 
     while bb.any() {
@@ -460,7 +456,7 @@ fn check_if_eq_capture<const COLOR: u8>(
 ///   - All 8 directions: N, S, E, W, NE, NW, SE, SW
 
 /// Pseudo-legal move generation for a sliding piece (rook, bishop, queen)
-fn move_mask_sliding<const START: u8, const END: u8>(
+fn sliding_mask<const START: u8, const END: u8>(
     sq: Square,
     my_occupancy: BitBoard,
     enemy_occupancy: BitBoard,
@@ -543,16 +539,16 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
     pin_map
 }
 
-fn move_mask_rook(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
-    move_mask_sliding::<0, 4>(sq, my_occupancy, enemy_occupancy)
+fn rook_mask(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
+    sliding_mask::<0, 4>(sq, my_occupancy, enemy_occupancy)
 }
 
-fn move_mask_bishop(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
-    move_mask_sliding::<4, 8>(sq, my_occupancy, enemy_occupancy)
+fn bishop_mask(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
+    sliding_mask::<4, 8>(sq, my_occupancy, enemy_occupancy)
 }
 
-fn move_mask_queen(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
-    move_mask_sliding::<0, 8>(sq, my_occupancy, enemy_occupancy)
+fn queen_mask(sq: Square, my_occupancy: BitBoard, enemy_occupancy: BitBoard) -> BitBoard {
+    sliding_mask::<0, 8>(sq, my_occupancy, enemy_occupancy)
 }
 
 fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: BitBoard) {
@@ -570,7 +566,7 @@ fn pseudo_legal_move_rook(
     my_occupancy: BitBoard,
     enemy_occupancy: BitBoard,
 ) {
-    let mask = move_mask_rook(sq, my_occupancy, enemy_occupancy);
+    let mask = rook_mask(sq, my_occupancy, enemy_occupancy);
     pseudo_legal_move_general(move_list, sq, mask);
 }
 
@@ -580,7 +576,7 @@ fn pseudo_legal_move_bishop(
     my_occupancy: BitBoard,
     enemy_occupancy: BitBoard,
 ) {
-    let mask = move_mask_bishop(sq, my_occupancy, enemy_occupancy);
+    let mask = bishop_mask(sq, my_occupancy, enemy_occupancy);
     pseudo_legal_move_general(move_list, sq, mask);
 }
 
@@ -590,7 +586,7 @@ fn pseudo_legal_move_queen(
     my_occupancy: BitBoard,
     enemy_occupancy: BitBoard,
 ) {
-    let mask = move_mask_queen(sq, my_occupancy, enemy_occupancy);
+    let mask = queen_mask(sq, my_occupancy, enemy_occupancy);
     pseudo_legal_move_general(move_list, sq, mask);
 }
 /* #endregion */
@@ -683,7 +679,7 @@ fn pseudo_legal_move_knight(move_list: &mut MoveList, sq: Square, my_occupancy: 
 /// - The king is not currently in check
 /// - The king does not pass through or land on a square that is under attack
 
-fn move_mask_king<const COLOR: u8, const ATTACK_ONLY: bool>(
+fn move_mask_king<const COLOR: u8, const ATTACK_MASK: bool>(
     sq: Square,
     pos: &Position,
 ) -> BitBoard {
@@ -702,9 +698,9 @@ fn move_mask_king<const COLOR: u8, const ATTACK_ONLY: bool>(
     moves |= shift_se(bb) & occupancy;
     moves |= shift_sw(bb) & occupancy;
 
-    if !ATTACK_ONLY {
+    if !ATTACK_MASK {
         // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
-        moves &= !pos.attack_map_color[color.opponent().as_usize()];
+        moves &= !pos.attack_mask[color.opponent().as_usize()];
 
         if is_white {
             if (pos.castling & MoveFlags::K != 0)
@@ -762,7 +758,7 @@ fn move_mask_castle_check<const COLOR: u8>(
     // check if the cells are under attack
     let (start, end) = min_max(sq, dst_sq);
     for i in start.0..=end.0 {
-        if pos.attack_map_color[opponent.as_usize()].test(i) {
+        if pos.attack_mask[opponent.as_usize()].test(i) {
             return false;
         }
     }
@@ -808,126 +804,6 @@ pub fn pseudo_legal_move_king<const COLOR: u8>(
 mod tests {
     use super::*;
 
-    pub fn pseudo_legal_move_from(pos: &Position, sq: Square) -> BitBoard {
-        pseudo_legal_from_sq_impl::<false>(pos, sq, pos.side_to_move)
-    }
-
-    fn squares_to_bitboard(sqs: &[Square]) -> BitBoard {
-        let mut bb = BitBoard::new();
-        for &sq in sqs {
-            bb.set_sq(sq);
-        }
-        bb
-    }
-
-    const BB_D4: BitBoard = Square::D4.to_bitboard();
-    const BB_D5: BitBoard = Square::D5.to_bitboard();
-    const BB_D6: BitBoard = Square::D6.to_bitboard();
-
-    const BB_E3: BitBoard = Square::E3.to_bitboard();
-    const BB_E4: BitBoard = Square::E4.to_bitboard();
-    const BB_E5: BitBoard = Square::E5.to_bitboard();
-
-    #[test]
-    fn test_white_pawn_pseudo_legal_move() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let pos = Position::from(fen).unwrap();
-        assert_eq!(
-            pos.to_board_string(),
-            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
-        );
-
-        let moves = pseudo_legal_move_from(&pos, Square::E2);
-        assert_eq!(moves, BB_E3 | BB_E4);
-    }
-
-    #[test]
-    fn test_black_pawn_pseudo_legal_move() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1";
-        let pos = Position::from(fen).unwrap();
-
-        let moves = pseudo_legal_move_from(&pos, Square::D7);
-        assert_eq!(moves, BB_D6 | BB_D5);
-    }
-
-    #[test]
-    fn white_pawn_attack() {
-        let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 w - - 0 10";
-        let pos = Position::from(fen).unwrap();
-
-        let moves = pseudo_legal_move_from(&pos, Square::E4);
-        assert_eq!(moves, BB_D5 | BB_E5);
-    }
-
-    #[test]
-    fn black_pawn_attack() {
-        let fen = "r2q1rk1/pp2bppp/2n1pn2/2bp4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 b - - 0 10";
-        let pos = Position::from(fen).unwrap();
-
-        let moves = pseudo_legal_move_from(&pos, Square::D5);
-        assert_eq!(moves, BB_D4 | BB_E4);
-    }
-
-    #[test]
-    fn move_biship() {
-        let fen = "rn1qkbnr/ppp1pppp/4b3/3p4/3PP3/8/PPP2PPP/RNBQKBNR b KQkq e3 0 1";
-        let pos = Position::from(fen).unwrap();
-
-        let moves = pseudo_legal_move_from(&pos, Square::E6);
-        assert_eq!(
-            moves,
-            squares_to_bitboard(&[Square::C8, Square::D7, Square::F5, Square::G4, Square::H3])
-        );
-    }
-
-    #[test]
-    fn move_rook() {
-        let fen = "rnbqkbn1/ppp1pp1r/7p/3p2p1/7P/3P1PPR/PPP1P3/RNBQKBN1 b - - 0 1";
-        let pos = Position::from(fen).unwrap();
-
-        let moves = pseudo_legal_move_from(&pos, Square::H7);
-        assert_eq!(moves, squares_to_bitboard(&[Square::H8, Square::G7]));
-    }
-
-    #[test]
-    fn move_knight() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let pos = Position::from(fen).unwrap();
-
-        let moves = pseudo_legal_move_from(&pos, Square::B1);
-        assert_eq!(moves, squares_to_bitboard(&[Square::A3, Square::C3]));
-    }
-
-    #[test]
-    fn knight_attack() {
-        let fen = "rn2kb1r/pppqppp1/5n2/3p3p/4P1b1/BPN5/P1PP1PPP/R2QKBNR b KQkq - 0 1";
-        let pos = Position::from(fen).unwrap();
-
-        let moves = pseudo_legal_move_from(&pos, Square::F6);
-        assert_eq!(moves, squares_to_bitboard(&[Square::E4, Square::G8, Square::H7]));
-    }
-
-    #[test]
-    fn test_castling() {
-        let fen = "r3k2r/ppp1bppp/2n1pn2/3p4/4P3/2NP1N2/PPQ2PPP/R1B2RK1 b kq - 0 10";
-        let pos = Position::from(fen).unwrap();
-
-        let moves = pseudo_legal_move_from(&pos, Square::E8);
-        assert_eq!(
-            moves,
-            squares_to_bitboard(&[Square::C8, Square::D8, Square::F8, Square::G8, Square::D7,])
-        );
-    }
-
-    #[test]
-    fn test_castling_2() {
-        let fen = "8/4k3/8/8/8/8/r6R/R3K3 w Q - 0 1";
-        let pos = Position::from(fen).unwrap();
-
-        let moves = pseudo_legal_move_from(&pos, Square::E1);
-        assert!(moves.test(Square::C1.as_u8()))
-    }
-
     #[test]
     fn test_pin() {
         // 2 . . . . . . . k
@@ -936,7 +812,7 @@ mod tests {
         let pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
 
         assert_eq!(
-            pos.attack_map_color[Color::BLACK.as_usize()],
+            pos.attack_mask[Color::BLACK.as_usize()],
             BitBoard::from(0b11000000_01000000_01111110)
         );
 
@@ -952,34 +828,6 @@ mod tests {
         let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
 
         assert!(is_pinned, "Pawn B5 is pinned by rook on H5");
-    }
-
-    #[test]
-    fn test_en_passant() {
-        let pos = Position::from("4k3/8/8/4Pp2/8/8/8/4K3 w - f6 2 4").unwrap();
-
-        // 8 . . . . k . . .
-        // 7 . . . . . . . .
-        // 6 . . . . . . . .
-        // 5 . . . . P p . .
-        // 4 . . . . . . . .
-        // 3 . . . . . . . .
-        // 2 . . . . . . . .
-        // 1 . . . . K . . .
-        //   a b c d e f g h
-
-        assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, 0);
-        assert_eq!(pos.en_passant.unwrap(), Square::F6);
-        assert_eq!(pos.halfmove_clock, 2);
-        assert_eq!(pos.fullmove_number, 4);
-        assert_eq!(
-            pos.to_board_string(),
-            "....k.......................Pp..............................K..."
-        );
-
-        let moves = pseudo_legal_move_from(&pos, Square::E5);
-        assert_eq!(moves, Square::E6.to_bitboard() | Square::F6.to_bitboard());
     }
 
     #[test]

@@ -57,7 +57,7 @@ pub struct Position {
 
     /// Data can be computed from the FEN state.
     pub occupancies: [BitBoard; 3],
-    pub attack_map_color: [BitBoard; Color::COUNT],
+    pub attack_mask: [BitBoard; Color::COUNT],
     pub pin_map: [BitBoard; Color::COUNT],
     pub checkers: [CheckerList; Color::COUNT],
 
@@ -96,7 +96,7 @@ impl Position {
             halfmove_clock: 0,
             fullmove_number: 1,
             occupancies: [BitBoard::new(); 3],
-            attack_map_color: [BitBoard::new(); Color::COUNT],
+            attack_mask: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
             // @TODO: refactor
@@ -134,7 +134,7 @@ impl Position {
             halfmove_clock,
             fullmove_number,
             occupancies: [BitBoard::new(); 3],
-            attack_map_color: [BitBoard::new(); Color::COUNT],
+            attack_mask: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
             // @TODO: move away
@@ -213,7 +213,7 @@ impl Position {
 
         if cfg!(debug_assertions) && checker_count != 0 {
             let king_sq = self.get_king_square(color);
-            let attack_map = self.attack_map_color[color.opponent().as_usize()];
+            let attack_map = self.attack_mask[color.opponent().as_usize()];
             debug_assert!(
                 attack_map.test(king_sq.as_u8()),
                 "King square {} is not attacked by opponent's pieces",
@@ -255,7 +255,7 @@ impl Position {
                     &mut checkers[opponent.as_usize()],
                 );
             }
-            self.attack_map_color[color.as_usize()] = attack_mask;
+            self.attack_mask[color.as_usize()] = attack_mask;
         }
 
         self.checkers = checkers;
@@ -683,7 +683,7 @@ mod tests {
         let pos =
             Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
-        let attack_maps = pos.attack_map_color;
+        let attack_maps = pos.attack_mask;
 
         assert_eq!(attack_maps[Color::WHITE.as_usize()].get(), 0x0000000000FF0000);
         assert_eq!(attack_maps[Color::BLACK.as_usize()].get(), 0x0000FF0000000000);
