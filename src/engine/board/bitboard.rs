@@ -78,6 +78,19 @@ impl BitBoard {
     pub fn remove_first_nonzero_sq(&mut self) {
         self.0 &= self.0 - 1; // Clear the least significant bit
     }
+
+    pub fn to_string(&self) -> String {
+        let mut s = String::new();
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let sq: u8 = rank * 8 + file;
+                s.push(if self.test(sq) { '1' } else { '0' });
+                s.push(' ');
+            }
+            s.push('\n');
+        }
+        s
+    }
 }
 
 /* #region Bitwise Operations */

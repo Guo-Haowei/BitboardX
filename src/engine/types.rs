@@ -29,7 +29,7 @@ impl Color {
     }
 
     pub const fn opponent(&self) -> Color {
-        debug_assert!(self.0 < Self::COUNT as u8);
+        assert!((self.is_white() ^ self.is_black()), "Invalid color");
         Color(self.0 ^ 1)
     }
 
@@ -106,7 +106,7 @@ impl Piece {
         }
     }
 
-    pub const fn piece_type(&self) -> PieceType {
+    pub const fn get_type(&self) -> PieceType {
         debug_assert!(self.0 <= Self::COUNT as u8);
         if self.0 >= Self::COUNT as u8 {
             return PieceType::None;

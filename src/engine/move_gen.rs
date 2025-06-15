@@ -1,8 +1,10 @@
+use crate::engine::position::CheckerList;
+
 use super::board::*;
 use super::position::Position;
 use super::types::*;
 
-mod internal;
+mod detail;
 
 /// Pseudo-legal move generation
 pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
@@ -22,7 +24,7 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
         while bb.any() {
             let sq = bb.first_nonzero_sq();
 
-            internal::pseudo_legal_moves_from_sq(&mut move_list, piece, pos, sq);
+            detail::pseudo_legal_moves_from_sq(&mut move_list, piece, pos, sq);
 
             bb.remove_first_nonzero_sq();
         }
@@ -36,7 +38,7 @@ pub fn legal_moves(pos: &mut Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
     for m in pseudo_moves.iter() {
-        if internal::is_move_legal(pos, m) {
+        if detail::is_pseudo_move_legal(pos, m) {
             moves.add(m.clone());
         }
     }
@@ -44,24 +46,38 @@ pub fn legal_moves(pos: &mut Position) -> MoveList {
     moves
 }
 
-pub fn is_move_legal(pos: &mut Position, m: &Move) -> bool {
-    internal::is_move_legal(pos, m)
+pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
+    detail::is_pseudo_move_legal(pos, m)
 }
 
-pub fn calc_attack_map_impl<const COLOR: u8, const START: u8, const END: u8>(
+pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
+    detail::generate_pin_map(pos, color)
+}
+
+pub fn calc_attack_map_impl(
     pos: &Position,
+    piece: Piece,
+    opponent_king: Square,
+    checkers: &mut CheckerList,
 ) -> BitBoard {
     let mut attack_map = BitBoard::new();
 
-    for i in START..=END {
-        // pieces from W to B
-        let bb = pos.bitboards[i as usize];
-        for sq in 0..64 {
-            if bb.test(sq) {
-                attack_map |=
-                    internal::pseudo_legal_attack_from(pos, Square(sq), Color::from(COLOR));
-            }
+    let color = piece.color();
+    let mut bb = pos.bitboards[piece.as_usize()];
+    while bb.any() {
+        let sq = bb.first_nonzero_sq();
+        let attack_mask = detail::attack_mask_from_sq::<true>(pos, sq, color);
+
+        if attack_mask.test(opponent_king.as_u8()) {
+            debug_assert!(pos.occupancies[color.opponent().as_usize()].test(opponent_king.as_u8()));
+            debug_assert!(pos.get_color_at(opponent_king) == piece.color().opponent());
+
+            checkers.add(sq);
         }
+
+        attack_map |= attack_mask;
+
+        bb.remove_first_nonzero_sq();
     }
 
     attack_map
@@ -76,7 +92,7 @@ mod perft {
 
     use crate::engine::position::Position;
 
-    const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 5 } else { 3 };
+    const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 6 } else { 3 };
 
     fn perft_test(pos: &mut Position, depth: u8) -> u64 {
         if depth == 0 {
@@ -91,9 +107,9 @@ mod perft {
 
         let mut nodes = 0u64;
         for m in move_list.iter() {
-            let snapshot = pos.make_move(&m);
+            let snapshot = pos.make_move(m.clone());
             nodes += perft_test(pos, depth - 1);
-            pos.unmake_move(&m, &snapshot);
+            pos.unmake_move(m.clone(), &snapshot);
         }
 
         nodes
@@ -146,8 +162,8 @@ mod perft {
             (4, 4085603),
             (5, 193690690),
             (6, 8031647685),
-            (7, 0u64),
-            (8, 0u64),
+            (0, 1u64),
+            (0, 1u64),
         ];
 
         perft_test_wrapper(
@@ -171,7 +187,7 @@ mod perft {
             (8, 3009794393u64),
         ];
 
-        perft_test_wrapper("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 ", DEFAULT_DEPTH, &tests);
+        perft_test_wrapper("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", DEFAULT_DEPTH, &tests);
     }
 
     #[test]
@@ -184,8 +200,8 @@ mod perft {
             (4, 422333),
             (5, 15833292),
             (6, 706045033),
-            (7, 0u64),
-            (8, 0u64),
+            (0, 1u64),
+            (0, 1u64),
         ];
 
         perft_test_wrapper(
@@ -204,9 +220,9 @@ mod perft {
             (3, 62379),
             (4, 2103487),
             (5, 89941194),
-            (6, 0u64), // No known results for depth 6
-            (7, 0u64), // No known results for depth 7
-            (8, 0u64), // No known results for depth 8
+            (0, 1u64), // No known results for depth 6
+            (0, 1u64), // No known results for depth 7
+            (0, 1u64), // No known results for depth 8
         ];
 
         perft_test_wrapper(

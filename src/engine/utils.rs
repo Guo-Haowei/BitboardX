@@ -197,11 +197,15 @@ pub fn to_board_string(pos: &Position) -> String {
     for rank in (0..8).rev() {
         for file in 0..8 {
             let sq = rank * 8 + file;
-            let piece = pos.get_piece(Square(sq));
+            let piece = pos.get_piece_at(Square(sq));
             s.push(piece.to_char());
         }
     }
     s
+}
+
+pub fn min_max<T: PartialOrd + Copy>(a: T, b: T) -> (T, T) {
+    if a < b { (a, b) } else { (b, a) }
 }
 
 #[cfg(test)]
@@ -226,5 +230,14 @@ mod test {
         assert_eq!(parse_move("z1z2"), None);
         assert_eq!(parse_move("e9e4"), None);
         assert_eq!(parse_move("e2e"), None);
+    }
+
+    #[test]
+    fn test_min_max() {
+        assert_eq!(min_max(3, 5), (3, 5));
+        assert_eq!(min_max(5, 3), (3, 5));
+        assert_eq!(min_max(7.2, 4.8), (4.8, 7.2));
+        assert_eq!(min_max(-1, 1), (-1, 1));
+        assert_eq!(min_max(0, 0), (0, 0));
     }
 }

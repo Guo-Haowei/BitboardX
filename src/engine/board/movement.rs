@@ -114,6 +114,28 @@ impl Move {
             None
         }
     }
+
+    pub fn to_string(&self) -> String {
+        let from = self.from_sq();
+        let to = self.to_sq();
+        let promo = match self.get_promotion() {
+            Some(PieceType::Knight) => "n",
+            Some(PieceType::Bishop) => "b",
+            Some(PieceType::Rook) => "r",
+            Some(PieceType::Queen) => "q",
+            None => "",
+            _ => panic!("Invalid promotion piece"),
+        };
+        format!("{}{}{}", from.to_string(), to.to_string(), promo)
+    }
+
+    pub fn get_en_passant_capture(&self) -> Square {
+        debug_assert!(self.get_type() == MoveType::EnPassant);
+        let (_, from_rank) = self.from_sq().file_rank();
+        let (to_file, _) = self.to_sq().file_rank();
+
+        Square::make(to_file, from_rank)
+    }
 }
 
 pub struct MoveList {

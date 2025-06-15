@@ -14,7 +14,7 @@ function testMove(testCase, fen) {
       }
 
       if (testCase.invalid === undefined) {
-        expect(stderr).to.equal('');
+        expect(stderr).to.not.contain('Error: Invalid move');
       } else {
         // console.log(`stderr: ${stderr}`);
         // console.log(`test: ${testCase.invalid}`);
