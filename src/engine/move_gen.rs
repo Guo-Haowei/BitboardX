@@ -4,7 +4,9 @@ use super::board::*;
 use super::position::Position;
 use super::types::*;
 
-mod detail;
+mod generator;
+mod internal;
+mod validation;
 
 /// Pseudo-legal move generation
 pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
@@ -24,7 +26,7 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
         while bb.any() {
             let sq = bb.first_nonzero_sq();
 
-            detail::pseudo_legal_moves_from_sq(&mut move_list, piece, pos, sq);
+            generator::pseudo_legal_moves_from_sq(pos, sq, piece, &mut move_list);
 
             bb.remove_first_nonzero_sq();
         }
@@ -38,7 +40,7 @@ pub fn legal_moves(pos: &Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
     for m in pseudo_moves.iter() {
-        if detail::is_pseudo_move_legal(pos, m) {
+        if validation::is_pseudo_move_legal(pos, m) {
             moves.add(m.clone());
         }
     }
@@ -47,11 +49,11 @@ pub fn legal_moves(pos: &Position) -> MoveList {
 }
 
 pub fn is_pseudo_move_legal(pos: &Position, m: &Move) -> bool {
-    detail::is_pseudo_move_legal(pos, m)
+    validation::is_pseudo_move_legal(pos, m)
 }
 
 pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
-    detail::generate_pin_map(pos, color)
+    generator::generate_pin_map(pos, color)
 }
 
 pub fn calc_attack_map_impl(
@@ -66,7 +68,7 @@ pub fn calc_attack_map_impl(
     let mut bb = pos.bitboards[piece.as_usize()];
     while bb.any() {
         let sq = bb.first_nonzero_sq();
-        let attack_mask = detail::attack_mask_from_sq::<true>(pos, sq, color);
+        let attack_mask = generator::attack_mask_from_sq(pos, sq, piece);
 
         if attack_mask.test(opponent_king.as_u8()) {
             debug_assert!(pos.occupancies[color.opponent().as_usize()].test(opponent_king.as_u8()));

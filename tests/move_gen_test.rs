@@ -5,7 +5,7 @@ use colored::*;
 use pretty_assertions::assert_eq;
 use std::time::Instant;
 
-const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 4 } else { 3 };
+const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 5 } else { 4 };
 
 fn perft_test(pos: &mut Position, depth: u8) -> u64 {
     if depth == 0 {
