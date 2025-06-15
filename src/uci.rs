@@ -89,16 +89,64 @@ impl UCI {
         }
     }
 
-    pub fn cmd_go(&self, out: &mut io::Stdout, args: &str) {
-        // Placeholder for search logic
-        writeln!(out, "TODO: go {}", args).unwrap();
+    pub fn cmd_go(&mut self, _out: &mut io::Stdout, args: &str) {
+        let parts: Vec<&str> = args.split_whitespace().collect();
+
+        if parts.is_empty() {
+            eprintln!("Error: No go command provided"); // @TODO: usage
+            return;
+        }
+
+        match parts.as_slice() {
+            ["perft", p1, _rest @ ..] => {
+                let depth: u8 = match p1.parse() {
+                    Ok(d) if d <= 8 => d,
+                    _ => {
+                        eprintln!("Error: Invalid depth '{}'. Must be between 0 and 8.", p1);
+                        return;
+                    }
+                };
+                perft_test(&mut self.pos, depth, depth);
+            }
+            _ => {
+                eprintln!("Error: Invalid go command");
+                return;
+            }
+        }
     }
+}
+
+fn perft_test(pos: &mut Position, depth: u8, max_depth: u8) -> u64 {
+    if depth == 0 {
+        return 1;
+    }
+
+    let move_list = pos.legal_moves();
+
+    let mut nodes = 0u64;
+    let should_print = depth == max_depth;
+    for m in move_list.iter() {
+        let snapshot = pos.make_move(m.clone());
+        let count = perft_test(pos, depth - 1, max_depth);
+        nodes += count;
+        pos.unmake_move(m.clone(), &snapshot);
+
+        if should_print {
+            eprintln!("{}: {}", m.to_string(), count);
+        }
+    }
+
+    if should_print {
+        eprintln!("\nNodes searched: {}", nodes);
+    }
+
+    nodes
 }
 
 pub fn uci_main() -> Result<()> {
     println!("{}", name());
     let mut stdout = io::stdout();
-    let mut engine = UCI::new();
+    let mut uci = UCI::new();
     let mut rl = DefaultEditor::new()?;
 
     loop {
@@ -113,12 +161,12 @@ pub fn uci_main() -> Result<()> {
                 rl.add_history_entry(line.as_str())?;
 
                 match cmd {
-                    "uci" => engine.cmd_uci(&mut stdout),
-                    "isready" => engine.cmd_isready(&mut stdout),
-                    "position" => engine.cmd_position(&mut stdout, args),
-                    "go" => engine.cmd_go(&mut stdout, args),
+                    "uci" => uci.cmd_uci(&mut stdout),
+                    "isready" => uci.cmd_isready(&mut stdout),
+                    "position" => uci.cmd_position(&mut stdout, args),
+                    "go" => uci.cmd_go(&mut stdout, args),
                     "exit" | "quit" => {
-                        engine.shutdown();
+                        uci.shutdown();
                         break;
                     }
                     _ => eprintln!("Unknown command: '{}'. Type help for more information.", input),

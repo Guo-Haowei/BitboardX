@@ -118,7 +118,7 @@ impl Move {
     pub fn to_string(&self) -> String {
         let from = self.from_sq();
         let to = self.to_sq();
-        format!("{} -> {}", from.to_string(), to.to_string())
+        format!("{}{}", from.to_string(), to.to_string())
     }
 }
 

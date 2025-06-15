@@ -281,7 +281,7 @@ impl Position {
         self.fullmove_number = snapshot.fullmove_number;
     }
 
-    pub fn make_move(&mut self, m: &Move) -> Snapshot {
+    pub fn make_move(&mut self, m: Move) -> Snapshot {
         // @TODO: refactor this code, pretty please
 
         let castling = self.castling;
@@ -325,7 +325,7 @@ impl Position {
         Snapshot { castling, en_passant, halfmove_clock, fullmove_number, to_piece }
     }
 
-    pub fn unmake_move(&mut self, m: &Move, snapshot: &Snapshot) {
+    pub fn unmake_move(&mut self, m: Move, snapshot: &Snapshot) {
         let from = self.get_piece_at(m.to_sq());
 
         undo_move_generic(self, m, from, snapshot.to_piece);
@@ -353,7 +353,7 @@ impl Position {
         let legal_moves = self.legal_moves();
         for m in legal_moves.iter() {
             if m.from_sq() == from && m.to_sq() == to {
-                self.make_move(&m);
+                self.make_move(m.clone());
                 return true;
             }
         }
@@ -370,7 +370,7 @@ impl Position {
         self.redo_stack.len() > 0
     }
 
-    pub fn do_move(&mut self, m: &Move) -> Snapshot {
+    pub fn do_move(&mut self, m: Move) -> Snapshot {
         let snapshot = self.make_move(m);
 
         self.undo_stack.push((m.clone(), snapshot));
@@ -386,7 +386,7 @@ impl Position {
 
         let (m, snapshot) = self.undo_stack.pop().unwrap();
 
-        self.unmake_move(&m, &snapshot);
+        self.unmake_move(m, &snapshot);
 
         self.redo_stack.push((m, snapshot));
         true
@@ -400,7 +400,7 @@ impl Position {
         let (m, snapshot) = self.redo_stack.pop().unwrap();
         // self.restore_snapshot(snapshot);
 
-        self.make_move(&m);
+        self.make_move(m);
 
         self.undo_stack.push((m, snapshot));
         true
@@ -418,7 +418,7 @@ impl Position {
 
 ////////////////////////////
 ////////////////////////////
-fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
+fn do_move_ep(pos: &mut Position, m: Move, from: Piece) {
     let (to_file, _) = m.to_sq().file_rank();
 
     // check if it's an en passant capture
@@ -436,7 +436,7 @@ fn do_move_ep(pos: &mut Position, m: &Move, from: Piece) {
     }
 }
 
-fn undo_move_ep(pos: &mut Position, m: &Move, from: Piece) {
+fn undo_move_ep(pos: &mut Position, m: Move, from: Piece) {
     if m.get_type() == MoveType::EnPassant {
         // Restore the captured pawn on the en passant square
         let (to_file, _) = m.to_sq().file_rank();
@@ -457,7 +457,7 @@ fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {
     board.set(to_sq.as_u8());
 }
 
-fn undo_move_generic(pos: &mut Position, m: &Move, from: Piece, to: Piece) {
+fn undo_move_generic(pos: &mut Position, m: Move, from: Piece, to: Piece) {
     let from_sq = m.from_sq();
     let to_sq = m.to_sq();
 
@@ -485,7 +485,7 @@ fn castling_type(from: Piece, from_sq: Square, to_sq: Square) -> Castling {
     }
 }
 
-fn do_promotion(pos: &mut Position, m: &Move, from: Piece) {
+fn do_promotion(pos: &mut Position, m: Move, from: Piece) {
     if m.get_type() != MoveType::Promotion {
         return;
     }
@@ -504,7 +504,7 @@ fn do_promotion(pos: &mut Position, m: &Move, from: Piece) {
     pos.bitboards[promotion.as_usize()].set(to_sq.as_u8()); // Place the promoted piece on the board
 }
 
-fn undo_promotion(pos: &mut Position, m: &Move) {
+fn undo_promotion(pos: &mut Position, m: Move) {
     if m.get_type() != MoveType::Promotion {
         return;
     }
@@ -522,7 +522,7 @@ fn undo_promotion(pos: &mut Position, m: &Move) {
     pos.bitboards[promotion.as_usize()].unset(from_sq.as_u8()); // Remove the promoted piece from the board
 }
 
-fn do_castling(pos: &mut Position, m: &Move, from: Piece) {
+fn do_castling(pos: &mut Position, m: Move, from: Piece) {
     // Restore Rook position
     let index = castling_type(from, m.from_sq(), m.to_sq());
     if index == Castling::None {
@@ -532,7 +532,7 @@ fn do_castling(pos: &mut Position, m: &Move, from: Piece) {
     move_piece(&mut pos.bitboards[piece.as_usize()], from_sq, to_sq);
 }
 
-fn undo_castling(pos: &mut Position, m: &Move, from: Piece) {
+fn undo_castling(pos: &mut Position, m: Move, from: Piece) {
     // Restore Rook position
     let index = castling_type(from, m.from_sq(), m.to_sq());
     if index == Castling::None {

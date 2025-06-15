@@ -67,7 +67,7 @@ impl Game {
     }
 
     pub fn execute(&mut self, m: MoveJs) -> bool {
-        self.pos.do_move(&m.internal);
+        self.pos.do_move(m.internal.clone());
         true
     }
 
