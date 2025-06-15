@@ -133,4 +133,14 @@ mod tests {
         assert!(!b.same_line(a, c));
         assert!(c.same_line(a, b));
     }
+
+    #[test]
+    fn more_same_line_test() {
+        let a = Square::G8;
+        let b = Square::B3;
+
+        assert!(Square::F7.same_line(a, b));
+        assert!(Square::D5.same_line(a, b));
+        assert!(Square::C4.same_line(a, b));
+    }
 }

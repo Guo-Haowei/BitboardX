@@ -103,7 +103,6 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
     debug_assert!(mover_type != PieceType::None, "Mover must be a valid piece");
     debug_assert!(mover.color() == mover_color, "Mover color must match position side to move");
     let attacker_color = mover_color.opponent();
-    let in_check = pos.is_in_check(mover_color);
 
     let to_sq = m.to_sq();
     // if move king, check if the destination square is safe
@@ -120,6 +119,7 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
     // if there are two checkers, only moving the king solves the check
     let checker = &pos.checkers[mover_color.as_usize()];
     let checker_count = checker.count();
+
     if checker_count == 2 {
         return false;
     }
@@ -140,9 +140,15 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
         Some(checker_sq) => {
             // if the move captures the checking piece, it is legal
             // otherwise if it blocks the check, it's still legal
-            if to_sq == checker_sq { true } else { to_sq.same_line(from_sq, checker_sq) }
+            if to_sq == checker_sq { true } else { to_sq.same_line(king_sq, checker_sq) }
         }
-        None => true,
+        None => {
+            debug_assert!(
+                checker.get(1).is_none(),
+                "There should be at most 1 checker at this point"
+            );
+            return true;
+        }
     }
 }
 

@@ -66,12 +66,16 @@ pub fn calc_attack_map_impl(
     let mut bb = pos.bitboards[piece.as_usize()];
     while bb.any() {
         let sq = bb.first_nonzero_sq();
-        attack_map |= detail::pseudo_legal_from_sq_impl::<true>(pos, sq, color);
-        if attack_map.test(opponent_king.as_u8()) {
+        let attack_mask = detail::pseudo_legal_from_sq_impl::<true>(pos, sq, color);
+
+        if attack_mask.test(opponent_king.as_u8()) {
             debug_assert!(pos.occupancies[color.opponent().as_usize()].test(opponent_king.as_u8()));
             debug_assert!(pos.get_color_at(opponent_king) == piece.color().opponent());
+
             checkers.add(sq);
         }
+
+        attack_map |= attack_mask;
 
         bb.remove_first_nonzero_sq();
     }
