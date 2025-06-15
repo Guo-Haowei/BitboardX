@@ -59,7 +59,7 @@ pub fn calc_attack_map_impl(pos: &Position, piece: Piece) -> BitBoard {
     let mut bb = pos.bitboards[piece.as_usize()];
     while bb.any() {
         let sq = bb.first_nonzero_sq();
-        attack_map |= detail::pseudo_legal_attack_from(pos, sq, color);
+        attack_map |= detail::pseudo_legal_from_sq_impl::<true>(pos, sq, color);
         bb.remove_first_nonzero_sq();
     }
 

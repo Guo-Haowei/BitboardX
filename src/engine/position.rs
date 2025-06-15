@@ -25,9 +25,9 @@ pub struct Position {
 
     /// Data can be computed from the FEN state.
     pub occupancies: [BitBoard; 3],
-    pub attack_map_piece: [BitBoard; Piece::COUNT],
     pub attack_map_color: [BitBoard; Color::COUNT],
     pub pin_map: [BitBoard; Color::COUNT],
+    pub checkers: [[Option<Square>; 2]; Color::COUNT],
 
     /// @TODO: remove undo/redo stack out of Postion,
     /// so position is stateless.
@@ -64,9 +64,9 @@ impl Position {
             halfmove_clock: 0,
             fullmove_number: 1,
             occupancies: [BitBoard::new(); 3],
-            attack_map_piece: [BitBoard::new(); Piece::COUNT],
             attack_map_color: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
+            checkers: [[None; 2]; Color::COUNT],
             // @TODO: refactor
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
@@ -102,10 +102,10 @@ impl Position {
             halfmove_clock,
             fullmove_number,
             occupancies: [BitBoard::new(); 3],
-            attack_map_piece: [BitBoard::new(); Piece::COUNT],
             attack_map_color: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
-
+            checkers: [[None; 2]; Color::COUNT],
+            // @TODO: move away
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         };
@@ -118,7 +118,7 @@ impl Position {
     pub fn post_move(&mut self) {
         self.side_to_move = self.side_to_move.opponent();
         self.occupancies = utils::calc_occupancies(&self.bitboards);
-        self.update_attack_map();
+        self.update_attack_map_and_checker();
 
         // maybe only need to update the side to move attack map?
         self.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(self, Color::WHITE);
@@ -171,18 +171,20 @@ impl Position {
         move_gen::legal_moves(self)
     }
 
-    pub fn update_attack_map(&mut self) {
-        let mut attack_map_piece = [BitBoard::new(); Piece::COUNT];
-        let mut attack_map_color = [BitBoard::new(); Color::COUNT];
+    pub fn update_attack_map_and_checker(&mut self) {
+        let mut checkers: [[Option<Square>; 2]; Color::COUNT] = [[None; 2]; Color::COUNT];
 
-        for i in 0..Piece::COUNT {
-            let piece = unsafe { std::mem::transmute::<u8, Piece>(i as u8) };
-            attack_map_piece[i] = move_gen::calc_attack_map_impl(self, piece);
-            attack_map_color[piece.color().as_usize()] |= attack_map_piece[i];
+        for color in [Color::WHITE, Color::BLACK] {
+            let mut attack_mask = BitBoard::new();
+            for i in 0..PieceType::None as u8 {
+                let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
+                let piece = Piece::get_piece(color, piece_type);
+                attack_mask |= move_gen::calc_attack_map_impl(self, piece);
+            }
+            self.attack_map_color[color.as_usize()] = attack_mask;
         }
 
-        self.attack_map_piece = attack_map_piece;
-        self.attack_map_color = attack_map_color;
+        self.checkers = checkers;
     }
 
     pub fn restore(&mut self, snapshot: &Snapshot) {

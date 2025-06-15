@@ -28,7 +28,7 @@ pub fn pseudo_legal_moves_from_sq(
 
 // @TODO: deprecate this
 /// Pseudo-legal move generation for a square
-fn pseudo_legal_from_sq_impl<const ATTACK_ONLY: bool>(
+pub fn pseudo_legal_from_sq_impl<const ATTACK_ONLY: bool>(
     pos: &Position,
     sq: Square,
     color: Color,
@@ -54,6 +54,7 @@ fn pseudo_legal_from_sq_impl<const ATTACK_ONLY: bool>(
     }
 }
 
+/* #region */
 /// Checks whether a given pseudo move is legal in the current position.
 ///
 /// 1. Determine whether the king is currently in check.
@@ -76,48 +77,42 @@ fn pseudo_legal_from_sq_impl<const ATTACK_ONLY: bool>(
 ///
 /// 6. Optionally, verify after applying the move that the king is not left in check.
 pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
-    let us = pos.side_to_move;
-    let opponent = us.opponent();
-    let piece: Piece = Piece::get_piece(us, PieceType::King);
-    debug_assert!(piece == Piece::W_KING || piece == Piece::B_KING);
-    debug_assert!(piece.color() == us);
+    if !pos.is_in_check(pos.side_to_move) {
+        return king_safe_after_move(pos, m);
+    }
 
-    let snapshot = pos.make_move(m);
+    // Find checker
 
-    let legal =
-        (pos.bitboards[piece.as_usize()] & pos.attack_map_color[opponent.as_usize()]).none();
-
-    pos.unmake_move(m, &snapshot);
-
-    legal
-
-    // let color = pos.side_to_move;
-    // assert!(color == pos.get_piece(m.from_sq()).color());
-
-    // let pinned_square = m.from_sq();
-    // if !pos.is_pinned(pinned_square, color) {
-    //     return true;
-    // }
-
-    // // Shoelace Formula (also called the Surveyor's Formula) for the area of a triangle in 2D space.
-    // // area = [ Ax * (By - Cy) + Bx * (Cy - Ay) + Cx * (Ay - By) ] / 2
-    // // but we only cares about the sign of the area, so we can skip the division by 2.
-
-    // let king_sq = pos.get_king_square(color);
-    // let (ax, ay) = king_sq.file_rank();
-    // let (bx, by) = pinned_square.file_rank();
-    // let (cx, cy) = m.to_sq().file_rank();
-
-    // let two_signed_area = ax as i32 * (by as i32 - cy as i32)
-    //     + bx as i32 * (cy as i32 - ay as i32)
-    //     + cx as i32 * (ay as i32 - by as i32);
-
-    // two_signed_area == 0
+    false
 }
 
-pub fn pseudo_legal_attack_from(pos: &Position, sq: Square, color: Color) -> BitBoard {
-    pseudo_legal_from_sq_impl::<true>(pos, sq, color)
+fn king_safe_after_move(pos: &Position, m: &Move) -> bool {
+    let color = pos.side_to_move;
+    assert!(color == pos.get_piece_at(m.from_sq()).color());
+
+    let pinned_square = m.from_sq();
+    if !pos.is_square_pinned(pinned_square, color) {
+        return true; // The piece is not pinned, so it won't expose the king.
+    }
+
+    // Shoelace Formula (also called the Surveyor's Formula) for the area of a triangle in 2D space.
+    // area = [ Ax * (By - Cy) + Bx * (Cy - Ay) + Cx * (Ay - By) ] / 2
+    // but we only cares about the sign of the area, so we can skip the division by 2.
+
+    let king_sq = pos.get_king_square(color);
+    let (ax, ay) = king_sq.file_rank();
+    let (bx, by) = pinned_square.file_rank();
+    let (cx, cy) = m.to_sq().file_rank();
+
+    let two_signed_area = ax as i32 * (by as i32 - cy as i32)
+        + bx as i32 * (cy as i32 - ay as i32)
+        + cx as i32 * (ay as i32 - by as i32);
+
+    // If the destination square is on the line between the king and the pinned piece,
+    // the area will be zero, meaning the move is legal.
+    two_signed_area == 0
 }
+/* #endregion */
 
 /* #region */
 /// Computes the legal pawn moves from a given bitboard position,
