@@ -206,9 +206,19 @@ impl Position {
     }
 
     pub fn is_in_check(&self, color: Color) -> bool {
-        let king_sq = self.get_king_square(color);
-        let attack_map = self.attack_map_color[color.opponent().as_usize()];
-        attack_map.test(king_sq.as_u8())
+        let checker_count = self.checkers[color.as_usize()].count();
+
+        if cfg!(debug_assertions) && checker_count != 0 {
+            let king_sq = self.get_king_square(color);
+            let attack_map = self.attack_map_color[color.opponent().as_usize()];
+            debug_assert!(
+                attack_map.test(king_sq.as_u8()),
+                "King square {} is not attacked by opponent's pieces",
+                king_sq
+            );
+        }
+
+        checker_count != 0
     }
 
     // @TODO: remove these methods, call move_gen directly
@@ -466,7 +476,7 @@ fn do_promotion(pos: &mut Position, m: &Move, from: Piece) {
     }
 
     assert!(
-        from.piece_type() == PieceType::Pawn,
+        from.get_type() == PieceType::Pawn,
         "Promotion must be from a pawm, got '{}'",
         from.to_char()
     );
@@ -575,7 +585,7 @@ fn update_en_passant_square(
     to_sq: Square,
     from: Piece,
 ) -> Option<Square> {
-    if from.piece_type() != PieceType::Pawn {
+    if from.get_type() != PieceType::Pawn {
         return None;
     }
 

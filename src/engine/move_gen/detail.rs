@@ -55,63 +55,97 @@ pub fn pseudo_legal_from_sq_impl<const ATTACK_ONLY: bool>(
 }
 
 /* #region */
-/// Checks whether a given pseudo move is legal in the current position.
+/// # Legal Moves When the King is in Check
 ///
-/// 1. Determine whether the king is currently in check.
-/// 2. If the king is NOT in check:
-///    - a. If the moving piece is pinned, the move must be along the line between the king and the pinner.
-///    - b. If the moving piece is not pinned, the move can be made freely.
-/// 3. If the king is in check:
-///    - Identify all checking pieces.
+/// When the king is in check, only moves that resolve the check are legal.
+/// These fall into three categories:
 ///
-///    - If there is a single check:
-///      - The move must either:
-///        - Capture the checking piece, or
-///        - Block the check by moving to a square between the king and the attacker (if the attacker is a sliding piece), or
-///        - Move the king to a safe square.
+/// ## 1. Move the King
+/// - The king may move to any adjacent square that is **not attacked**
+/// - The king may **capture the checking piece** if that square is safe
+/// - This is the **only legal move** in the case of a **double check**
 ///
-///    - If there is a double check:
-///      - Only king moves are allowed. (there's no way to block or capture in a double check)
-///      - The king’s destination square must not be attacked.
+/// ## 2. Capture the Checking Piece (If Only One Checker)
+/// - Any piece (including the king) may capture the checking piece if:
+///   - The piece is **not pinned**, or
+///   - It is **pinned but capturing along the pin line**, and does not expose the king
+/// - The capture must remove the check **without revealing a new one**
 ///
+/// ## 3. Block the Check (If Only One Checker and It's a Sliding Piece)
+/// - A non-king piece may interpose between the king and the checker if:
+///   - The checker is a **rook, bishop, or queen**
+///   - The blocking square is available and not pinned in a way that exposes the king
+/// - Not possible if:
+///   - The checker is a **knight** or **pawn**
+///   - The check is **delivered from an adjacent square**
 ///
-/// 6. Optionally, verify after applying the move that the king is not left in check.
+/// ## Special Cases
+/// - **Double Check**:
+///   - Only king moves are legal
+///   - Captures and blocks are not sufficient, as two threats exist simultaneously
+///
+/// - **Pinned Piece**:
+///   - Cannot move off the pin line (line between the king and an enemy sliding piece)
+///   - May only capture the checker **if the move stays on the pin line**
+///
+/// ## Summary
+/// | Condition                  | Legal Actions                      |
+/// |---------------------------|-------------------------------------|
+/// | Single check              | Move king, capture checker, block   |
+/// | Double check              | Move king only                      |
+/// | Pinned piece              | Capture on pin line only (if legal) |
+/// | Checker is knight/pawn    | Cannot be blocked                   |
+/// | Checker is sliding piece  | Can be blocked                      |
 pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
-    if !pos.is_in_check(pos.side_to_move) {
-        return king_safe_after_move(pos, m);
+    let mover = pos.get_piece_at(m.from_sq());
+    let mover_type = mover.get_type();
+    let mover_color = pos.side_to_move;
+    debug_assert!(mover_type != PieceType::None, "Mover must be a valid piece");
+    debug_assert!(mover.color() == mover_color, "Mover color must match position side to move");
+    let attacker_color = mover_color.opponent();
+    let in_check = pos.is_in_check(mover_color);
+
+    let to_sq = m.to_sq();
+    // if move king, check if the destination square is safe
+    if mover_type == PieceType::King {
+        let to_sq_under_attack =
+            pos.attack_map_color[attacker_color.as_usize()].test(to_sq.as_u8());
+        assert!(
+            !to_sq_under_attack,
+            "this should be filtered when generating the mask, put an assert here for safety"
+        );
+        return !to_sq_under_attack;
     }
 
-    // Find checker
-
-    false
-}
-
-fn king_safe_after_move(pos: &Position, m: &Move) -> bool {
-    let color = pos.side_to_move;
-    assert!(color == pos.get_piece_at(m.from_sq()).color());
-
-    let pinned_square = m.from_sq();
-    if !pos.is_square_pinned(pinned_square, color) {
-        return true; // The piece is not pinned, so it won't expose the king.
+    // if there are two checkers, only moving the king solves the check
+    let checker = &pos.checkers[mover_color.as_usize()];
+    let checker_count = checker.count();
+    if checker_count == 2 {
+        return false;
     }
 
-    // Shoelace Formula (also called the Surveyor's Formula) for the area of a triangle in 2D space.
-    // area = [ Ax * (By - Cy) + Bx * (Cy - Ay) + Cx * (Ay - By) ] / 2
-    // but we only cares about the sign of the area, so we can skip the division by 2.
+    let from_sq = m.from_sq();
+    let is_pinned = pos.is_square_pinned(from_sq, mover_color);
+    let king_sq = pos.get_king_square(mover_color);
+    if is_pinned {
+        // if there's a checker, the pinned piece can't be moved
+        match checker_count {
+            0 => return to_sq.same_line(from_sq, king_sq), // No checkers, the move is legal.
+            1 => return false, // if there's a checker, moving the pin won't help
+            _ => panic!("There should be at most 1 checkers at this point"),
+        }
+    }
 
-    let king_sq = pos.get_king_square(color);
-    let (ax, ay) = king_sq.file_rank();
-    let (bx, by) = pinned_square.file_rank();
-    let (cx, cy) = m.to_sq().file_rank();
-
-    let two_signed_area = ax as i32 * (by as i32 - cy as i32)
-        + bx as i32 * (cy as i32 - ay as i32)
-        + cx as i32 * (ay as i32 - by as i32);
-
-    // If the destination square is on the line between the king and the pinned piece,
-    // the area will be zero, meaning the move is legal.
-    two_signed_area == 0
+    match checker.get(0) {
+        Some(checker_sq) => {
+            // if the move captures the checking piece, it is legal
+            // otherwise if it blocks the check, it's still legal
+            if to_sq == checker_sq { true } else { to_sq.same_line(from_sq, checker_sq) }
+        }
+        None => true,
+    }
 }
+
 /* #endregion */
 
 /* #region */
@@ -252,7 +286,7 @@ fn check_if_eq_capture<const COLOR: u8>(
     to_sq: Square,
     to: Piece,
 ) -> bool {
-    if to.piece_type() != PieceType::None {
+    if to.get_type() != PieceType::None {
         return false;
     }
 
@@ -386,7 +420,7 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
         if !(pinned.color() == color && attacked.color() == color.opponent()) {
             continue;
         }
-        let pinned = match pinned.piece_type() {
+        let pinned = match pinned.get_type() {
             PieceType::Queen => true,
             PieceType::Rook => i < 4, // Rook moves in 0-3 directions
             PieceType::Bishop => i >= 4 && i < 8, // Bishop moves in 4-7 directions
