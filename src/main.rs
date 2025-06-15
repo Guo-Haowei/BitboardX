@@ -2,9 +2,9 @@ pub mod engine;
 pub mod game;
 mod uci;
 
+use engine::*;
 use rustyline::Result;
 use std::env;
-use uci::*;
 
 // fn game_main() {
 //     let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

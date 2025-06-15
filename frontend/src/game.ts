@@ -8,9 +8,9 @@ export type SelectedPiece = {
   piece: string;
   x: number;
   y: number;
-  moves: bigint;
   file: number; // from file
   rank: number; // from rank
+  legalMoves: number[];
 };
 
 export class Game implements EventListener, RuntimeModule {
@@ -18,7 +18,7 @@ export class Game implements EventListener, RuntimeModule {
   private _selected: SelectedPiece | null;
   private canvas: HTMLCanvasElement | null;
   private _board: string;
-  private legalMoves: BitboardX.MoveJs[] = [];
+  private moveMap: Map<number, number[]> = new Map();
 
   public constructor() {
     this.reset();
@@ -30,8 +30,21 @@ export class Game implements EventListener, RuntimeModule {
 
   public set board(value) {
     this._board = value;
-    this.legalMoves = this.game!.legal_moves();
-    console.log(`Legal moves: ${this.legalMoves.length}`);
+
+    // this.moveMap.clear();
+
+    const moveMap = new Map<number, number[]>();
+    const legalMoves = this.game!.legal_moves();
+    legalMoves.forEach((move) => {
+      const from = move.from_sq();
+      const to = move.to_sq();
+      if (!moveMap.has(from)) {
+        moveMap.set(from, []);
+      }
+      moveMap.get(from)!.push(to);
+    });
+
+    this.moveMap = moveMap;
 
     // eslint-disable-next-line no-console
     console.log(this.game!.to_string(false));
@@ -104,8 +117,7 @@ export class Game implements EventListener, RuntimeModule {
 
     this.canvas!.style.cursor = 'grabbing';
 
-    const moves = 0n;
-    this._selected = { piece, ...event, moves, rank, file };
+    this._selected = { piece, ...event, rank, file, legalMoves: this.moveMap.get(square) || [] };
   }
 
   private onMouseMove(event: Point2D) {
@@ -133,18 +145,20 @@ export class Game implements EventListener, RuntimeModule {
       return;
     }
 
-    const { file, rank, moves } = selected;
+    const { file, rank, legalMoves } = selected;
 
     const file2 = x;
     const rank2 = 7 - y;
+    const to = file2 + rank2 * BOARD_SIZE;
 
-    const dest = 1n << BigInt(file2 + rank2 * BOARD_SIZE);
     const move = `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}`;
-    if (moves & dest) {
-      if (this.game!.execute(move)) {
+
+    legalMoves.forEach(dest => {
+      if (dest === to) {
+        this.game!.do_move(move);
         this.board = this.game!.to_board_string();
       }
-    }
+    });
   }
 
   private undo() {

@@ -60,11 +60,6 @@ pub struct Position {
     pub attack_mask: [BitBoard; Color::COUNT],
     pub pin_map: [BitBoard; Color::COUNT],
     pub checkers: [CheckerList; Color::COUNT],
-
-    /// @TODO: remove undo/redo stack out of Postion,
-    /// so position is stateless.
-    undo_stack: Vec<(Move, Snapshot)>,
-    redo_stack: Vec<(Move, Snapshot)>,
 }
 
 const DEFAULT_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -103,9 +98,6 @@ impl Position {
             attack_mask: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
-            // @TODO: move away
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
         };
 
         pos.post_move();
@@ -303,50 +295,6 @@ impl Position {
         return false;
     }
 
-    // TODO: move UndoRedo to other module
-    pub fn can_undo(&self) -> bool {
-        self.undo_stack.len() > 0
-    }
-
-    pub fn can_redo(&self) -> bool {
-        self.redo_stack.len() > 0
-    }
-
-    pub fn do_move(&mut self, m: Move) -> Snapshot {
-        let snapshot = self.make_move(m);
-
-        self.undo_stack.push((m.clone(), snapshot));
-        self.redo_stack.clear();
-
-        snapshot
-    }
-
-    pub fn undo(&mut self) -> bool {
-        if !self.can_undo() {
-            return false;
-        }
-
-        let (m, snapshot) = self.undo_stack.pop().unwrap();
-
-        self.unmake_move(m, &snapshot);
-
-        self.redo_stack.push((m, snapshot));
-        true
-    }
-
-    pub fn redo(&mut self) -> bool {
-        if !self.can_redo() {
-            return false;
-        }
-
-        let (m, snapshot) = self.redo_stack.pop().unwrap();
-        // self.restore_snapshot(snapshot);
-
-        self.make_move(m);
-
-        self.undo_stack.push((m, snapshot));
-        true
-    }
     // @TODO: move to utils
     pub fn to_string(&self, pad: bool) -> String {
         utils::to_string(self, pad)
