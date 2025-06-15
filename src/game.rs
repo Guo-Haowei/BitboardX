@@ -71,7 +71,7 @@ impl Game {
         true
     }
 
-    pub fn legal_moves(&mut self) -> Vec<MoveJs> {
+    pub fn legal_moves(&self) -> Vec<MoveJs> {
         let move_list = self.pos.legal_moves();
         let mut moves = Vec::new();
 

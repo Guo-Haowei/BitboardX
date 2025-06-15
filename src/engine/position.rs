@@ -226,7 +226,7 @@ impl Position {
 
     // @TODO: remove these methods, call move_gen directly
 
-    pub fn is_move_legal(&mut self, m: &Move) -> bool {
+    pub fn is_move_legal(&self, m: &Move) -> bool {
         move_gen::is_pseudo_move_legal(self, &m)
     }
 
@@ -234,7 +234,7 @@ impl Position {
         move_gen::pseudo_legal_moves(self)
     }
 
-    pub fn legal_moves(&mut self) -> MoveList {
+    pub fn legal_moves(&self) -> MoveList {
         move_gen::legal_moves(self)
     }
 
