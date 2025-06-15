@@ -1,4 +1,5 @@
-use super::position::Position;
+use super::engine::position::Position;
+use rustyline::{DefaultEditor, Result};
 use std::io::{self, Write};
 use wasm_bindgen::prelude::*;
 
@@ -16,11 +17,11 @@ pub fn name() -> String {
     format!("{} {}", NAME, version())
 }
 
-pub struct Engine {
+pub struct UCI {
     pos: Position,
 }
 
-impl Engine {
+impl UCI {
     pub fn new() -> Self {
         Self { pos: Position::new() }
     }
@@ -92,4 +93,42 @@ impl Engine {
         // Placeholder for search logic
         writeln!(out, "TODO: go {}", args).unwrap();
     }
+}
+
+pub fn uci_main() -> Result<()> {
+    println!("{}", name());
+    let mut stdout = io::stdout();
+    let mut engine = UCI::new();
+    let mut rl = DefaultEditor::new()?;
+
+    loop {
+        let readline = rl.readline(">> ");
+        match readline {
+            Ok(line) => {
+                let input = line.trim();
+                let mut parts = input.splitn(2, ' ');
+                let cmd = parts.next().unwrap();
+                let args = parts.next().unwrap_or("");
+
+                rl.add_history_entry(line.as_str())?;
+
+                match cmd {
+                    "uci" => engine.cmd_uci(&mut stdout),
+                    "isready" => engine.cmd_isready(&mut stdout),
+                    "position" => engine.cmd_position(&mut stdout, args),
+                    "go" => engine.cmd_go(&mut stdout, args),
+                    "exit" | "quit" => {
+                        engine.shutdown();
+                        break;
+                    }
+                    _ => eprintln!("Unknown command: '{}'. Type help for more information.", input),
+                }
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+
+    Ok(())
 }
