@@ -1,5 +1,5 @@
 use bitboard_x::engine::board::*;
-use bitboard_x::engine::move_gen::is_pseudo_move_legal;
+use bitboard_x::engine::move_gen::*;
 use bitboard_x::engine::position::*;
 use bitboard_x::engine::types::*;
 
@@ -94,7 +94,7 @@ fn move_king_along_the_checker_line() {
 fn move_king_along_the_checker_line_2() {
     let pos = Position::from("8/2p5/3p4/KP6/5pk1/7P/4P3/6R1 b - - 0 1").unwrap();
 
-    let moves = pos.legal_moves();
+    let moves = legal_moves(&pos);
 
     assert_eq!(moves.count(), 4, "There should be 4 legal moves");
 }

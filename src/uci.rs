@@ -1,3 +1,4 @@
+use super::engine::move_gen;
 use super::engine::position::Position;
 use rustyline::{DefaultEditor, Result};
 use std::io::{self, Write};
@@ -121,7 +122,7 @@ fn perft_test(pos: &mut Position, depth: u8, max_depth: u8) -> u64 {
         return 1;
     }
 
-    let move_list = pos.legal_moves();
+    let move_list = move_gen::legal_moves(pos);
 
     let mut nodes = 0u64;
     let should_print = depth == max_depth;

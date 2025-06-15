@@ -134,13 +134,9 @@ impl Position {
     }
 
     pub fn get_color_at(&self, sq: Square) -> Color {
-        if !self.occupancies[Color::BOTH.as_usize()].test(sq.as_u8()) {
-            return Color::NONE;
-        }
-
         let is_white = self.occupancies[Color::WHITE.as_usize()].test(sq.as_u8());
+        let is_black = self.occupancies[Color::BLACK.as_usize()].test(sq.as_u8());
         if cfg!(debug_assertions) {
-            let is_black = self.occupancies[Color::BLACK.as_usize()].test(sq.as_u8());
             debug_assert!(is_white ^ is_black, "Square {} has both colors", sq);
             let piece = self.get_piece_at(sq);
             let debug_color = piece.color();
@@ -152,6 +148,11 @@ impl Position {
                 debug_color,
                 piece
             );
+        }
+
+        if !is_white && !is_black {
+            assert!(self.occupancies[Color::BOTH.as_usize()].test(sq.as_u8()) == false);
+            return Color::NONE;
         }
 
         if is_white { Color::WHITE } else { Color::BLACK }
@@ -191,19 +192,6 @@ impl Position {
     }
 
     // @TODO: remove these methods, call move_gen directly
-
-    pub fn is_move_legal(&self, m: &Move) -> bool {
-        move_gen::is_pseudo_move_legal(self, &m)
-    }
-
-    pub fn pseudo_legal_moves(&self) -> MoveList {
-        move_gen::pseudo_legal_moves(self)
-    }
-
-    pub fn legal_moves(&self) -> MoveList {
-        move_gen::legal_moves(self)
-    }
-
     pub fn update_attack_map_and_checker(&mut self) {
         let mut checkers: [CheckerList; Color::COUNT] = [CheckerList::new(); Color::COUNT];
 
@@ -304,7 +292,7 @@ impl Position {
 
         let (from, to) = m.unwrap();
 
-        let legal_moves = self.legal_moves();
+        let legal_moves = move_gen::legal_moves(&self);
         for m in legal_moves.iter() {
             if m.from_sq() == from && m.to_sq() == to {
                 self.make_move(m.clone());

@@ -1,4 +1,4 @@
-use bitboard_x::engine::position::*;
+use bitboard_x::engine::{move_gen, position::*};
 
 /// Test cases: https://www.chessprogramming.org/Perft_Results
 use colored::*;
@@ -12,7 +12,7 @@ fn perft_test(pos: &mut Position, depth: u8) -> u64 {
         return 1;
     }
 
-    let move_list = pos.legal_moves();
+    let move_list = move_gen::legal_moves(pos);
 
     if depth == 1 {
         return move_list.count() as u64;

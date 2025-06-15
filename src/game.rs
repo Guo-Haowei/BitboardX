@@ -1,4 +1,5 @@
 use crate::engine::board::Move;
+use crate::engine::move_gen;
 use crate::engine::position::Position;
 use wasm_bindgen::prelude::*;
 
@@ -72,7 +73,7 @@ impl Game {
     }
 
     pub fn legal_moves(&self) -> Vec<MoveJs> {
-        let move_list = self.pos.legal_moves();
+        let move_list = move_gen::legal_moves(&self.pos);
         let mut moves = Vec::new();
 
         for m in move_list.iter() {
