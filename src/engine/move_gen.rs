@@ -92,7 +92,7 @@ mod perft {
 
     use crate::engine::position::Position;
 
-    const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 5 } else { 3 };
+    const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 6 } else { 3 };
 
     fn perft_test(pos: &mut Position, depth: u8) -> u64 {
         if depth == 0 {
@@ -162,8 +162,8 @@ mod perft {
             (4, 4085603),
             (5, 193690690),
             (6, 8031647685),
-            (7, 0u64),
-            (8, 0u64),
+            (0, 1u64),
+            (0, 1u64),
         ];
 
         perft_test_wrapper(
@@ -200,8 +200,8 @@ mod perft {
             (4, 422333),
             (5, 15833292),
             (6, 706045033),
-            (7, 0u64),
-            (8, 0u64),
+            (0, 1u64),
+            (0, 1u64),
         ];
 
         perft_test_wrapper(
@@ -220,9 +220,9 @@ mod perft {
             (3, 62379),
             (4, 2103487),
             (5, 89941194),
-            (6, 0u64), // No known results for depth 6
-            (7, 0u64), // No known results for depth 7
-            (8, 0u64), // No known results for depth 8
+            (0, 1u64), // No known results for depth 6
+            (0, 1u64), // No known results for depth 7
+            (0, 1u64), // No known results for depth 8
         ];
 
         perft_test_wrapper(

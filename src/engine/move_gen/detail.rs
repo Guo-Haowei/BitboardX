@@ -113,7 +113,7 @@ pub fn is_pseudo_move_legal(pos: &mut Position, m: &Move) -> bool {
     let to_sq = m.to_sq();
     // if move king, check if the destination square is safe
     if mover_type == PieceType::King {
-        for i in 0..1 {
+        for i in 0..=1 {
             let checker = checker.get(i);
             if let Some(checker_sq) = checker {
                 if checker_sq != to_sq {
@@ -920,6 +920,15 @@ mod tests {
             "King cannot move along the line of the checking piece, in this case from F2 to E1"
         );
         pos.make_move(m);
+    }
+
+    #[test]
+    fn move_king_along_the_checker_line_2() {
+        let mut pos = Position::from("8/2p5/3p4/KP6/5pk1/7P/4P3/6R1 b - - 0 1").unwrap();
+
+        let moves = pos.legal_moves();
+
+        assert_eq!(moves.count(), 4, "There should be 4 legal moves");
     }
 }
 
