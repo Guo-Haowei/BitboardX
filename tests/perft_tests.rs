@@ -8,7 +8,7 @@ use std::time::Instant;
 use bitboard_x::engine::{move_gen, position::*};
 use bitboard_x::named_test;
 
-const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 8 } else { 4 };
+const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 8 } else { 5 };
 
 fn perft_test_inner(pos: &mut Position, depth: u8) -> u64 {
     if depth == 0 {

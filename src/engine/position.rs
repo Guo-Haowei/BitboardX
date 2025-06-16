@@ -283,10 +283,11 @@ impl Position {
 
         do_promotion(self, m, from);
 
-        self.post_move();
-
         self.castling &= !disabled_castling;
         self.en_passant = update_en_passant_square(self, m.from_sq(), m.to_sq(), from);
+        self.fullmove_number += if self.side_to_move == Color::WHITE { 0 } else { 1 };
+
+        self.post_move();
 
         Snapshot { castling, en_passant, halfmove_clock, fullmove_number, to_piece }
     }
@@ -610,5 +611,17 @@ mod tests {
         let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
 
         assert!(is_pinned, "Pawn B5 is pinned by rook on H5");
+    }
+
+    #[test]
+    fn test_full_move_number() {
+        let mut pos = Position::new();
+        assert_eq!(pos.fullmove_number, 1);
+
+        pos.make_move(Move::new(Square::E2, Square::E4, MoveType::Normal, None));
+        assert_eq!(pos.fullmove_number, 1);
+
+        pos.make_move(Move::new(Square::E7, Square::E5, MoveType::Normal, None));
+        assert_eq!(pos.fullmove_number, 2);
     }
 }
