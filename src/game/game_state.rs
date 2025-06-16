@@ -77,7 +77,7 @@ impl GameState {
     }
 
     pub fn game_over(&self) -> bool {
-        self.legal_moves.count() == 0
+        self.legal_moves.len() == 0
     }
 
     pub fn can_undo(&self) -> bool {

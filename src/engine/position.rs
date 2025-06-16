@@ -46,6 +46,7 @@ pub struct Snapshot {
     pub to_piece: Piece,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Position {
     /// Data used to serialize/deserialize FEN.
     pub bitboards: [BitBoard; Piece::COUNT],

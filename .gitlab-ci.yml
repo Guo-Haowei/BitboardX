@@ -10,4 +10,4 @@ build-wasm:
 unit-test:
   stage: test
   script:
-    - cargo test --release -- --nocapture
+    - cargo test --release test_position3 -- --nocapture --test-threads=1

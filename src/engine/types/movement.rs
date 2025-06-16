@@ -169,7 +169,7 @@ impl MoveList {
         self.moves.iter().take(self.count)
     }
 
-    pub fn count(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.count
     }
 
