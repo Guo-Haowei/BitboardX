@@ -2,9 +2,7 @@ use super::UndoState;
 use crate::engine::position::{
     CastlingRight, CastlingType, Move, MoveType, Piece, Position, Square,
 };
-use crate::engine::types::{
-    BitBoard, Color, FILE_A, FILE_H, PieceType, RANK_2, RANK_4, RANK_5, RANK_7,
-};
+use crate::engine::types::{BitBoard, Color, FILE_A, FILE_H, PieceType};
 
 // Assume passed in moves are legal
 pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
@@ -12,12 +10,16 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
     let dst_sq = m.dst_sq();
     let src_piece = pos.get_piece_at(src_sq);
     let dst_piece = pos.get_piece_at(dst_sq);
-    let src_type = src_piece.get_type();
+    let src_piece_type = src_piece.get_type();
     let src_piece_idx = src_piece.as_usize();
-    let mover_type = m.get_type();
+    let move_type = m.get_type();
     let mover_color = src_piece.color();
     let enemy_color = mover_color.opponent();
-    let is_pawn_move = src_type == PieceType::Pawn;
+    let is_mover_pawn = src_piece_type == PieceType::Pawn;
+    let enemy_pawn = Piece::get_piece(enemy_color, PieceType::Pawn);
+    let (src_file, src_rank) = src_sq.file_rank();
+    let (dst_file, dst_rank) = dst_sq.file_rank();
+
     debug_assert!(src_piece != Piece::NONE, "No piece found on 'from' square");
     debug_assert!(pos.side_to_move == mover_color, "Trying to move a piece of the wrong color");
 
@@ -30,12 +32,33 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
         dst_piece,
     };
 
-    let disabled_castling = match src_type {
+    // check if the move will change the castling rights
+    let disabled_castling = match src_piece_type {
         PieceType::King | PieceType::Rook => {
             drop_castling(pos, src_sq, dst_sq, src_piece, dst_piece)
         }
         _ => 0,
     };
+
+    // check if the move will generate an en passant square
+    let mut en_passant_sq: Option<Square> = None;
+    loop {
+        if !is_mover_pawn {
+            break;
+        }
+        let dy = (dst_rank as i32 - src_rank as i32).abs();
+        debug_assert!(dy <= 2, "Pawn move must be 1 or 2 squares");
+        if dy == 1 {
+            break;
+        }
+        let enemy_pawns = pos.bitboards[enemy_pawn.as_usize()];
+        if (src_file < FILE_H && enemy_pawns.test(Square::make(src_file + 1, dst_rank).as_u8()))
+            || (src_file > FILE_A && enemy_pawns.test(Square::make(src_file - 1, dst_rank).as_u8()))
+        {
+            en_passant_sq = Some(Square::make(src_file, (src_rank + dst_rank) / 2));
+        }
+        break;
+    }
 
     // -------------- Update Board Start --------------
 
@@ -52,10 +75,10 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
     };
 
     // special move handling
-    match mover_type {
+    match move_type {
         MoveType::Castling => {
             // Castling move, we need to move the king and rook
-            debug_assert!(src_type == PieceType::King, "Castling must be a king move");
+            debug_assert!(src_piece_type == PieceType::King, "Castling must be a king move");
             debug_assert!(dst_piece == Piece::NONE, "Castling must not capture any piece");
 
             // king already moved to the destination square, only need to move the rook
@@ -66,15 +89,13 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
             move_piece(&mut pos.bitboards[piece.as_usize()], from_sq, to_sq);
         }
         MoveType::Promotion => {
-            assert!(src_type == PieceType::Pawn);
+            assert!(src_piece_type == PieceType::Pawn);
             let promotion = Piece::get_piece(mover_color, m.get_promotion().unwrap());
             pos.bitboards[src_piece_idx].unset(dst_sq.as_u8()); // Remove the pawn from the board
             pos.bitboards[promotion.as_usize()].set(dst_sq.as_u8()); // Place the promoted piece on the board
         }
         MoveType::EnPassant => {
-            assert!(src_type == PieceType::Pawn, "En passant must be a pawn move");
-            let (_, src_rank) = src_sq.file_rank();
-            let (dst_file, _) = dst_sq.file_rank();
+            assert!(src_piece_type == PieceType::Pawn, "En passant must be a pawn move");
             let enemy_sq = Square::make(dst_file, src_rank);
             let enemy = Piece::get_piece(enemy_color, PieceType::Pawn);
 
@@ -91,10 +112,10 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
     // -------------- Update Board End --------------
 
     pos.castling &= !disabled_castling;
-    pos.en_passant = update_en_passant_square(pos, m.src_sq(), m.dst_sq(), src_piece);
+    pos.en_passant = en_passant_sq;
     pos.fullmove_number += if mover_color == Color::WHITE { 0 } else { 1 };
 
-    if captured_something || is_pawn_move {
+    if captured_something || is_mover_pawn {
         pos.halfmove_clock = 0; // reset halfmove clock if a piece was captured or a non-pawn moved
     } else {
         pos.halfmove_clock += 1; // increment halfmove clock for a pawn move
@@ -256,40 +277,4 @@ fn drop_castling(
     mask |= helper::<{ CastlingRight::k }>(pos, src_sq, dst_sq, src_piece, dst_piece);
     mask |= helper::<{ CastlingRight::q }>(pos, src_sq, dst_sq, src_piece, dst_piece);
     mask
-}
-
-fn update_en_passant_square(
-    pos: &Position,
-    from_sq: Square,
-    to_sq: Square,
-    from: Piece,
-) -> Option<Square> {
-    if from.get_type() != PieceType::Pawn {
-        return None;
-    }
-
-    let (file, from_rank) = from_sq.file_rank();
-    let (_file, to_rank) = to_sq.file_rank();
-
-    if match (from, from_rank, to_rank) {
-        (Piece::W_PAWN, RANK_2, RANK_4) => true,
-        (Piece::B_PAWN, RANK_7, RANK_5) => true,
-        _ => false,
-    } {
-        assert_eq!(file, _file);
-        // check if there's opponent's pawn on the left or right of 'to' square
-        let board = &pos.bitboards[if from == Piece::W_PAWN {
-            Piece::B_PAWN.as_usize()
-        } else {
-            Piece::W_PAWN.as_usize()
-        }];
-
-        if (file < FILE_H && board.test(Square::make(file + 1, to_rank).as_u8()))
-            || (file > FILE_A && board.test(Square::make(file - 1, to_rank).as_u8()))
-        {
-            return Some(Square::make(file, (from_rank + to_rank) / 2));
-        }
-    }
-
-    None
 }
