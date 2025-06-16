@@ -29,7 +29,7 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
         en_passant: pos.en_passant,
         halfmove_clock: pos.halfmove_clock,
         fullmove_number: pos.fullmove_number,
-        dst_piece,
+        captured_piece: dst_piece,
     };
 
     // check if the move will change the castling rights
@@ -128,11 +128,13 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
 
 pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
     // Keep in mind that the move is already applied to the position
-
     let src_sq = m.src_sq();
     let dst_sq = m.dst_sq();
     let src_piece = pos.get_piece_at(dst_sq); // the src_piece is the piece that was moved to the dst_sq
-    let captured_piece = undo_state.dst_piece;
+    let captured_piece = undo_state.captured_piece;
+    let mover_color = src_piece.color();
+    let enemy_color = mover_color.opponent();
+    let enemy_pawn = Piece::get_piece(enemy_color, PieceType::Pawn);
 
     move_piece(&mut pos.bitboards[src_piece.as_usize()], dst_sq, src_sq);
 
@@ -142,13 +144,31 @@ pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
 
     match m.get_type() {
         MoveType::Castling => {
-            undo_promotion(pos, m);
+            debug_assert!(src_piece.get_type() == PieceType::King);
+            // Restore Rook position
+            let index = castling_type(src_piece, src_sq, dst_sq);
+            debug_assert!(index != CastlingType::None);
+
+            let (piece, src_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
+            move_piece(&mut pos.bitboards[piece.as_usize()], to_sq, src_sq);
         }
         MoveType::Promotion => {
-            undo_castling(pos, m, src_piece);
+            let promotion = Piece::get_piece(mover_color, m.get_promotion().unwrap());
+            let our_pawn = Piece::get_piece(mover_color, PieceType::Pawn);
+
+            pos.bitboards[our_pawn.as_usize()].set(src_sq.as_u8()); // Place the pawn back on the board
+            pos.bitboards[promotion.as_usize()].unset(src_sq.as_u8()); // Remove the promoted piece from the board
         }
         MoveType::EnPassant => {
-            undo_move_ep(pos, m, src_piece);
+            // en passant is special, because if there's a captured piece, it will be placed on the wrong square
+            // debug_assert!(undo_state.captured_piece == enemy_pawn);
+            let (_, from_rank) = src_sq.file_rank();
+            let (to_file, _) = dst_sq.file_rank();
+            let enemy_sq = Square::make(to_file, from_rank);
+
+            debug_assert!(pos.get_piece_at(enemy_sq) == Piece::NONE);
+
+            pos.bitboards[enemy_pawn.as_usize()].set(enemy_sq.as_u8());
         }
         _ => {}
     }
@@ -160,21 +180,6 @@ pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
     pos.en_passant = undo_state.en_passant;
     pos.halfmove_clock = undo_state.halfmove_clock;
     pos.fullmove_number = undo_state.fullmove_number;
-}
-
-fn undo_move_ep(pos: &mut Position, m: Move, from: Piece) {
-    if m.get_type() == MoveType::EnPassant {
-        // Restore the captured pawn on the en passant square
-        let (to_file, _) = m.dst_sq().file_rank();
-        let (_, from_rank) = m.src_sq().file_rank();
-        let enemy_sq = Square::make(to_file, from_rank);
-        let enemy = Piece::get_piece(from.color().opponent(), PieceType::Pawn);
-
-        debug_assert!(pos.get_piece_at(enemy_sq) == Piece::NONE);
-
-        // Place the captured pawn back on the board
-        pos.bitboards[enemy.as_usize()].set(enemy_sq.as_u8());
-    }
 }
 
 fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {
@@ -198,33 +203,6 @@ fn castling_type(src_piece: Piece, src_sq: Square, dst_sq: Square) -> CastlingTy
         (Piece::B_KING, Square::E8, Square::C8) => CastlingType::BlackQueenSide,
         _ => CastlingType::None,
     }
-}
-
-fn undo_promotion(pos: &mut Position, m: Move) {
-    if m.get_type() != MoveType::Promotion {
-        return;
-    }
-
-    // from square is the square of the promoted piece
-    let src_sq = m.src_sq();
-    let piece = pos.get_piece_at(src_sq);
-    let color = piece.color();
-    let promotion = Piece::get_piece(color, m.get_promotion().unwrap());
-    let pawn = Piece::get_piece(color, PieceType::Pawn);
-
-    pos.bitboards[pawn.as_usize()].set(src_sq.as_u8()); // Place the pawn back on the board
-    pos.bitboards[promotion.as_usize()].unset(src_sq.as_u8()); // Remove the promoted piece from the board
-}
-
-fn undo_castling(pos: &mut Position, m: Move, from: Piece) {
-    // Restore Rook position
-    let index = castling_type(from, m.src_sq(), m.dst_sq());
-    if index == CastlingType::None {
-        return;
-    }
-
-    let (piece, src_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
-    move_piece(&mut pos.bitboards[piece.as_usize()], to_sq, src_sq);
 }
 
 // if castling rights are already disabled, return

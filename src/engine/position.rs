@@ -44,7 +44,7 @@ pub struct UndoState {
     pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
-    pub dst_piece: Piece,
+    pub captured_piece: Piece,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -351,5 +351,55 @@ mod tests {
 
         pos.make_move(Move::new(Square::E7, Square::E5, MoveType::Normal, None));
         assert_eq!(pos.fullmove_number, 2);
+    }
+
+    const UNDO_TEST_FEN: &str = "4k2r/1p6/8/P7/8/8/2p5/4K3 b k - 0 10";
+
+    #[test]
+    fn undo_castling_should_put_rook_back() {
+        let mut pos = Position::from(UNDO_TEST_FEN).unwrap();
+        let m = Move::new(Square::E8, Square::G8, MoveType::Castling, None);
+
+        let undo_state = pos.make_move(m);
+
+        assert_eq!(pos.get_piece_at(Square::G8), Piece::B_KING);
+        assert_eq!(pos.get_piece_at(Square::F8), Piece::B_ROOK);
+        pos.unmake_move(m, &undo_state);
+        assert_eq!(pos.get_piece_at(Square::E8), Piece::B_KING);
+        assert_eq!(pos.get_piece_at(Square::H8), Piece::B_ROOK);
+    }
+
+    #[test]
+    fn undo_en_passant_should_put_pawn_back() {
+        let mut pos = Position::from(UNDO_TEST_FEN).unwrap();
+        let m = Move::new(Square::B7, Square::B5, MoveType::Normal, None);
+        pos.make_move(m);
+
+        let m = Move::new(Square::A5, Square::B6, MoveType::EnPassant, None);
+        let undo_state = pos.make_move(m);
+
+        assert_eq!(pos.get_piece_at(Square::B6), Piece::W_PAWN);
+        assert_eq!(pos.get_piece_at(Square::A5), Piece::NONE);
+        assert_eq!(pos.get_piece_at(Square::B5), Piece::NONE);
+
+        pos.unmake_move(m, &undo_state);
+
+        assert_eq!(pos.get_piece_at(Square::A5), Piece::W_PAWN);
+        assert_eq!(pos.get_piece_at(Square::B5), Piece::B_PAWN);
+    }
+
+    #[test]
+    fn undo_should_revert_promoted_piece() {
+        let mut pos = Position::from(UNDO_TEST_FEN).unwrap();
+        let m = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::Bishop));
+        let undo_state = pos.make_move(m);
+
+        assert_eq!(pos.get_piece_at(Square::C2), Piece::NONE);
+        assert_eq!(pos.get_piece_at(Square::C1), Piece::B_BISHOP);
+
+        pos.unmake_move(m, &undo_state);
+
+        assert_eq!(pos.get_piece_at(Square::C2), Piece::B_PAWN);
+        assert_eq!(pos.get_piece_at(Square::C1), Piece::NONE);
     }
 }
