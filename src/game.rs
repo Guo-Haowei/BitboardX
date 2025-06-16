@@ -48,12 +48,12 @@ impl Game {
         Self { pos, undo_stack: Vec::new(), redo_stack: Vec::new() }
     }
 
-    pub fn to_string(&self, pad: bool) -> String {
-        self.pos.to_string(pad)
+    pub fn debug_string(&self) -> String {
+        utils::debug_string(&self.pos)
     }
 
     pub fn to_board_string(&self) -> String {
-        self.pos.to_board_string()
+        utils::to_board_string(&self.pos)
     }
 
     pub fn can_undo(&self) -> bool {

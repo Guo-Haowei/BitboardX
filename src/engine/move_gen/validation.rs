@@ -46,7 +46,7 @@ use super::super::utils;
 /// | Checker is knight/pawn    | Cannot be blocked                   |
 /// | Checker is sliding piece  | Can be blocked                      |
 
-pub fn is_pseudo_move_legal(pos: &Position, m: &Move) -> bool {
+pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
     let mover = pos.get_piece_at(m.from_sq());
     let mover_type = mover.get_type();
     let mover_color = pos.side_to_move;
@@ -169,7 +169,7 @@ pub fn is_pseudo_move_legal(pos: &Position, m: &Move) -> bool {
 ///
 /// This is a rare but critical edge case for legal move generation in chess engines.
 
-fn is_pseudo_en_passant_legal(pos: &Position, m: &Move, mover_color: Color) -> bool {
+fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bool {
     debug_assert!(m.get_type() == MoveType::EnPassant, "Move must be an en passant move");
 
     let captured_sq = m.get_en_passant_capture();

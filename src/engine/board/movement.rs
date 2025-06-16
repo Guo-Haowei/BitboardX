@@ -86,6 +86,10 @@ impl Move {
         Self(data)
     }
 
+    pub fn equals(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+
     pub fn is_none(&self) -> bool {
         self.0 == 0
     }

@@ -6,12 +6,12 @@ edition = "2024"
 [profile.dev]
 debug = true
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [[bin]]
 name = "BitboardX"
-path = "src/main.rs"
+path = "src/bin/uci.rs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 wasm-bindgen = "0.2"

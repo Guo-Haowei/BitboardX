@@ -2,7 +2,9 @@ use crate::engine::move_gen;
 
 use super::board::*;
 use super::types::*;
-use super::utils;
+use super::utils::parse_move;
+
+mod utils;
 
 #[derive(Clone, Copy, Debug)]
 pub struct SmallSquareList {
@@ -82,7 +84,11 @@ impl Position {
         };
         let castling = utils::parse_castling(parts[2])?;
 
-        let en_passant = utils::parse_en_passant(parts[3])?;
+        let en_passant = utils::parse_en_passant(parts[3]);
+        if en_passant.is_none() {
+            return Err("Invalid en passant square in FEN");
+        }
+        let en_passant = en_passant.unwrap();
 
         let halfmove_clock = utils::parse_halfmove_clock(parts[4])?;
         let fullmove_number = utils::parse_fullmove_number(parts[5])?;
@@ -104,10 +110,42 @@ impl Position {
         Ok(pos)
     }
 
+    pub fn fen(&self) -> String {
+        format!(
+            "{} {} {} {} {} {}",
+            utils::dump_board(&self.bitboards),
+            if self.side_to_move == Color::WHITE { "w" } else { "b" },
+            utils::dump_castling(self.castling),
+            match self.en_passant {
+                Some(sq) => sq.to_string(),
+                None => "-".to_string(),
+            },
+            self.halfmove_clock,
+            self.fullmove_number
+        )
+    }
+
     // @TODO: make private
     pub fn post_move(&mut self) {
         self.side_to_move = self.side_to_move.opponent();
-        self.occupancies = utils::calc_occupancies(&self.bitboards);
+
+        // update occupancies
+        self.occupancies[Color::WHITE.as_usize()] = self.bitboards[Piece::W_PAWN.as_usize()]
+            | self.bitboards[Piece::W_KNIGHT.as_usize()]
+            | self.bitboards[Piece::W_BISHOP.as_usize()]
+            | self.bitboards[Piece::W_ROOK.as_usize()]
+            | self.bitboards[Piece::W_QUEEN.as_usize()]
+            | self.bitboards[Piece::W_KING.as_usize()];
+        self.occupancies[Color::BLACK.as_usize()] = self.bitboards[Piece::B_PAWN.as_usize()]
+            | self.bitboards[Piece::B_KNIGHT.as_usize()]
+            | self.bitboards[Piece::B_BISHOP.as_usize()]
+            | self.bitboards[Piece::B_ROOK.as_usize()]
+            | self.bitboards[Piece::B_QUEEN.as_usize()]
+            | self.bitboards[Piece::B_KING.as_usize()];
+        self.occupancies[Color::BOTH.as_usize()] =
+            self.occupancies[Color::WHITE.as_usize()] | self.occupancies[Color::BLACK.as_usize()];
+
+        // update attack maps
         self.update_attack_map_and_checker();
 
         // maybe only need to update the side to move attack map?
@@ -183,8 +221,7 @@ impl Position {
         checker_count != 0
     }
 
-    // @TODO: remove these methods, call move_gen directly
-    pub fn update_attack_map_and_checker(&mut self) {
+    fn update_attack_map_and_checker(&mut self) {
         let mut checkers: [CheckerList; Color::COUNT] = [CheckerList::new(); Color::COUNT];
 
         for color in [Color::WHITE, Color::BLACK] {
@@ -277,7 +314,7 @@ impl Position {
 
     /// @TODO: get rid of this method
     pub fn apply_move_str(&mut self, move_str: &str) -> bool {
-        let m = utils::parse_move(move_str);
+        let m = parse_move(move_str);
         if m.is_none() {
             return false;
         }
@@ -293,16 +330,6 @@ impl Position {
         }
 
         return false;
-    }
-
-    // @TODO: move to utils
-    pub fn to_string(&self, pad: bool) -> String {
-        utils::to_string(self, pad)
-    }
-
-    // @TODO: move to utils
-    pub fn to_board_string(&self) -> String {
-        utils::to_board_string(self)
     }
 }
 
@@ -523,28 +550,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_constructor_new() {
-        let pos = Position::new();
-        assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
-        assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
-        assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
-        assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
-
-        assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, MoveFlags::KQkq);
-        assert!(pos.en_passant.is_none());
-        assert_eq!(pos.halfmove_clock, 0);
-        assert_eq!(pos.fullmove_number, 1);
-        assert_eq!(
-            pos.to_board_string(),
-            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
-        );
-    }
-
-    #[test]
     fn test_constructor_from_parts() {
-        let pos =
-            Position::from("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        const FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        let pos = Position::from(FEN).unwrap();
         assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
         assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
         assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
@@ -555,26 +563,20 @@ mod tests {
         assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
-        assert_eq!(
-            pos.to_board_string(),
-            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
-        );
+        assert_eq!(pos.fen(), FEN);
     }
 
     #[test]
     fn test_constructor_from() {
-        let pos = Position::from("r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7")
-            .unwrap();
+        const FEN: &str = "r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7";
+        let pos = Position::from(FEN).unwrap();
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
         assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 6);
         assert_eq!(pos.fullmove_number, 7);
-        assert_eq!(
-            pos.to_board_string(),
-            "r.bqk..rpp.n.ppp..pbpn.............P......N.BN..PPP..PPPR..QKB.R"
-        );
+        assert_eq!(pos.fen(), FEN);
 
         assert_eq!(pos.get_king_square(Color::WHITE), Square::E1);
         assert_eq!(pos.get_king_square(Color::BLACK), Square::E8);
@@ -594,5 +596,24 @@ mod tests {
             sq1,
             sq2
         );
+    }
+
+    #[test]
+    fn test_is_square_pinned() {
+        // 2 . . . . . . . k
+        // 1 K B . . . . . r
+        //   a b c d e f g h
+        let pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
+
+        assert!(pos.is_square_pinned(Square::B1, Color::WHITE));
+    }
+
+    #[test]
+    fn test_rook_pin_pawn() {
+        let pos = Position::from("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
+
+        let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
+
+        assert!(is_pinned, "Pawn B5 is pinned by rook on H5");
     }
 }

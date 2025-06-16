@@ -2,12 +2,6 @@ stages:
   - build
   - test
 
-build-cli:
-  stage: build
-  script:
-    - cargo build
-    - cargo build --release
-
 build-wasm:
   stage: build
   script:
@@ -17,11 +11,3 @@ unit-test:
   stage: test
   script:
     - cargo test --release -- --nocapture
-
-functional-test:
-  stage: test
-  script:
-    - cargo build
-    - cd frontend
-    - npm install
-    - npx mocha

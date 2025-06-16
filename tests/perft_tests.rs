@@ -1,4 +1,5 @@
 use bitboard_x::engine::{move_gen, position::*};
+use bitboard_x::named_test;
 
 /// Test cases: https://www.chessprogramming.org/Perft_Results
 use colored::*;
@@ -38,14 +39,15 @@ fn perft_test_wrapper(fen: &str, depth: u8, tests: &[(u8, u64); 9]) {
         let start = Instant::now(); // Start timer
         let actual = perft_test(&mut pos, test_depth);
         let elapsed = start.elapsed();
-        let msg = format!("\nDepth {}: {} nodes, took {:?}", test_depth, actual, elapsed);
-        println!("{}", if actual == expected { msg.green() } else { msg.red() });
+        let msg = format!("depth {}: {} nodes, took {:?}\n", test_depth, actual, elapsed);
+        if actual != expected {
+            println!("{}", msg.red());
+        }
         assert_eq!(actual, expected);
     }
 }
 
-#[test]
-fn test_initial_position() {
+named_test!(perft_initial_position, {
     let tests = [
         (0, 1),
         (1, 20),
@@ -63,10 +65,9 @@ fn test_initial_position() {
         DEFAULT_DEPTH,
         &tests,
     );
-}
+});
 
-#[test]
-fn test_position2() {
+named_test!(perft_test_position2, {
     let tests = [
         (0, 1),
         (1, 48),
@@ -84,10 +85,9 @@ fn test_position2() {
         DEFAULT_DEPTH,
         &tests,
     );
-}
+});
 
-#[test]
-fn test_position3() {
+named_test!(test_position3, {
     let tests = [
         (0, 1),
         (1, 14),
@@ -101,10 +101,9 @@ fn test_position3() {
     ];
 
     perft_test_wrapper("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", DEFAULT_DEPTH, &tests);
-}
+});
 
-#[test]
-fn test_position4() {
+named_test!(test_position4, {
     let tests = [
         (0, 1),
         (1, 6),
@@ -122,10 +121,9 @@ fn test_position4() {
         DEFAULT_DEPTH,
         &tests,
     );
-}
+});
 
-#[test]
-fn test_position5() {
+named_test!(test_position5, {
     let tests = [
         (0, 1),
         (1, 44),
@@ -143,10 +141,9 @@ fn test_position5() {
         DEFAULT_DEPTH,
         &tests,
     );
-}
+});
 
-#[test]
-fn test_position6() {
+named_test!(test_position6, {
     let tests = [
         (0, 1),
         (1, 46),
@@ -164,4 +161,4 @@ fn test_position6() {
         DEFAULT_DEPTH,
         &tests,
     );
-}
+});

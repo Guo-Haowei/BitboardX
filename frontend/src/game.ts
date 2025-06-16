@@ -47,7 +47,7 @@ export class Game implements EventListener, RuntimeModule {
     this.moveMap = moveMap;
 
     // eslint-disable-next-line no-console
-    console.log(this.game!.to_string(false));
+    console.log(this.game!.debug_string());
     const undoButton = document.getElementById('undoButton') as HTMLButtonElement;
     if (undoButton) {
       undoButton.disabled = !this.game!.can_undo();
