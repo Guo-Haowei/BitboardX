@@ -13,8 +13,8 @@ pub struct GameState {
     players: [Box<dyn Player>; 2],
 
     // undo and redo
-    undo_stack: Vec<(Move, Snapshot)>,
-    redo_stack: Vec<(Move, Snapshot)>,
+    undo_stack: Vec<(Move, UndoState)>,
+    redo_stack: Vec<(Move, UndoState)>,
 }
 
 impl GameState {
@@ -65,10 +65,10 @@ impl GameState {
         for m in legal_moves.iter() {
             if m.from_sq() == from && m.to_sq() == to && m.get_promotion() == promtion {
                 let m = m.clone();
-                let snapshot = self.pos.make_move(m);
+                let undo_state = self.pos.make_move(m);
                 self.post_move();
 
-                self.undo_stack.push((m, snapshot));
+                self.undo_stack.push((m, undo_state));
                 self.redo_stack.clear();
                 return true;
             }
@@ -89,11 +89,11 @@ impl GameState {
     }
 
     pub fn undo(&mut self) -> bool {
-        if let Some((m, snapshot)) = self.undo_stack.pop() {
-            self.pos.unmake_move(m, &snapshot);
+        if let Some((m, undo_state)) = self.undo_stack.pop() {
+            self.pos.unmake_move(m, &undo_state);
             self.post_move();
 
-            self.redo_stack.push((m, snapshot));
+            self.redo_stack.push((m, undo_state));
             return true;
         }
 
@@ -101,11 +101,11 @@ impl GameState {
     }
 
     pub fn redo(&mut self) -> bool {
-        if let Some((m, snapshot)) = self.redo_stack.pop() {
+        if let Some((m, undo_state)) = self.redo_stack.pop() {
             self.pos.make_move(m);
             self.post_move();
 
-            self.undo_stack.push((m, snapshot));
+            self.undo_stack.push((m, undo_state));
             return true;
         }
 

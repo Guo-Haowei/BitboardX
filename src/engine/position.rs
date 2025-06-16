@@ -39,7 +39,7 @@ impl CheckerList {
 }
 
 #[derive(Clone, Copy)]
-pub struct Snapshot {
+pub struct UndoState {
     pub castling: u8,
     pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
@@ -240,20 +240,20 @@ impl Position {
         self.checkers = checkers;
     }
 
-    pub fn restore(&mut self, snapshot: &Snapshot) {
-        self.castling = snapshot.castling;
-        self.en_passant = snapshot.en_passant;
+    pub fn restore(&mut self, undo_state: &UndoState) {
+        self.castling = undo_state.castling;
+        self.en_passant = undo_state.en_passant;
 
-        self.halfmove_clock = snapshot.halfmove_clock;
-        self.fullmove_number = snapshot.fullmove_number;
+        self.halfmove_clock = undo_state.halfmove_clock;
+        self.fullmove_number = undo_state.fullmove_number;
     }
 
-    pub fn make_move(&mut self, m: Move) -> Snapshot {
+    pub fn make_move(&mut self, m: Move) -> UndoState {
         internal::make_move(self, m)
     }
 
-    pub fn unmake_move(&mut self, m: Move, snapshot: &Snapshot) {
-        internal::unmake_move(self, m, snapshot)
+    pub fn unmake_move(&mut self, m: Move, undo_state: &UndoState) {
+        internal::unmake_move(self, m, undo_state)
     }
 
     /// @TODO: get rid of this method

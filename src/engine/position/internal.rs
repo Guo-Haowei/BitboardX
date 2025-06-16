@@ -1,17 +1,17 @@
-use super::Snapshot;
+use super::UndoState;
 use crate::engine::position::{Castling, Move, MoveFlags, MoveType, Piece, Position, Square};
 use crate::engine::types::{
     BitBoard, Color, FILE_A, FILE_H, PieceType, RANK_2, RANK_4, RANK_5, RANK_7,
 };
 
-pub fn make_move(pos: &mut Position, m: Move) -> Snapshot {
+pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
     let from = pos.get_piece_at(m.from_sq());
     let from_sq = m.from_sq();
     let to_sq = m.to_sq();
     let to_piece = pos.get_piece_at(to_sq);
 
     // Copy undo state before making changes to the position
-    let snapshot = Snapshot {
+    let undo_state = UndoState {
         castling: pos.castling,
         en_passant: pos.en_passant,
         halfmove_clock: pos.halfmove_clock,
@@ -47,13 +47,13 @@ pub fn make_move(pos: &mut Position, m: Move) -> Snapshot {
 
     pos.post_move();
 
-    snapshot
+    undo_state
 }
 
-pub fn unmake_move(pos: &mut Position, m: Move, snapshot: &Snapshot) {
+pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
     let from = pos.get_piece_at(m.to_sq());
 
-    undo_move_generic(pos, m, from, snapshot.to_piece);
+    undo_move_generic(pos, m, from, undo_state.to_piece);
 
     undo_promotion(pos, m);
 
@@ -63,7 +63,7 @@ pub fn unmake_move(pos: &mut Position, m: Move, snapshot: &Snapshot) {
 
     pos.post_move();
 
-    pos.restore(snapshot);
+    pos.restore(undo_state);
 }
 
 fn do_move_ep(pos: &mut Position, m: Move, from: Piece) {
