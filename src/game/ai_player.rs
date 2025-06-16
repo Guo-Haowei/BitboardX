@@ -1,5 +1,6 @@
 use super::player::{Player, PlayerAction};
 use crate::engine::{move_gen, position::Position};
+use std::any::Any;
 
 pub struct AiPlayer;
 
@@ -22,5 +23,9 @@ impl Player for AiPlayer {
             }
             Err(_) => PlayerAction::Error("Invalid FEN string".to_string()),
         }
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }

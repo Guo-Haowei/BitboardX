@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::io::{self, Write};
 
 use super::player::{Player, PlayerAction};
@@ -28,5 +29,9 @@ impl Player for ConsolePlayer {
             }
             Err(_) => PlayerAction::Error("Failed to read input".to_string()),
         }
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }

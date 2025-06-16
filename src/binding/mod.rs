@@ -1,7 +1,10 @@
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
-use crate::{engine::utils, game::*};
+use crate::{
+    engine::utils,
+    game::{player::GuiPlayer, *},
+};
 
 #[wasm_bindgen]
 pub struct WasmGameState {
@@ -14,7 +17,10 @@ impl WasmGameState {
     pub fn new() -> Self {
         let mut game = Self { internal: GameState::new() };
 
-        game.internal.set_white(Box::new(AiPlayer));
+        let player = GuiPlayer::new();
+        let player: Box<dyn Player> = Box::new(player);
+
+        game.internal.set_white(player);
         game.internal.set_black(Box::new(AiPlayer));
 
         game
@@ -38,6 +44,14 @@ impl WasmGameState {
             PlayerAction::Error(err) => {
                 console::error_1(&format!("Player error: {}", err).into());
             }
+        }
+    }
+
+    pub fn inject_move(&mut self, mv: String) {
+        if let Some(player) = self.internal.active_player().as_any_mut().downcast_mut::<GuiPlayer>()
+        {
+            console::log_1(&format!("Injected move: {}", &mv).into());
+            player.inject_move(mv);
         }
     }
 

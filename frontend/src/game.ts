@@ -142,6 +142,8 @@ export class Game implements EventListener, RuntimeModule {
     const to = file2 + rank2 * BOARD_SIZE;
 
     const move = `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}`;
+
+    this.game!.inject_move(move);
   }
 
   private undo() {
