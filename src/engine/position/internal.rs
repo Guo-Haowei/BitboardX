@@ -85,8 +85,8 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
             let index = castling_type(src_piece, src_sq, dst_sq);
             assert!(index != CastlingType::None, "Invalid castling move");
             // move rook position
-            let (piece, from_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
-            move_piece(&mut pos.bitboards[piece.as_usize()], from_sq, to_sq);
+            let (piece, src_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
+            move_piece(&mut pos.bitboards[piece.as_usize()], src_sq, to_sq);
         }
         MoveType::Promotion => {
             assert!(src_piece_type == PieceType::Pawn);
@@ -197,14 +197,14 @@ fn undo_promotion(pos: &mut Position, m: Move) {
     }
 
     // from square is the square of the promoted piece
-    let from_sq = m.src_sq();
-    let piece = pos.get_piece_at(from_sq);
+    let src_sq = m.src_sq();
+    let piece = pos.get_piece_at(src_sq);
     let color = piece.color();
     let promotion = Piece::get_piece(color, m.get_promotion().unwrap());
     let pawn = Piece::get_piece(color, PieceType::Pawn);
 
-    pos.bitboards[pawn.as_usize()].set(from_sq.as_u8()); // Place the pawn back on the board
-    pos.bitboards[promotion.as_usize()].unset(from_sq.as_u8()); // Remove the promoted piece from the board
+    pos.bitboards[pawn.as_usize()].set(src_sq.as_u8()); // Place the pawn back on the board
+    pos.bitboards[promotion.as_usize()].unset(src_sq.as_u8()); // Remove the promoted piece from the board
 }
 
 fn undo_castling(pos: &mut Position, m: Move, from: Piece) {
@@ -214,8 +214,8 @@ fn undo_castling(pos: &mut Position, m: Move, from: Piece) {
         return;
     }
 
-    let (piece, from_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
-    move_piece(&mut pos.bitboards[piece.as_usize()], to_sq, from_sq);
+    let (piece, src_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
+    move_piece(&mut pos.bitboards[piece.as_usize()], to_sq, src_sq);
 }
 
 // if castling rights are already disabled, return

@@ -61,14 +61,14 @@ impl Move {
     }
 
     pub fn new(
-        from_sq: Square,
-        to_sq: Square,
+        src_sq: Square,
+        dst_sq: Square,
         move_type: MoveType,
         promotion: Option<PieceType>,
     ) -> Self {
         let mut data = 0u16;
-        data |= from_sq.as_u16();
-        data |= to_sq.as_u16() << 6;
+        data |= src_sq.as_u16();
+        data |= dst_sq.as_u16() << 6;
         data |= (move_type as u16) << 12;
 
         if let Some(promo) = promotion {

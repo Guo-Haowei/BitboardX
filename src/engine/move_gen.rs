@@ -22,7 +22,7 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
         let piece = Piece::from(i);
 
         for sq in pos.bitboards[i as usize].iter() {
-            generator::pseudo_legal_moves_from_sq(pos, sq, piece, &mut move_list);
+            generator::pseudo_legal_moves_src_sq(pos, sq, piece, &mut move_list);
         }
     }
 
@@ -60,7 +60,7 @@ pub fn calc_attack_map_impl(
 
     let color = piece.color();
     for sq in pos.bitboards[piece.as_usize()].iter() {
-        let attack_mask = generator::attack_mask_from_sq(pos, sq, piece);
+        let attack_mask = generator::attack_mask_src_sq(pos, sq, piece);
 
         if attack_mask.test(opponent_king.as_u8()) {
             debug_assert!(pos.occupancies[color.opponent().as_usize()].test(opponent_king.as_u8()));

@@ -18,7 +18,7 @@ use super::internal::*;
 /// # Note
 ///
 /// Moves are *pseudo-legal*, so no validation is done regarding king safety.
-pub fn pseudo_legal_moves_from_sq(
+pub fn pseudo_legal_moves_src_sq(
     pos: &Position,
     sq: Square,
     piece: Piece,
@@ -58,7 +58,7 @@ pub fn pseudo_legal_moves_from_sq(
 /// # Returns
 ///
 /// A `BitBoard` with bits set for each square attacked by the piece.
-pub fn attack_mask_from_sq(pos: &Position, sq: Square, piece: Piece) -> BitBoard {
+pub fn attack_mask_src_sq(pos: &Position, sq: Square, piece: Piece) -> BitBoard {
     let color = piece.color();
 
     let my_occupancy = pos.occupancies[color.as_usize()];
@@ -178,25 +178,25 @@ fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
 fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square, pos: &Position) {
     let mask = pawn_mask::<{ COLOR }, false>(sq, pos);
 
-    for to_sq in mask.iter() {
-        if check_if_promotion::<COLOR>(to_sq) {
+    for dst_sq in mask.iter() {
+        if check_if_promotion::<COLOR>(dst_sq) {
             // Promotion move
             let promotion_types =
                 [PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight];
             for &promotion in &promotion_types {
-                move_list.add(Move::new(sq, to_sq, MoveType::Promotion, Some(promotion)));
+                move_list.add(Move::new(sq, dst_sq, MoveType::Promotion, Some(promotion)));
             }
         } else {
             let is_ep_capture =
-                check_if_eq_capture::<COLOR>(pos, sq, to_sq, pos.get_piece_at(to_sq));
+                check_if_eq_capture::<COLOR>(pos, sq, dst_sq, pos.get_piece_at(dst_sq));
             let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
-            move_list.add(Move::new(sq, to_sq, move_type, None));
+            move_list.add(Move::new(sq, dst_sq, move_type, None));
         }
     }
 }
 
-fn check_if_promotion<const COLOR: u8>(to_sq: Square) -> bool {
-    let (_, rank) = to_sq.file_rank();
+fn check_if_promotion<const COLOR: u8>(dst_sq: Square) -> bool {
+    let (_, rank) = dst_sq.file_rank();
 
     match rank {
         RANK_8 if COLOR == Color::WHITE.as_u8() => true,
@@ -207,8 +207,8 @@ fn check_if_promotion<const COLOR: u8>(to_sq: Square) -> bool {
 
 fn check_if_eq_capture<const COLOR: u8>(
     pos: &Position,
-    from_sq: Square,
-    to_sq: Square,
+    src_sq: Square,
+    dst_sq: Square,
     to: Piece,
 ) -> bool {
     if to.get_type() != PieceType::None {
@@ -226,8 +226,8 @@ fn check_if_eq_capture<const COLOR: u8>(
     //   a b c d e f g h
 
     // if the to square is empty, but it still moves diagonally, then
-    let (from_file, from_rank) = from_sq.file_rank();
-    let (to_file, to_rank) = to_sq.file_rank();
+    let (from_file, from_rank) = src_sq.file_rank();
+    let (to_file, to_rank) = dst_sq.file_rank();
     if from_file == to_file {
         return false;
     }
@@ -388,8 +388,8 @@ fn queen_mask<const ATTACK_MASK: bool>(
 }
 
 fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: BitBoard) {
-    for to_sq in move_mask.iter() {
-        move_list.add(Move::new(sq, to_sq, MoveType::Normal, None));
+    for dst_sq in move_mask.iter() {
+        move_list.add(Move::new(sq, dst_sq, MoveType::Normal, None));
     }
 }
 
