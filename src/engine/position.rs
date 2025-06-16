@@ -240,14 +240,6 @@ impl Position {
         self.checkers = checkers;
     }
 
-    pub fn restore(&mut self, undo_state: &UndoState) {
-        self.castling = undo_state.castling;
-        self.en_passant = undo_state.en_passant;
-
-        self.halfmove_clock = undo_state.halfmove_clock;
-        self.fullmove_number = undo_state.fullmove_number;
-    }
-
     pub fn make_move(&mut self, m: Move) -> UndoState {
         internal::make_move(self, m)
     }

@@ -127,19 +127,39 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
 }
 
 pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
-    let from = pos.get_piece_at(m.dst_sq());
+    // Keep in mind that the move is already applied to the position
 
-    undo_move_generic(pos, m, from, undo_state.dst_piece);
+    let src_sq = m.src_sq();
+    let dst_sq = m.dst_sq();
+    let src_piece = pos.get_piece_at(dst_sq); // the src_piece is the piece that was moved to the dst_sq
+    let captured_piece = undo_state.dst_piece;
 
-    undo_promotion(pos, m);
+    move_piece(&mut pos.bitboards[src_piece.as_usize()], dst_sq, src_sq);
 
-    undo_move_ep(pos, m, from);
+    if captured_piece != Piece::NONE {
+        pos.bitboards[captured_piece.as_usize()].set(dst_sq.as_u8()); // Place captured piece back on 'to' square
+    }
 
-    undo_castling(pos, m, from);
+    match m.get_type() {
+        MoveType::Castling => {
+            undo_promotion(pos, m);
+        }
+        MoveType::Promotion => {
+            undo_castling(pos, m, src_piece);
+        }
+        MoveType::EnPassant => {
+            undo_move_ep(pos, m, src_piece);
+        }
+        _ => {}
+    }
 
     pos.post_move();
 
-    pos.restore(undo_state);
+    // Restore from the undo state
+    pos.castling = undo_state.castling;
+    pos.en_passant = undo_state.en_passant;
+    pos.halfmove_clock = undo_state.halfmove_clock;
+    pos.fullmove_number = undo_state.fullmove_number;
 }
 
 fn undo_move_ep(pos: &mut Position, m: Move, from: Piece) {
@@ -157,21 +177,10 @@ fn undo_move_ep(pos: &mut Position, m: Move, from: Piece) {
     }
 }
 
-fn move_piece(board: &mut BitBoard, src_sq: Square, dst_sq: Square) {
-    debug_assert!(board.test(src_sq.as_u8()), "No piece found on 'from' square");
-    board.unset(src_sq.as_u8());
-    board.set(dst_sq.as_u8());
-}
-
-fn undo_move_generic(pos: &mut Position, m: Move, from: Piece, to: Piece) {
-    let from_sq = m.src_sq();
-    let to_sq = m.dst_sq();
-
-    move_piece(&mut pos.bitboards[from.as_usize()], to_sq, from_sq);
-
-    if to != Piece::NONE {
-        pos.bitboards[to.as_usize()].set(m.dst_sq().as_u8()); // Place captured piece back on 'to' square
-    }
+fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {
+    debug_assert!(board.test(from_sq.as_u8()), "No piece found on 'from' square");
+    board.unset(from_sq.as_u8());
+    board.set(to_sq.as_u8());
 }
 
 const CASTLING_ROOK_SQUARES: [(Piece, Square, Square); 4] = [
