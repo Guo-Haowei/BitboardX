@@ -177,11 +177,8 @@ fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
 
 fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square, pos: &Position) {
     let mask = pawn_mask::<{ COLOR }, false>(sq, pos);
-    let mut bb = mask;
 
-    while bb.any() {
-        let to_sq = bb.first_nonzero_sq();
-
+    for to_sq in mask.iter() {
         if check_if_promotion::<COLOR>(to_sq) {
             // Promotion move
             let promotion_types =
@@ -195,7 +192,6 @@ fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square,
             let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
             move_list.add(Move::new(sq, to_sq, move_type, None));
         }
-        bb.remove_first_nonzero_sq();
     }
 }
 
@@ -392,11 +388,8 @@ fn queen_mask<const ATTACK_MASK: bool>(
 }
 
 fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: BitBoard) {
-    let mut bb = move_mask;
-    while bb.any() {
-        let target_sq = bb.first_nonzero_sq();
-        move_list.add(Move::new(sq, target_sq, MoveType::Normal, None));
-        bb.remove_first_nonzero_sq();
+    for to_sq in move_mask.iter() {
+        move_list.add(Move::new(sq, to_sq, MoveType::Normal, None));
     }
 }
 
@@ -619,10 +612,8 @@ pub fn pseudo_legal_move_king<const COLOR: u8>(
     sq: Square,
     pos: &Position,
 ) {
-    let mut mask = king_mask::<COLOR, false>(sq, pos);
-    while mask.any() {
-        let target_sq = mask.first_nonzero_sq();
-
+    let mask = king_mask::<COLOR, false>(sq, pos);
+    for target_sq in mask.iter() {
         // check if it's a castling move
         let (from_file, _) = sq.file_rank();
         let (to_file, _) = target_sq.file_rank();
@@ -634,7 +625,6 @@ pub fn pseudo_legal_move_king<const COLOR: u8>(
         };
 
         move_list.add(Move::new(sq, target_sq, move_type, None));
-        mask.remove_first_nonzero_sq();
     }
 }
 

@@ -189,14 +189,9 @@ impl Position {
 
     pub fn get_king_square(&self, color: Color) -> Square {
         let piece = Piece::get_piece(color, PieceType::King);
-        let mut bb = self.bitboards[piece.as_usize()];
+        let bb = self.bitboards[piece.as_usize()];
         debug_assert!(bb.any(), "No king found for color {:?}", color);
-        let sq = bb.first_nonzero_sq();
-        if cfg!(debug_assertions) {
-            bb.remove_first_nonzero_sq();
-            debug_assert!(bb.none(), "only one king should be on the board");
-        }
-        sq
+        Square(bb.get().trailing_zeros() as u8)
     }
 
     pub fn is_square_pinned(&self, sq: Square, color: Color) -> bool {
