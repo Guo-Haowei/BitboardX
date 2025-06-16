@@ -103,7 +103,6 @@ export class Game implements EventListener, RuntimeModule {
 
     const rank = 7 - y;
     const file = x;
-    const square = file + rank * BOARD_SIZE;
 
     this.canvas!.style.cursor = 'grabbing';
 
@@ -139,10 +138,7 @@ export class Game implements EventListener, RuntimeModule {
 
     const file2 = x;
     const rank2 = 7 - y;
-    const to = file2 + rank2 * BOARD_SIZE;
-
     const move = `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}`;
-
     this.game!.inject_move(move);
   }
 

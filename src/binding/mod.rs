@@ -17,11 +17,11 @@ impl WasmGameState {
     pub fn new() -> Self {
         let mut game = Self { internal: GameState::new() };
 
-        let player = GuiPlayer::new();
-        let player: Box<dyn Player> = Box::new(player);
-
+        let player: Box<dyn Player> = Box::new(GuiPlayer::new());
         game.internal.set_white(player);
-        game.internal.set_black(Box::new(AiPlayer));
+
+        let player: Box<dyn Player> = Box::new(AiPlayer::new());
+        game.internal.set_black(player);
 
         game
     }
