@@ -1,14 +1,16 @@
+/// Test cases: https://www.chessprogramming.org/Perft_Results
+///
+use colored::*;
+use pretty_assertions::assert_eq;
+use std::thread;
+use std::time::Instant;
+
 use bitboard_x::engine::{move_gen, position::*};
 use bitboard_x::named_test;
 
-/// Test cases: https://www.chessprogramming.org/Perft_Results
-use colored::*;
-use pretty_assertions::assert_eq;
-use std::time::Instant;
+const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 8 } else { 5 };
 
-const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 6 } else { 4 };
-
-fn perft_test(pos: &mut Position, depth: u8) -> u64 {
+fn perft_test_inner(pos: &mut Position, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
@@ -16,149 +18,148 @@ fn perft_test(pos: &mut Position, depth: u8) -> u64 {
     let move_list = move_gen::legal_moves(pos);
 
     if depth == 1 {
-        return move_list.count() as u64;
+        return move_list.len() as u64;
     }
 
     let mut nodes = 0u64;
     for m in move_list.iter() {
-        let snapshot = pos.make_move(m.clone());
-        nodes += perft_test(pos, depth - 1);
-        pos.unmake_move(m.clone(), &snapshot);
+        let undo_state = pos.make_move(m.clone());
+        nodes += perft_test_inner(pos, depth - 1);
+        pos.unmake_move(m.clone(), &undo_state);
     }
 
     nodes
 }
 
-fn perft_test_wrapper(fen: &str, depth: u8, tests: &[(u8, u64); 9]) {
-    let mut pos = Position::from(fen).unwrap();
-    assert!(depth < 8);
+fn perft_test(pos: &Position, depth: u8) -> u64 {
+    if depth == 0 {
+        return 1;
+    }
 
-    for i in 0..=depth {
-        let (test_depth, expected) = tests[i as usize];
+    let move_list = move_gen::legal_moves(pos);
+    let move_count = move_list.len() as u64;
+
+    if depth == 1 {
+        return move_count;
+    }
+
+    let mut handles = Vec::new();
+
+    for mv in move_list.iter() {
+        let mut child = pos.clone();
+        child.make_move(mv.clone());
+        let handle = thread::spawn(move || perft_test_inner(&mut child, depth - 1));
+        handles.push(handle);
+    }
+
+    // Wait for all threads and sum the results
+    let mut nodes = 0;
+    for handle in handles {
+        nodes += handle.join().expect("Thread panicked");
+    }
+
+    nodes
+}
+
+fn perft_test_wrapper(fen: &str, depth: u8, expectations: &Vec<u64>) {
+    let mut pos = Position::from(fen).unwrap();
+
+    for (i, expected) in expectations.iter().enumerate() {
+        let test_depth = i as u8;
+        if test_depth > depth {
+            break; // Skip depth 0, which is always 1
+        }
 
         let start = Instant::now(); // Start timer
         let actual = perft_test(&mut pos, test_depth);
         let elapsed = start.elapsed();
-        let msg = format!("depth {}: {} nodes, took {:?}\n", test_depth, actual, elapsed);
-        if actual != expected {
-            println!("{}", msg.red());
-        }
-        assert_eq!(actual, expected);
+        let msg = format!("depth {}: {} nodes, took {:?}", test_depth, actual, elapsed);
+        println!("{}", if actual == *expected { msg.green() } else { msg.red() });
+        assert_eq!(actual, *expected);
     }
 }
 
 named_test!(perft_initial_position, {
-    let tests = [
-        (0, 1),
-        (1, 20),
-        (2, 400),
-        (3, 8902),
-        (4, 197281),
-        (5, 4865609),
-        (6, 119060324),
-        (7, 3195901860),
-        (8, 84998978956),
+    let tests = vec![
+        1u64,
+        20u64,
+        400u64,
+        8902u64,
+        197281u64,
+        4865609u64,
+        119060324u64,
+        3195901860u64,  // depth 7
+        84998978956u64, // depth 8
     ];
 
-    perft_test_wrapper(
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        DEFAULT_DEPTH,
-        &tests,
-    );
+    let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
+    perft_test_wrapper("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", depth, &tests);
 });
 
 named_test!(perft_test_position2, {
-    let tests = [
-        (0, 1),
-        (1, 48),
-        (2, 2039),
-        (3, 97862),
-        (4, 4085603),
-        (5, 193690690),
-        (6, 8031647685),
-        (0, 1u64),
-        (0, 1u64),
-    ];
+    let tests = vec![1u64, 48u64, 2039u64, 97862u64, 4085603u64, 193690690u64, 8031647685u64];
 
+    let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
     perft_test_wrapper(
         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-        DEFAULT_DEPTH,
+        depth,
         &tests,
     );
 });
 
 named_test!(test_position3, {
-    let tests = [
-        (0, 1),
-        (1, 14),
-        (2, 191),
-        (3, 2812),
-        (4, 43238),
-        (5, 674624),
-        (6, 11030083),
-        (7, 178633661),
-        (8, 3009794393u64),
+    let tests = vec![
+        1u64,
+        14u64,
+        191u64,
+        2812u64,
+        43238u64,
+        674624u64,
+        11030083u64,
+        178633661u64,  // depth 7
+        3009794393u64, // depth 8
     ];
 
-    perft_test_wrapper("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", DEFAULT_DEPTH, &tests);
+    let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
+    perft_test_wrapper("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", depth, &tests);
 });
 
 named_test!(test_position4, {
-    let tests = [
-        (0, 1),
-        (1, 6),
-        (2, 264),
-        (3, 9467),
-        (4, 422333),
-        (5, 15833292),
-        (6, 706045033),
-        (0, 1u64),
-        (0, 1u64),
-    ];
+    let tests = vec![1, 6, 264, 9467, 422333, 15833292, 706045033];
 
+    let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
     perft_test_wrapper(
         "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1",
-        DEFAULT_DEPTH,
+        depth,
         &tests,
     );
 });
 
 named_test!(test_position5, {
-    let tests = [
-        (0, 1),
-        (1, 44),
-        (2, 1486),
-        (3, 62379),
-        (4, 2103487),
-        (5, 89941194),
-        (0, 1u64), // No known results for depth 6
-        (0, 1u64), // No known results for depth 7
-        (0, 1u64), // No known results for depth 8
-    ];
+    let tests = vec![1u64, 44u64, 1486u64, 62379u64, 2103487u64, 89941194u64];
 
-    perft_test_wrapper(
-        "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
-        DEFAULT_DEPTH,
-        &tests,
-    );
+    let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
+    perft_test_wrapper("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", depth, &tests);
 });
 
 named_test!(test_position6, {
-    let tests = [
-        (0, 1),
-        (1, 46),
-        (2, 2079),
-        (3, 89890),
-        (4, 3894594),
-        (5, 164075551),
-        (6, 6923051137),
-        (7, 287188994746),
-        (8, 11923589843526u64),
+    let tests = vec![
+        1u64,
+        46u64,
+        2079u64,
+        89890u64,
+        3894594u64,
+        164075551u64,
+        6923051137u64,
+        287188994746u64,
+        // 11923589843526u64,
     ];
 
+    // depth 7 takes too long
+    let depth = DEFAULT_DEPTH.min(6);
     perft_test_wrapper(
         "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
-        DEFAULT_DEPTH,
+        depth,
         &tests,
     );
 });

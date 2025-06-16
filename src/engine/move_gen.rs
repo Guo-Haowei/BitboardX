@@ -20,14 +20,9 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
 
     for i in start..=end {
         let piece = Piece::from(i);
-        let mut bb = pos.bitboards[i as usize];
 
-        while bb.any() {
-            let sq = bb.first_nonzero_sq();
-
-            generator::pseudo_legal_moves_from_sq(pos, sq, piece, &mut move_list);
-
-            bb.remove_first_nonzero_sq();
+        for sq in pos.bitboards[i as usize].iter() {
+            generator::pseudo_legal_moves_src_sq(pos, sq, piece, &mut move_list);
         }
     }
 
@@ -64,10 +59,8 @@ pub fn calc_attack_map_impl(
     let mut attack_map = BitBoard::new();
 
     let color = piece.color();
-    let mut bb = pos.bitboards[piece.as_usize()];
-    while bb.any() {
-        let sq = bb.first_nonzero_sq();
-        let attack_mask = generator::attack_mask_from_sq(pos, sq, piece);
+    for sq in pos.bitboards[piece.as_usize()].iter() {
+        let attack_mask = generator::attack_mask_src_sq(pos, sq, piece);
 
         if attack_mask.test(opponent_king.as_u8()) {
             debug_assert!(pos.occupancies[color.opponent().as_usize()].test(opponent_king.as_u8()));
@@ -77,8 +70,6 @@ pub fn calc_attack_map_impl(
         }
 
         attack_map |= attack_mask;
-
-        bb.remove_first_nonzero_sq();
     }
 
     attack_map

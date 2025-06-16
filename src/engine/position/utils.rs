@@ -74,10 +74,10 @@ pub fn parse_castling(input: &str) -> Result<u8, &'static str> {
     let mut castling = 0;
     for c in input.chars() {
         match c {
-            'K' => castling |= MoveFlags::K,
-            'Q' => castling |= MoveFlags::Q,
-            'k' => castling |= MoveFlags::k,
-            'q' => castling |= MoveFlags::q,
+            'K' => castling |= CastlingRight::K,
+            'Q' => castling |= CastlingRight::Q,
+            'k' => castling |= CastlingRight::k,
+            'q' => castling |= CastlingRight::q,
             _ => return Err("Invalid castling rights"),
         }
     }
@@ -127,9 +127,9 @@ mod test {
 
     #[test]
     fn test_parse_castling() {
-        assert_eq!(parse_castling("KQkq").unwrap(), MoveFlags::KQkq);
-        assert_eq!(parse_castling("KQ").unwrap(), MoveFlags::KQ);
-        assert_eq!(parse_castling("kq").unwrap(), MoveFlags::kq);
+        assert_eq!(parse_castling("KQkq").unwrap(), CastlingRight::KQkq);
+        assert_eq!(parse_castling("KQ").unwrap(), CastlingRight::KQ);
+        assert_eq!(parse_castling("kq").unwrap(), CastlingRight::kq);
         assert_eq!(parse_castling("-").unwrap(), 0);
         assert!(parse_castling("X").is_err());
     }

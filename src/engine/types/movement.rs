@@ -4,7 +4,7 @@ use super::square::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum Castling {
+pub enum CastlingType {
     WhiteKingSide,
     WhiteQueenSide,
     BlackKingSide,
@@ -12,14 +12,14 @@ pub enum Castling {
     None,
 }
 
-pub struct MoveFlags;
+pub struct CastlingRight;
 
 #[allow(non_upper_case_globals)]
-impl MoveFlags {
-    pub const K: u8 = 1u8 << Castling::WhiteKingSide as u8;
-    pub const Q: u8 = 1u8 << Castling::WhiteQueenSide as u8;
-    pub const k: u8 = 1u8 << Castling::BlackKingSide as u8;
-    pub const q: u8 = 1u8 << Castling::BlackQueenSide as u8;
+impl CastlingRight {
+    pub const K: u8 = 1u8 << CastlingType::WhiteKingSide as u8;
+    pub const Q: u8 = 1u8 << CastlingType::WhiteQueenSide as u8;
+    pub const k: u8 = 1u8 << CastlingType::BlackKingSide as u8;
+    pub const q: u8 = 1u8 << CastlingType::BlackQueenSide as u8;
     pub const KQ: u8 = Self::K | Self::Q;
     pub const kq: u8 = Self::k | Self::q;
     pub const KQkq: u8 = Self::KQ | Self::kq;
@@ -61,14 +61,14 @@ impl Move {
     }
 
     pub fn new(
-        from_sq: Square,
-        to_sq: Square,
+        src_sq: Square,
+        dst_sq: Square,
         move_type: MoveType,
         promotion: Option<PieceType>,
     ) -> Self {
         let mut data = 0u16;
-        data |= from_sq.as_u16();
-        data |= to_sq.as_u16() << 6;
+        data |= src_sq.as_u16();
+        data |= dst_sq.as_u16() << 6;
         data |= (move_type as u16) << 12;
 
         if let Some(promo) = promotion {
@@ -94,11 +94,11 @@ impl Move {
         self.0 == 0
     }
 
-    pub fn from_sq(&self) -> Square {
+    pub fn src_sq(&self) -> Square {
         Square((self.0 & Self::SQUARE_MASK) as u8)
     }
 
-    pub fn to_sq(&self) -> Square {
+    pub fn dst_sq(&self) -> Square {
         Square(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
     }
 
@@ -120,8 +120,8 @@ impl Move {
     }
 
     pub fn to_string(&self) -> String {
-        let from = self.from_sq();
-        let to = self.to_sq();
+        let from = self.src_sq();
+        let to = self.dst_sq();
         let promo = match self.get_promotion() {
             Some(PieceType::Knight) => "n",
             Some(PieceType::Bishop) => "b",
@@ -135,8 +135,8 @@ impl Move {
 
     pub fn get_en_passant_capture(&self) -> Square {
         debug_assert!(self.get_type() == MoveType::EnPassant);
-        let (_, from_rank) = self.from_sq().file_rank();
-        let (to_file, _) = self.to_sq().file_rank();
+        let (_, from_rank) = self.src_sq().file_rank();
+        let (to_file, _) = self.dst_sq().file_rank();
 
         Square::make(to_file, from_rank)
     }
@@ -169,7 +169,7 @@ impl MoveList {
         self.moves.iter().take(self.count)
     }
 
-    pub fn count(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.count
     }
 
@@ -190,8 +190,8 @@ mod tests {
     #[test]
     fn castling_move_creation() {
         let m = Move::new(Square::E2, Square::E4, MoveType::Castling, None);
-        assert_eq!(m.from_sq(), Square::E2);
-        assert_eq!(m.to_sq(), Square::E4);
+        assert_eq!(m.src_sq(), Square::E2);
+        assert_eq!(m.dst_sq(), Square::E4);
         assert_eq!(m.get_type(), MoveType::Castling);
         assert_eq!(m.get_promotion(), None);
     }
@@ -199,8 +199,8 @@ mod tests {
     #[test]
     fn promotion_move_creation() {
         let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::Queen));
-        assert_eq!(m.from_sq(), Square::E7);
-        assert_eq!(m.to_sq(), Square::E8);
+        assert_eq!(m.src_sq(), Square::E7);
+        assert_eq!(m.dst_sq(), Square::E8);
         assert_eq!(m.get_type(), MoveType::Promotion);
         assert_eq!(m.get_promotion(), Some(PieceType::Queen));
 

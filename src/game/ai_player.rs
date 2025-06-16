@@ -19,7 +19,7 @@ impl Player for AiPlayer {
                 let moves = move_gen::legal_moves(&pos);
 
                 let n = self.rand.next_u32(&fen);
-                let n = n % moves.count() as u32;
+                let n = n % moves.len() as u32;
                 let m = moves.get(n as usize).unwrap().to_string();
 
                 PlayerAction::Ready(m)

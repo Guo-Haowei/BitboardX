@@ -71,14 +71,6 @@ impl BitBoard {
         Square(self.0.trailing_zeros() as u8)
     }
 
-    /// clear the least-significant bit from a bitboard
-    ///           A = 0b1001001000
-    ///       A - 1 = 0b1001000111
-    /// A & (A - 1) = 0b1001000000
-    pub fn remove_first_nonzero_sq(&mut self) {
-        self.0 &= self.0 - 1; // Clear the least significant bit
-    }
-
     pub fn to_string(&self) -> String {
         let mut s = String::new();
         for rank in (0..8).rev() {
@@ -90,6 +82,32 @@ impl BitBoard {
             s.push('\n');
         }
         s
+    }
+
+    pub fn iter(&self) -> BitBoardIter {
+        BitBoardIter { remaining: self.0 }
+    }
+}
+
+pub struct BitBoardIter {
+    remaining: u64,
+}
+
+impl Iterator for BitBoardIter {
+    type Item = Square;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining == 0 {
+            None
+        } else {
+            let tz = self.remaining.trailing_zeros();
+            // clear the least-significant bit from a bitboard
+            //           A = 0b1001001000
+            //       A - 1 = 0b1001000111
+            // A & (A - 1) = 0b1001000000
+            self.remaining &= self.remaining - 1;
+            Some(Square(tz as u8))
+        }
     }
 }
 
@@ -144,5 +162,25 @@ impl fmt::Display for BitBoard {
             write!(f, "\n")?
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bitboard_iterator() {
+        let bb = BitBoard::from(0b1110000111100010);
+
+        let mut idx = 0;
+        let squares = [1, 5, 6, 7, 8, 13, 14, 15];
+
+        for sq in bb.iter() {
+            assert!(bb.test(sq.0));
+            assert_eq!(sq.0, squares[idx], "Square mismatch at index {}", idx);
+            idx += 1;
+        }
     }
 }

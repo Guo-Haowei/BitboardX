@@ -46,7 +46,7 @@ use super::super::utils;
 /// | Checker is sliding piece  | Can be blocked                      |
 
 pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
-    let mover = pos.get_piece_at(m.from_sq());
+    let mover = pos.get_piece_at(m.src_sq());
     let mover_type = mover.get_type();
     let mover_color = pos.side_to_move;
     debug_assert!(mover_type != PieceType::None, "Mover must be a valid piece");
@@ -57,18 +57,18 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
     let checker = &pos.checkers[mover_color.as_usize()];
     let checker_count = checker.count();
 
-    let from_sq = m.from_sq();
-    let to_sq = m.to_sq();
+    let src_sq = m.src_sq();
+    let dst_sq = m.dst_sq();
     // if move king, check if the destination square is safe
     if mover_type == PieceType::King {
         for i in 0..=1 {
             let checker = checker.get(i);
             if let Some(checker_sq) = checker {
-                if checker_sq != to_sq {
+                if checker_sq != dst_sq {
                     let checker = pos.get_piece_at(checker_sq);
                     match checker.get_type() {
                         PieceType::Bishop | PieceType::Rook | PieceType::Queen => {
-                            if from_sq.same_line(to_sq, checker_sq) {
+                            if src_sq.same_line(dst_sq, checker_sq) {
                                 return false; // can't move the king along the line of the checker, unless it's a capture
                             }
                         }
@@ -78,24 +78,24 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
             }
         }
 
-        let to_sq_under_attack = pos.attack_mask[attacker_color.as_usize()].test(to_sq.as_u8());
+        let dst_sq_under_attack = pos.attack_mask[attacker_color.as_usize()].test(dst_sq.as_u8());
         assert!(
-            !to_sq_under_attack,
+            !dst_sq_under_attack,
             "this should be filtered when generating the mask, put an assert here for safety"
         );
-        return !to_sq_under_attack;
+        return !dst_sq_under_attack;
     }
 
     if checker_count == 2 {
         return false;
     }
 
-    let is_pinned = pos.is_square_pinned(from_sq, mover_color);
+    let is_pinned = pos.is_square_pinned(src_sq, mover_color);
     let king_sq = pos.get_king_square(mover_color);
     if is_pinned {
         // if there's a checker, the pinned piece can't be moved
         match checker_count {
-            0 => return from_sq.same_line(to_sq, king_sq), // No checkers, the move is legal.
+            0 => return src_sq.same_line(dst_sq, king_sq), // No checkers, the move is legal.
             1 => return false, // if there's a checker, moving the pin won't help
             _ => panic!("There should be at most 1 checkers at this point"),
         }
@@ -111,7 +111,11 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
             }
             // if the move captures the checking piece, it is legal
             // otherwise if it blocks the check, it's still legal
-            if to_sq == checker_sq { true } else { to_sq.same_line_inclusive(king_sq, checker_sq) }
+            if dst_sq == checker_sq {
+                true
+            } else {
+                dst_sq.same_line_inclusive(king_sq, checker_sq)
+            }
         }
         None => {
             if m.get_type() == MoveType::EnPassant {
@@ -172,7 +176,7 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bo
     debug_assert!(m.get_type() == MoveType::EnPassant, "Move must be an en passant move");
 
     let captured_sq = m.get_en_passant_capture();
-    let (from_file, _) = m.from_sq().file_rank();
+    let (from_file, _) = m.src_sq().file_rank();
     let (captured_file, captured_rank) = captured_sq.file_rank();
 
     debug_assert!(

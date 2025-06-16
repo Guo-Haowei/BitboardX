@@ -113,10 +113,10 @@ fn perft_test(pos: &mut Position, depth: u8, max_depth: u8) -> u64 {
     let mut nodes = 0u64;
     let should_print = depth == max_depth;
     for m in move_list.iter() {
-        let snapshot = pos.make_move(m.clone());
+        let undo_state = pos.make_move(m.clone());
         let count = perft_test(pos, depth - 1, max_depth);
         nodes += count;
-        pos.unmake_move(m.clone(), &snapshot);
+        pos.unmake_move(m.clone(), &undo_state);
 
         if should_print {
             eprintln!("{}: {}", m.to_string(), count);
