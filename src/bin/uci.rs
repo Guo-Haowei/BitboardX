@@ -1,4 +1,4 @@
-use super::engine::{move_gen, name, position::Position};
+use bitboard_x::engine::{move_gen, name, position::Position, utils};
 use rustyline::{DefaultEditor, Result};
 use std::io::{self, Write};
 
@@ -11,9 +11,7 @@ impl UCI {
         Self { pos: Position::new() }
     }
 
-    pub fn shutdown(&mut self) {
-        // Placeholder for any cleanup logic if needed
-    }
+    pub fn shutdown(&mut self) {}
 
     pub fn cmd_uci(&self, out: &mut io::Stdout) {
         writeln!(out, "id name {}", name()).unwrap();
@@ -99,6 +97,11 @@ impl UCI {
             }
         }
     }
+
+    pub fn cmd_d(&self, out: &mut io::Stdout) {
+        writeln!(out, "{}", utils::debug_string(&self.pos)).unwrap();
+        writeln!(out, "fen: {}", self.pos.fen()).unwrap();
+    }
 }
 
 fn perft_test(pos: &mut Position, depth: u8, max_depth: u8) -> u64 {
@@ -128,7 +131,7 @@ fn perft_test(pos: &mut Position, depth: u8, max_depth: u8) -> u64 {
     nodes
 }
 
-pub fn uci_main() -> Result<()> {
+fn main() -> Result<()> {
     eprintln!("{}", name());
     let mut stdout = io::stdout();
     let mut uci = UCI::new();
@@ -150,6 +153,7 @@ pub fn uci_main() -> Result<()> {
                     "isready" => uci.cmd_isready(&mut stdout),
                     "position" => uci.cmd_position(&mut stdout, args),
                     "go" => uci.cmd_go(&mut stdout, args),
+                    "d" => uci.cmd_d(&mut stdout),
                     "exit" | "quit" => {
                         uci.shutdown();
                         break;
