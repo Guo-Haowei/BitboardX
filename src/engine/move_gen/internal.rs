@@ -1,4 +1,4 @@
-use super::super::board::BitBoard;
+use crate::engine::types::bitboard::BitBoard;
 
 pub const NORTH: i32 = 8;
 pub const SOUTH: i32 = -NORTH;

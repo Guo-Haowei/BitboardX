@@ -7,10 +7,10 @@
 /// Bitboards are commonly used for fast move generation and board representation
 /// in chess engines, allowing bitwise operations to perform bulk computations.
 ///
-use super::super::types::Piece;
-use super::square::Square;
 use std::fmt;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
+
+use crate::engine::types::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct BitBoard(u64);

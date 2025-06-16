@@ -1,6 +1,5 @@
 use crate::engine::position::CheckerList;
 
-use super::board::*;
 use super::position::Position;
 use super::types::*;
 

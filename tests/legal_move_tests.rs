@@ -1,5 +1,5 @@
 use bitboard_x::engine::position::Position;
-use bitboard_x::engine::{board::*, move_gen};
+use bitboard_x::engine::{move_gen, types::*};
 use bitboard_x::named_test;
 
 use colored::*;

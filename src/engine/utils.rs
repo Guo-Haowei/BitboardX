@@ -1,8 +1,7 @@
-use super::board::*;
 use super::position::Position;
-use super::types::*;
+use crate::engine::types::*;
 
-pub fn parse_move(input: &str) -> Option<(Square, Square)> {
+pub fn parse_move(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
     let len = input.len();
     match len {
         4 | 5 => {
@@ -18,10 +17,17 @@ pub fn parse_move(input: &str) -> Option<(Square, Square)> {
             let to = Square::make(f2, r2);
 
             if len == 5 {
-                panic!("Promotion parsing not implemented yet");
+                let promotion = match input.chars().nth(4)? {
+                    'q' | 'Q' => Some(PieceType::Queen),
+                    'r' | 'R' => Some(PieceType::Rook),
+                    'b' | 'B' => Some(PieceType::Bishop),
+                    'n' | 'N' => Some(PieceType::Knight),
+                    _ => return None,
+                };
+                return Some((from, to, promotion));
             }
 
-            Some((from, to))
+            Some((from, to, None))
         }
         _ => return None,
     }
@@ -102,10 +108,11 @@ mod test {
 
     #[test]
     fn test_parse_move() {
-        assert_eq!(parse_move("e2e4"), Some((Square::E2, Square::E4)));
-        assert_eq!(parse_move("a7a8"), Some((Square::A7, Square::A8)));
-        assert_eq!(parse_move("h1h2"), Some((Square::H1, Square::H2)));
-        assert_eq!(parse_move("d4d5"), Some((Square::D4, Square::D5)));
+        assert_eq!(parse_move("e2e4"), Some((Square::E2, Square::E4, None)));
+        assert_eq!(parse_move("a7a8"), Some((Square::A7, Square::A8, None)));
+        assert_eq!(parse_move("h1h2"), Some((Square::H1, Square::H2, None)));
+        assert_eq!(parse_move("d4d5"), Some((Square::D4, Square::D5, None)));
+        assert_eq!(parse_move("d7d8q"), Some((Square::D7, Square::D8, Some(PieceType::Queen))));
         assert_eq!(parse_move("z1z2"), None);
         assert_eq!(parse_move("e9e4"), None);
         assert_eq!(parse_move("e2e"), None);
