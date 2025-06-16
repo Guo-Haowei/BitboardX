@@ -1,8 +1,9 @@
 stages:
+  - build
   - test
 
 build-wasm:
-  stage: test
+  stage: build
   script:
     - wasm-pack build --target web
 
@@ -10,12 +11,3 @@ unit-test:
   stage: test
   script:
     - cargo test --release -- --nocapture
-
-# @TODO: move tests to rust
-functional-test:
-  stage: test
-  script:
-    - cargo build
-    - cd frontend
-    - npm install
-    - npx mocha

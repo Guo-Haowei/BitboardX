@@ -40,7 +40,7 @@ pub fn legal_moves(pos: &Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
     for m in pseudo_moves.iter() {
-        if validation::is_pseudo_move_legal(pos, m) {
+        if validation::is_pseudo_move_legal(pos, m.clone()) {
             moves.add(m.clone());
         }
     }
@@ -48,7 +48,7 @@ pub fn legal_moves(pos: &Position) -> MoveList {
     moves
 }
 
-pub fn is_pseudo_move_legal(pos: &Position, m: &Move) -> bool {
+pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
     validation::is_pseudo_move_legal(pos, m)
 }
 
