@@ -17,7 +17,7 @@ pub struct ConsolePlayer;
 impl Player for ConsolePlayer {
     fn request_move(&mut self) {}
 
-    fn poll_move(&mut self, _pos: String) -> PlayerAction {
+    fn poll_move(&mut self, _fen: String) -> PlayerAction {
         let mut input = String::new();
 
         match io::stdin().read_line(&mut input) {
@@ -34,9 +34,15 @@ impl Player for ConsolePlayer {
     }
 }
 
-// pub struct WebPlayer {
-//     selected_move: Option<Move>,
-// }
+pub struct NullPlayer;
+
+impl Player for NullPlayer {
+    fn request_move(&mut self) {}
+
+    fn poll_move(&mut self, _fen: String) -> PlayerAction {
+        panic!("NullPlayer does not support moves");
+    }
+}
 
 // impl WebPlayer {
 //     pub fn inject_move(&mut self, mv: Move) {
@@ -52,18 +58,6 @@ impl Player for ConsolePlayer {
 //     fn poll_move(&mut self) -> PlayerAction {
 //         // self.selected_move.take()
 //         PlayerAction::Pending
-//     }
-// }
-
-// pub struct AiPlayer;
-
-// impl Player for AiPlayer {
-//     fn request_move(&mut self, game: &Game) {
-//         self.next_move = Some(minimax(game.pos.clone()));
-//     }
-
-//     fn poll_move(&mut self) -> Option<Move> {
-//         self.next_move.take()
 //     }
 // }
 

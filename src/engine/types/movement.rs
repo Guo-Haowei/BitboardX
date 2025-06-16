@@ -172,6 +172,13 @@ impl MoveList {
     pub fn count(&self) -> usize {
         self.count
     }
+
+    pub fn get(&self, index: usize) -> Option<Move> {
+        if index >= self.count {
+            return None;
+        }
+        Some(self.moves[index])
+    }
 }
 
 #[cfg(test)]

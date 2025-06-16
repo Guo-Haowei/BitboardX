@@ -3,35 +3,43 @@ use crate::engine::position::*;
 use crate::engine::types::{Move, MoveList};
 use crate::engine::utils;
 
-pub mod player;
+use super::player::*;
 
 // @TODO: rename to GameState, gonna need a GameManager soon
-pub struct Game {
+pub struct GameState {
     pos: Position,
 
     legal_moves: MoveList,
 
-    players: [Box<dyn player::Player>; 2],
+    players: [Box<dyn Player>; 2],
 
     // undo and redo
     undo_stack: Vec<(Move, Snapshot)>,
     redo_stack: Vec<(Move, Snapshot)>,
 }
 
-impl Game {
+impl GameState {
     pub fn new() -> Self {
         let pos = Position::new();
 
         let mut game = Self {
             pos,
             legal_moves: MoveList::new(),
-            players: [Box::new(player::ConsolePlayer), Box::new(player::ConsolePlayer)],
+            players: [Box::new(NullPlayer), Box::new(NullPlayer)],
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         };
 
         game.post_move();
         game
+    }
+
+    pub fn set_white(&mut self, player: Box<dyn Player>) {
+        self.players[0] = player;
+    }
+
+    pub fn set_black(&mut self, player: Box<dyn Player>) {
+        self.players[0] = player;
     }
 
     pub fn pos(&self) -> &Position {
@@ -42,7 +50,7 @@ impl Game {
         self.pos.fen()
     }
 
-    pub fn active_player(&mut self) -> &mut dyn player::Player {
+    pub fn active_player(&mut self) -> &mut dyn Player {
         let side_to_move = self.pos.side_to_move.as_usize();
         &mut *self.players[side_to_move]
     }
@@ -109,26 +117,6 @@ impl Game {
         self.legal_moves = move_gen::legal_moves(&self.pos);
     }
 }
-
-// pub struct Game {
-//     pub pos: Position,
-//     pub players: [Box<dyn Player>; 2],
-//     pub turn: Color,
-//     pub history: Vec<Move>,
-// }
-
-// impl Game {
-//     pub fn tick(&mut self) {
-//         let current = &mut self.players[self.turn as usize];
-//         current.request_move(self);
-
-//         if let Some(mv) = current.poll_move() {
-//             self.pos.make_move(&mv);
-//             self.history.push(mv);
-//             self.turn = self.turn.flip();
-//         }
-//     }
-// }
 
 // #[wasm_bindgen]
 // pub struct WasmGame {

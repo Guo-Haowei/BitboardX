@@ -1,13 +1,12 @@
 use std::io::{self, Write};
 
 use bitboard_x::engine::*;
-use bitboard_x::game::player::*;
 use bitboard_x::game::*;
 
 fn main() {
-    let mut game = Game::new();
+    let mut game = GameState::new();
 
-    loop {
+    'mainloop: loop {
         println!("{}", utils::debug_string(game.pos()));
 
         if game.game_over() {
@@ -15,7 +14,7 @@ fn main() {
             break;
         }
 
-        'mainloop: loop {
+        loop {
             print!("Please enter your move (e.g., e2e4):");
             io::stdout().flush().unwrap();
             let action = {
@@ -35,7 +34,8 @@ fn main() {
                         println!("Invalid move: {}", mv);
                     }
                 }
-                PlayerAction::Error(_err) => {
+                PlayerAction::Error(err) => {
+                    println!("Error occurred: {}", err);
                     break 'mainloop;
                 }
             }
