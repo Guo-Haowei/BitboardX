@@ -34,26 +34,39 @@ impl Game {
         game
     }
 
-    pub fn position(&self) -> &Position {
+    pub fn pos(&self) -> &Position {
         &self.pos
     }
 
-    pub fn tick(&mut self) {
-        let side_to_move = self.pos.side_to_move.as_usize();
-        loop {
-            // request move
-            self.players[side_to_move].request_move();
+    pub fn fen(&self) -> String {
+        self.pos.fen()
+    }
 
-            match self.players[side_to_move].poll_move() {
-                Some(m) => {
-                    if self.execute(m) {
-                        return;
-                    }
-                    println!("Invalid move, try again.");
-                }
-                None => continue, // no move available, try again
+    pub fn active_player(&mut self) -> &mut dyn player::Player {
+        let side_to_move = self.pos.side_to_move.as_usize();
+        &mut *self.players[side_to_move]
+    }
+
+    pub fn execute(&mut self, m: &String) -> bool {
+        let m = utils::parse_move(m.as_str());
+        if m.is_none() {
+            return false;
+        }
+
+        let (from, to, promtion) = m.unwrap();
+        let legal_moves = move_gen::legal_moves(&self.pos);
+        for m in legal_moves.iter() {
+            if m.from_sq() == from && m.to_sq() == to && m.get_promotion() == promtion {
+                let m = m.clone();
+                let snapshot = self.pos.make_move(m);
+                self.post_move();
+
+                self.undo_stack.push((m, snapshot));
+                self.redo_stack.clear();
+                return true;
             }
         }
+        return false;
     }
 
     pub fn game_over(&self) -> bool {
@@ -94,28 +107,6 @@ impl Game {
 
     fn post_move(&mut self) {
         self.legal_moves = move_gen::legal_moves(&self.pos);
-    }
-
-    fn execute(&mut self, m: String) -> bool {
-        let m = utils::parse_move(m.as_str());
-        if m.is_none() {
-            return false;
-        }
-
-        let (from, to) = m.unwrap();
-        let legal_moves = move_gen::legal_moves(&self.pos);
-        for m in legal_moves.iter() {
-            if m.from_sq() == from && m.to_sq() == to {
-                let m = m.clone();
-                let snapshot = self.pos.make_move(m);
-                self.post_move();
-
-                self.undo_stack.push((m, snapshot));
-                self.redo_stack.clear();
-                return true;
-            }
-        }
-        return false;
     }
 }
 

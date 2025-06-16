@@ -319,11 +319,11 @@ impl Position {
             return false;
         }
 
-        let (from, to) = m.unwrap();
+        let (from, to, promotion) = m.unwrap();
 
         let legal_moves = move_gen::legal_moves(&self);
         for m in legal_moves.iter() {
-            if m.from_sq() == from && m.to_sq() == to {
+            if m.from_sq() == from && m.to_sq() == to && m.get_promotion() == promotion {
                 self.make_move(m.clone());
                 return true;
             }
