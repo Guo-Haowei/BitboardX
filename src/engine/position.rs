@@ -44,7 +44,7 @@ pub struct UndoState {
     pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
-    pub to_piece: Piece,
+    pub dst_piece: Piece,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -291,7 +291,7 @@ mod tests {
         assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
 
         assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, MoveFlags::KQkq);
+        assert_eq!(pos.castling, CastlingRight::KQkq);
         assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
@@ -304,7 +304,7 @@ mod tests {
         let pos = Position::from(FEN).unwrap();
 
         assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, MoveFlags::K | MoveFlags::q);
+        assert_eq!(pos.castling, CastlingRight::K | CastlingRight::q);
         assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 6);
         assert_eq!(pos.fullmove_number, 7);

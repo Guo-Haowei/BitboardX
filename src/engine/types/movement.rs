@@ -4,7 +4,7 @@ use super::square::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum Castling {
+pub enum CastlingType {
     WhiteKingSide,
     WhiteQueenSide,
     BlackKingSide,
@@ -12,14 +12,14 @@ pub enum Castling {
     None,
 }
 
-pub struct MoveFlags;
+pub struct CastlingRight;
 
 #[allow(non_upper_case_globals)]
-impl MoveFlags {
-    pub const K: u8 = 1u8 << Castling::WhiteKingSide as u8;
-    pub const Q: u8 = 1u8 << Castling::WhiteQueenSide as u8;
-    pub const k: u8 = 1u8 << Castling::BlackKingSide as u8;
-    pub const q: u8 = 1u8 << Castling::BlackQueenSide as u8;
+impl CastlingRight {
+    pub const K: u8 = 1u8 << CastlingType::WhiteKingSide as u8;
+    pub const Q: u8 = 1u8 << CastlingType::WhiteQueenSide as u8;
+    pub const k: u8 = 1u8 << CastlingType::BlackKingSide as u8;
+    pub const q: u8 = 1u8 << CastlingType::BlackQueenSide as u8;
     pub const KQ: u8 = Self::K | Self::Q;
     pub const kq: u8 = Self::k | Self::q;
     pub const KQkq: u8 = Self::KQ | Self::kq;
