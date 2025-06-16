@@ -1,0 +1,11 @@
+#V2
+d
+quit
+q
+position
+position startpos
+d
+position startpos e2e4
+position startpos moves e2e4
+d
+quit

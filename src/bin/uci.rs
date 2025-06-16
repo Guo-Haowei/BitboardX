@@ -135,17 +135,21 @@ fn main() -> Result<()> {
     let mut stdout = io::stdout();
     let mut uci = UCI::new();
     let mut rl = DefaultEditor::new()?;
+    let _ = rl.load_history("history.txt").is_err();
 
     loop {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
                 let input = line.trim();
+
+                if !input.is_empty() {
+                    let _ = rl.add_history_entry(line.as_str());
+                }
+
                 let mut parts = input.splitn(2, ' ');
                 let cmd = parts.next().unwrap();
                 let args = parts.next().unwrap_or("");
-
-                rl.add_history_entry(line.as_str())?;
 
                 match cmd {
                     "uci" => uci.cmd_uci(&mut stdout),
@@ -153,7 +157,7 @@ fn main() -> Result<()> {
                     "position" => uci.cmd_position(&mut stdout, args),
                     "go" => uci.cmd_go(&mut stdout, args),
                     "d" => uci.cmd_d(&mut stdout),
-                    "exit" | "quit" => {
+                    "q" | "quit" => {
                         uci.shutdown();
                         break;
                     }
@@ -166,5 +170,6 @@ fn main() -> Result<()> {
         }
     }
 
+    rl.save_history("history.txt")?;
     Ok(())
 }
