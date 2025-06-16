@@ -81,9 +81,15 @@ fn perft_test_wrapper(fen: &str, depth: u8, expectations: &Vec<u64>) {
 
 named_test!(perft_initial_position, {
     let tests = vec![
-        1, 20, 400, 8902, 197281, 4865609, 119060324,
-        3195901860, // depth 7
-                   // 84998978956, //
+        1u64,
+        20u64,
+        400u64,
+        8902u64,
+        197281u64,
+        4865609u64,
+        119060324u64,
+        3195901860u64,  // depth 7
+        84998978956u64, // depth 8
     ];
 
     let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
@@ -91,7 +97,7 @@ named_test!(perft_initial_position, {
 });
 
 named_test!(perft_test_position2, {
-    let tests = vec![1, 48, 2039, 97862, 4085603, 193690690, 8031647685];
+    let tests = vec![1u64, 48u64, 2039u64, 97862u64, 4085603u64, 193690690u64, 8031647685u64];
 
     let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
     perft_test_wrapper(
@@ -103,15 +109,15 @@ named_test!(perft_test_position2, {
 
 named_test!(test_position3, {
     let tests = vec![
-        1,
-        14,
-        191,
-        2812,
-        43238,
-        674624,
-        11030083,
-        178633661, // depth 7
-        3009794393u64,
+        1u64,
+        14u64,
+        191u64,
+        2812u64,
+        43238u64,
+        674624u64,
+        11030083u64,
+        178633661u64,  // depth 7
+        3009794393u64, // depth 8
     ];
 
     let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
@@ -130,7 +136,7 @@ named_test!(test_position4, {
 });
 
 named_test!(test_position5, {
-    let tests = vec![1, 44, 1486, 62379, 2103487, 89941194];
+    let tests = vec![1u64, 44u64, 1486u64, 62379u64, 2103487u64, 89941194u64];
 
     let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
     perft_test_wrapper("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", depth, &tests);
@@ -138,9 +144,14 @@ named_test!(test_position5, {
 
 named_test!(test_position6, {
     let tests = vec![
-        1, 46, 2079, 89890, 3894594, 164075551,
-        6923051137,
-        // 287188994746,
+        1u64,
+        46u64,
+        2079u64,
+        89890u64,
+        3894594u64,
+        164075551u64,
+        6923051137u64,
+        287188994746u64,
         // 11923589843526u64,
     ];
 
