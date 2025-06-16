@@ -46,7 +46,7 @@ use super::super::utils;
 /// | Checker is sliding piece  | Can be blocked                      |
 
 pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
-    let mover = pos.get_piece_at(m.from_sq());
+    let mover = pos.get_piece_at(m.src_sq());
     let mover_type = mover.get_type();
     let mover_color = pos.side_to_move;
     debug_assert!(mover_type != PieceType::None, "Mover must be a valid piece");
@@ -57,8 +57,8 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
     let checker = &pos.checkers[mover_color.as_usize()];
     let checker_count = checker.count();
 
-    let from_sq = m.from_sq();
-    let to_sq = m.to_sq();
+    let from_sq = m.src_sq();
+    let to_sq = m.dst_sq();
     // if move king, check if the destination square is safe
     if mover_type == PieceType::King {
         for i in 0..=1 {
@@ -172,7 +172,7 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bo
     debug_assert!(m.get_type() == MoveType::EnPassant, "Move must be an en passant move");
 
     let captured_sq = m.get_en_passant_capture();
-    let (from_file, _) = m.from_sq().file_rank();
+    let (from_file, _) = m.src_sq().file_rank();
     let (captured_file, captured_rank) = captured_sq.file_rank();
 
     debug_assert!(

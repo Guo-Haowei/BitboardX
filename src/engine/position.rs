@@ -267,7 +267,7 @@ impl Position {
 
         let legal_moves = move_gen::legal_moves(&self);
         for m in legal_moves.iter() {
-            if m.from_sq() == from && m.to_sq() == to && m.get_promotion() == promotion {
+            if m.src_sq() == from && m.dst_sq() == to && m.get_promotion() == promotion {
                 self.make_move(m.clone());
                 return true;
             }

@@ -6,15 +6,18 @@ use crate::engine::types::{
     BitBoard, Color, FILE_A, FILE_H, PieceType, RANK_2, RANK_4, RANK_5, RANK_7,
 };
 
+// Assume passed in moves are legal
 pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
-    let src_sq = m.from_sq();
-    let dst_sq = m.to_sq();
+    let src_sq = m.src_sq();
+    let dst_sq = m.dst_sq();
     let src_piece = pos.get_piece_at(src_sq);
     let dst_piece = pos.get_piece_at(dst_sq);
     let src_type = src_piece.get_type();
     let src_piece_idx = src_piece.as_usize();
     let mover_type = m.get_type();
     let mover_color = src_piece.color();
+    let enemy_color = mover_color.opponent();
+    let is_pawn_move = src_type == PieceType::Pawn;
     debug_assert!(src_piece != Piece::NONE, "No piece found on 'from' square");
     debug_assert!(pos.side_to_move == mover_color, "Trying to move a piece of the wrong color");
 
@@ -35,7 +38,6 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
     };
 
     // -------------- Update Board Start --------------
-    do_move_ep(pos, m, src_piece);
 
     debug_assert!(pos.occupancies[pos.side_to_move.as_usize()].test(src_sq.as_u8()));
 
@@ -64,10 +66,24 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
             move_piece(&mut pos.bitboards[piece.as_usize()], from_sq, to_sq);
         }
         MoveType::Promotion => {
-            debug_assert!(src_type == PieceType::Pawn);
+            assert!(src_type == PieceType::Pawn);
             let promotion = Piece::get_piece(mover_color, m.get_promotion().unwrap());
             pos.bitboards[src_piece_idx].unset(dst_sq.as_u8()); // Remove the pawn from the board
             pos.bitboards[promotion.as_usize()].set(dst_sq.as_u8()); // Place the promoted piece on the board
+        }
+        MoveType::EnPassant => {
+            assert!(src_type == PieceType::Pawn, "En passant must be a pawn move");
+            let (_, src_rank) = src_sq.file_rank();
+            let (dst_file, _) = dst_sq.file_rank();
+            let enemy_sq = Square::make(dst_file, src_rank);
+            let enemy = Piece::get_piece(enemy_color, PieceType::Pawn);
+
+            debug_assert!(pos.get_piece_at(enemy_sq) == enemy);
+            debug_assert!(
+                pos.get_piece_at(dst_sq) == src_piece,
+                "attacking pawn is already moved to the destination square at this point"
+            );
+            pos.bitboards[enemy.as_usize()].unset(enemy_sq.as_u8());
         }
         _ => {}
     }
@@ -75,10 +91,10 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
     // -------------- Update Board End --------------
 
     pos.castling &= !disabled_castling;
-    pos.en_passant = update_en_passant_square(pos, m.from_sq(), m.to_sq(), src_piece);
+    pos.en_passant = update_en_passant_square(pos, m.src_sq(), m.dst_sq(), src_piece);
     pos.fullmove_number += if mover_color == Color::WHITE { 0 } else { 1 };
 
-    if captured_something || src_piece.get_type() != PieceType::Pawn {
+    if captured_something || is_pawn_move {
         pos.halfmove_clock = 0; // reset halfmove clock if a piece was captured or a non-pawn moved
     } else {
         pos.halfmove_clock += 1; // increment halfmove clock for a pawn move
@@ -90,7 +106,7 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
 }
 
 pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
-    let from = pos.get_piece_at(m.to_sq());
+    let from = pos.get_piece_at(m.dst_sq());
 
     undo_move_generic(pos, m, from, undo_state.dst_piece);
 
@@ -105,29 +121,11 @@ pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
     pos.restore(undo_state);
 }
 
-fn do_move_ep(pos: &mut Position, m: Move, src_piece: Piece) {
-    let (to_file, _) = m.to_sq().file_rank();
-
-    // check if it's an en passant capture
-    if m.get_type() == MoveType::EnPassant {
-        // capture the opponent's pawn passed en passant square
-        let (_, from_rank) = m.from_sq().file_rank();
-        let enemy_sq = Square::make(to_file, from_rank);
-        let enemy = Piece::get_piece(src_piece.color().opponent(), PieceType::Pawn);
-
-        debug_assert!(pos.get_piece_at(enemy_sq) == enemy);
-        debug_assert!(pos.get_piece_at(m.to_sq()) == Piece::NONE);
-
-        // Remove the captured pawn from the board
-        pos.bitboards[enemy.as_usize()].unset(enemy_sq.as_u8());
-    }
-}
-
 fn undo_move_ep(pos: &mut Position, m: Move, from: Piece) {
     if m.get_type() == MoveType::EnPassant {
         // Restore the captured pawn on the en passant square
-        let (to_file, _) = m.to_sq().file_rank();
-        let (_, from_rank) = m.from_sq().file_rank();
+        let (to_file, _) = m.dst_sq().file_rank();
+        let (_, from_rank) = m.src_sq().file_rank();
         let enemy_sq = Square::make(to_file, from_rank);
         let enemy = Piece::get_piece(from.color().opponent(), PieceType::Pawn);
 
@@ -145,13 +143,13 @@ fn move_piece(board: &mut BitBoard, src_sq: Square, dst_sq: Square) {
 }
 
 fn undo_move_generic(pos: &mut Position, m: Move, from: Piece, to: Piece) {
-    let from_sq = m.from_sq();
-    let to_sq = m.to_sq();
+    let from_sq = m.src_sq();
+    let to_sq = m.dst_sq();
 
     move_piece(&mut pos.bitboards[from.as_usize()], to_sq, from_sq);
 
     if to != Piece::NONE {
-        pos.bitboards[to.as_usize()].set(m.to_sq().as_u8()); // Place captured piece back on 'to' square
+        pos.bitboards[to.as_usize()].set(m.dst_sq().as_u8()); // Place captured piece back on 'to' square
     }
 }
 
@@ -162,8 +160,8 @@ const CASTLING_ROOK_SQUARES: [(Piece, Square, Square); 4] = [
     (Piece::B_ROOK, Square::A8, Square::D8), // Black Queen-side
 ];
 
-fn castling_type(from: Piece, from_sq: Square, to_sq: Square) -> CastlingType {
-    match (from, from_sq, to_sq) {
+fn castling_type(src_piece: Piece, src_sq: Square, dst_sq: Square) -> CastlingType {
+    match (src_piece, src_sq, dst_sq) {
         (Piece::W_KING, Square::E1, Square::G1) => CastlingType::WhiteKingSide,
         (Piece::W_KING, Square::E1, Square::C1) => CastlingType::WhiteQueenSide,
         (Piece::B_KING, Square::E8, Square::G8) => CastlingType::BlackKingSide,
@@ -178,7 +176,7 @@ fn undo_promotion(pos: &mut Position, m: Move) {
     }
 
     // from square is the square of the promoted piece
-    let from_sq = m.from_sq();
+    let from_sq = m.src_sq();
     let piece = pos.get_piece_at(from_sq);
     let color = piece.color();
     let promotion = Piece::get_piece(color, m.get_promotion().unwrap());
@@ -190,7 +188,7 @@ fn undo_promotion(pos: &mut Position, m: Move) {
 
 fn undo_castling(pos: &mut Position, m: Move, from: Piece) {
     // Restore Rook position
-    let index = castling_type(from, m.from_sq(), m.to_sq());
+    let index = castling_type(from, m.src_sq(), m.dst_sq());
     if index == CastlingType::None {
         return;
     }

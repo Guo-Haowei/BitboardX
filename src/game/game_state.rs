@@ -63,7 +63,7 @@ impl GameState {
         let (from, to, promtion) = m.unwrap();
         let legal_moves = move_gen::legal_moves(&self.pos);
         for m in legal_moves.iter() {
-            if m.from_sq() == from && m.to_sq() == to && m.get_promotion() == promtion {
+            if m.src_sq() == from && m.dst_sq() == to && m.get_promotion() == promtion {
                 let m = m.clone();
                 let undo_state = self.pos.make_move(m);
                 self.post_move();
