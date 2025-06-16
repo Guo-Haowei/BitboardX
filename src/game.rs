@@ -1,59 +1,63 @@
-use crate::engine::board::Move;
+use crate::engine::board::{Move, MoveList};
 use crate::engine::move_gen;
 use crate::engine::position::*;
 use crate::engine::utils;
-use wasm_bindgen::prelude::*;
-use web_sys::console;
 
-#[wasm_bindgen]
-pub struct MoveJs {
-    internal: Move,
-}
+pub mod player;
 
-#[wasm_bindgen]
-impl MoveJs {
-    fn new(m: &Move) -> Self {
-        Self { internal: m.clone() }
-    }
-
-    pub fn from_sq(&self) -> u8 {
-        self.internal.from_sq().as_u8()
-    }
-
-    pub fn to_sq(&self) -> u8 {
-        self.internal.to_sq().as_u8()
-    }
-}
-
-#[wasm_bindgen]
+// @TODO: rename to GameState, gonna need a GameManager soon
 pub struct Game {
     pos: Position,
 
+    legal_moves: MoveList,
+
+    players: [Box<dyn player::Player>; 2],
+
+    // undo and redo
     undo_stack: Vec<(Move, Snapshot)>,
     redo_stack: Vec<(Move, Snapshot)>,
 }
 
-#[wasm_bindgen]
 impl Game {
-    #[wasm_bindgen(constructor)]
-    pub fn new(fen: &str) -> Self {
-        let pos = match Position::from(fen) {
-            Ok(pos) => pos,
-            Err(err) => {
-                eprintln!("Error parsing FEN: {}", err);
-                Position::new()
-            }
+    pub fn new() -> Self {
+        let pos = Position::new();
+
+        let mut game = Self {
+            pos,
+            legal_moves: MoveList::new(),
+            players: [Box::new(player::ConsolePlayer), Box::new(player::ConsolePlayer)],
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
         };
 
-        Self { pos, undo_stack: Vec::new(), redo_stack: Vec::new() }
+        game.post_move();
+        game
     }
 
-    pub fn debug_string(&self) -> String {
-        utils::debug_string(&self.pos)
+    pub fn position(&self) -> &Position {
+        &self.pos
     }
 
-    pub fn to_board_string(&self) -> String {
-        utils::to_board_string(&self.pos)
+    pub fn tick(&mut self) {
+        let side_to_move = self.pos.side_to_move.as_usize();
+        loop {
+            // request move
+            self.players[side_to_move].request_move();
+
+            match self.players[side_to_move].poll_move() {
+                Some(m) => {
+                    if self.execute(m) {
+                        return;
+                    }
+                    println!("Invalid move, try again.");
+                }
+                None => continue, // no move available, try again
+            }
+        }
+    }
+
+    pub fn game_over(&self) -> bool {
+        self.legal_moves.count() == 0
     }
 
     pub fn can_undo(&self) -> bool {
@@ -64,29 +68,11 @@ impl Game {
         self.redo_stack.len() > 0
     }
 
-    pub fn do_move(&mut self, string: String) {
-        let m = utils::parse_move(string.as_str());
-        if m.is_none() {
-            return;
-        }
-
-        let (from, to) = m.unwrap();
-        let legal_moves = move_gen::legal_moves(&self.pos);
-        for m in legal_moves.iter() {
-            if m.from_sq() == from && m.to_sq() == to {
-                console::log_1(&format!("move '{}'", string).into());
-                let m = m.clone();
-                let snapshot = self.pos.make_move(m);
-
-                self.undo_stack.push((m, snapshot));
-                self.redo_stack.clear();
-            }
-        }
-    }
-
     pub fn undo(&mut self) -> bool {
         if let Some((m, snapshot)) = self.undo_stack.pop() {
             self.pos.unmake_move(m, &snapshot);
+            self.post_move();
+
             self.redo_stack.push((m, snapshot));
             return true;
         }
@@ -97,6 +83,8 @@ impl Game {
     pub fn redo(&mut self) -> bool {
         if let Some((m, snapshot)) = self.redo_stack.pop() {
             self.pos.make_move(m);
+            self.post_move();
+
             self.undo_stack.push((m, snapshot));
             return true;
         }
@@ -104,45 +92,91 @@ impl Game {
         false
     }
 
-    pub fn legal_moves(&self) -> Vec<MoveJs> {
-        move_gen::legal_moves(&self.pos).iter().map(|m| MoveJs::new(m)).collect()
+    fn post_move(&mut self) {
+        self.legal_moves = move_gen::legal_moves(&self.pos);
+    }
+
+    fn execute(&mut self, m: String) -> bool {
+        let m = utils::parse_move(m.as_str());
+        if m.is_none() {
+            return false;
+        }
+
+        let (from, to) = m.unwrap();
+        let legal_moves = move_gen::legal_moves(&self.pos);
+        for m in legal_moves.iter() {
+            if m.from_sq() == from && m.to_sq() == to {
+                let m = m.clone();
+                let snapshot = self.pos.make_move(m);
+                self.post_move();
+
+                self.undo_stack.push((m, snapshot));
+                self.redo_stack.clear();
+                return true;
+            }
+        }
+        return false;
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// pub struct Game {
+//     pub pos: Position,
+//     pub players: [Box<dyn Player>; 2],
+//     pub turn: Color,
+//     pub history: Vec<Move>,
+// }
 
-    #[test]
-    fn test_game_creation() {
-        let game = Game::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        assert_eq!(
-            game.to_board_string(),
-            "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
-        );
-    }
+// impl Game {
+//     pub fn tick(&mut self) {
+//         let current = &mut self.players[self.turn as usize];
+//         current.request_move(self);
 
-    #[test]
-    fn test_apply_move() {
-        // let mut game = Game::new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        // assert!(game.execute("e2e4")); // e2 to e4
-        // assert_eq!(
-        //     game.to_board_string(),
-        //     "rnbqkbnrpppppppp....................P...........PPPP.PPPRNBQKBNR"
-        // );
-        // game.undo();
-        // assert_eq!(
-        //     game.to_board_string(),
-        //     "rnbqkbnrpppppppp................................PPPPPPPPRNBQKBNR"
-        // );
-        // game.redo();
-        // assert_eq!(
-        //     game.to_board_string(),
-        //     "rnbqkbnrpppppppp....................P...........PPPP.PPPRNBQKBNR"
-        // );
+//         if let Some(mv) = current.poll_move() {
+//             self.pos.make_move(&mv);
+//             self.history.push(mv);
+//             self.turn = self.turn.flip();
+//         }
+//     }
+// }
 
-        // panic!(
-        //     "Test failed, this is a placeholder panic to indicate the test should be implemented."
-        // );
-    }
-}
+// #[wasm_bindgen]
+// pub struct WasmGame {
+//     game: Game,
+// }
+
+// #[wasm_bindgen]
+// impl WasmGame {
+//     pub fn new() -> WasmGame {
+//         WasmGame {
+//             game: Game {
+//                 pos: Position::start(),
+//                 players: [Box::new(WebPlayer::default()), Box::new(AiPlayer)],
+//                 turn: Color::White,
+//                 history: vec![],
+//             },
+//         }
+//     }
+
+//     pub fn tick(&mut self) {
+//         self.game.tick();
+//     }
+
+//     pub fn inject_move(&mut self, mv: Move) {
+//         if let Some(web_player) = self.game.players[0].as_any().downcast_mut::<WebPlayer>() {
+//             web_player.inject_move(mv);
+//         }
+//     }
+// }
+
+// let game = WasmGame.new();
+
+// function gameLoop() {
+//     game.tick();
+//     requestAnimationFrame(gameLoop);
+// }
+// gameLoop();
+
+// canvas.addEventListener('click', ev => {
+//     let move = calc_move_from_click(ev);
+//     game.inject_move(move);
+// });
