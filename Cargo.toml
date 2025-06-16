@@ -6,6 +6,10 @@ edition = "2024"
 [profile.dev]
 debug = true
 
+[[bin]]
+name = "BitboardX"
+path = "src/bin/uci.rs"
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
