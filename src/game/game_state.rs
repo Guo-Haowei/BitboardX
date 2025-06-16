@@ -39,7 +39,7 @@ impl GameState {
     }
 
     pub fn set_black(&mut self, player: Box<dyn Player>) {
-        self.players[0] = player;
+        self.players[1] = player;
     }
 
     pub fn pos(&self) -> &Position {

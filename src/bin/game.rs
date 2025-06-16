@@ -1,13 +1,37 @@
-use std::io::{self, Write};
+// use std::io::{self, Write};
 
-use bitboard_x::engine::*;
+use bitboard_x::engine::utils::debug_string;
+use bitboard_x::game::ai_player::AiPlayer;
 use bitboard_x::game::*;
+
+// fn print_board(out: &mut io::Stdout, pos: &Position) {
+//     const SEP: &str = " +---+---+---+---+---+---+---+---+";
+//     write!(out, "{}\n", SEP).unwrap();
+//     for rank in (0..8).rev() {
+//         write!(out, " | ").unwrap();
+//         for file in 0..8 {
+//             let sq = Square::make(file, rank);
+//             let piece = pos.get_piece_at(sq).to_char();
+//             write!(out, "{} | ", if piece == '.' { ' ' } else { piece }).unwrap();
+//         }
+
+//         write!(out, "{} \n{}\n", rank + 1, SEP).unwrap();
+//     }
+//     write!(out, "   a   b   c   d   e   f   g   h\n").unwrap();
+//     write!(out, "\nFen: {}\n\n", pos.fen()).unwrap();
+// }
 
 fn main() {
     let mut game = GameState::new();
+    game.set_white(Box::new(ConsolePlayer));
+    game.set_black(Box::new(AiPlayer));
+
+    // let mut stdout = io::stdout();
 
     'mainloop: loop {
-        println!("{}", utils::debug_string(game.pos()));
+        // print_board(&mut stdout, game.pos());
+        // stdout.flush().unwrap();
+        println!("{}", debug_string(game.pos()));
 
         if game.game_over() {
             println!("Game over!");
@@ -15,11 +39,10 @@ fn main() {
         }
 
         loop {
-            print!("Please enter your move (e.g., e2e4):");
-            io::stdout().flush().unwrap();
             let action = {
                 let fen = game.fen();
                 let active_player = game.active_player();
+                active_player.request_move();
                 active_player.poll_move(fen)
             };
 
