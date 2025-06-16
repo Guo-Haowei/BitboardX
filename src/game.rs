@@ -1,6 +1,6 @@
-use crate::engine::board::{Move, MoveList};
 use crate::engine::move_gen;
 use crate::engine::position::*;
+use crate::engine::types::{Move, MoveList};
 use crate::engine::utils;
 
 pub mod player;

@@ -1,6 +1,5 @@
-use super::super::board::*;
 use super::super::position::Position;
-use super::super::types::{Color, Piece, PieceType};
+use super::super::types::*;
 use super::super::utils;
 
 /* #region */

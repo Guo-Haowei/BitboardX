@@ -1,4 +1,3 @@
-use crate::engine::board::*;
 use crate::engine::types::*;
 
 pub fn parse_board(input: &str) -> Result<[BitBoard; Piece::COUNT], &'static str> {

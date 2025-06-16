@@ -1,6 +1,5 @@
-use super::super::board::*;
 use super::super::position::{Position, SmallSquareList};
-use super::super::types::{Color, Piece, PieceType};
+use super::super::types::*;
 use super::internal::*;
 
 /// Generates all pseudo-legal moves for a given piece on a specific square.
