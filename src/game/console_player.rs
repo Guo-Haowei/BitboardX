@@ -5,6 +5,10 @@ use super::player::{Player, PlayerAction};
 pub struct ConsolePlayer;
 
 impl Player for ConsolePlayer {
+    fn name(&self) -> String {
+        "ConsolePlayer".to_string()
+    }
+
     fn request_move(&mut self) {
         print!(">> Please enter your move (e.g., e2e4):");
         io::stdout().flush().unwrap();

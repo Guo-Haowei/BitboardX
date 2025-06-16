@@ -5,7 +5,6 @@ use crate::engine::utils;
 
 use super::player::*;
 
-// @TODO: rename to GameState, gonna need a GameManager soon
 pub struct GameState {
     pos: Position,
 

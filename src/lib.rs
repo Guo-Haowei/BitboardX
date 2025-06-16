@@ -2,6 +2,9 @@
 pub mod engine;
 pub mod game;
 
+// #[cfg(target_arch = "wasm32")]
+pub mod binding;
+
 // @TODO: move this to a separate crate
 #[macro_export]
 macro_rules! named_test {

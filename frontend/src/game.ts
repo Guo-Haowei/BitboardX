@@ -10,15 +10,13 @@ export type SelectedPiece = {
   y: number;
   file: number; // from file
   rank: number; // from rank
-  legalMoves: number[];
 };
 
 export class Game implements EventListener, RuntimeModule {
-  private game: BitboardX.Game | null;
+  private game: BitboardX.WasmGameState | null;
   private _selected: SelectedPiece | null;
   private canvas: HTMLCanvasElement | null;
   private _board: string;
-  private moveMap: Map<number, number[]> = new Map();
 
   public constructor() {
     this.reset();
@@ -31,23 +29,7 @@ export class Game implements EventListener, RuntimeModule {
   public set board(value) {
     this._board = value;
 
-    // this.moveMap.clear();
-
-    const moveMap = new Map<number, number[]>();
-    const legalMoves = this.game!.legal_moves();
-    legalMoves.forEach((move) => {
-      const from = move.from_sq();
-      const to = move.to_sq();
-      if (!moveMap.has(from)) {
-        moveMap.set(from, []);
-      }
-      moveMap.get(from)!.push(to);
-    });
-
-    this.moveMap = moveMap;
-
-    // eslint-disable-next-line no-console
-    console.log(this.game!.debug_string());
+    // console.log(this.game!.debug_string());
     const undoButton = document.getElementById('undoButton') as HTMLButtonElement;
     if (undoButton) {
       undoButton.disabled = !this.game!.can_undo();
@@ -73,6 +55,14 @@ export class Game implements EventListener, RuntimeModule {
   }
 
   public tick() {
+    if (this.game?.game_over()) {
+      // eslint-disable-next-line no-console
+      console.log('Game over!');
+      return;
+    }
+
+    this.game?.tick();
+    this.board = this.game!.to_board_string();
   }
 
   private reset() {
@@ -86,7 +76,7 @@ export class Game implements EventListener, RuntimeModule {
     // eslint-disable-next-line no-console
     console.log(`Initializing game with FEN: ${fen}`);
     try {
-      this.game = new BitboardX.Game(fen);
+      this.game = new BitboardX.WasmGameState();
       this.board = this.game.to_board_string();
       this.canvas = runtime.display.canvas;
       return true;
@@ -117,7 +107,7 @@ export class Game implements EventListener, RuntimeModule {
 
     this.canvas!.style.cursor = 'grabbing';
 
-    this._selected = { piece, ...event, rank, file, legalMoves: this.moveMap.get(square) || [] };
+    this._selected = { piece, ...event, rank, file  };
   }
 
   private onMouseMove(event: Point2D) {
@@ -145,20 +135,13 @@ export class Game implements EventListener, RuntimeModule {
       return;
     }
 
-    const { file, rank, legalMoves } = selected;
+    const { file, rank } = selected;
 
     const file2 = x;
     const rank2 = 7 - y;
     const to = file2 + rank2 * BOARD_SIZE;
 
     const move = `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}`;
-
-    legalMoves.forEach(dest => {
-      if (dest === to) {
-        this.game!.do_move(move);
-        this.board = this.game!.to_board_string();
-      }
-    });
   }
 
   private undo() {

@@ -23,14 +23,11 @@ use bitboard_x::game::*;
 
 fn main() {
     let mut game = GameState::new();
-    game.set_white(Box::new(ConsolePlayer));
+    // game.set_white(Box::new(ConsolePlayer));
+    game.set_white(Box::new(AiPlayer));
     game.set_black(Box::new(AiPlayer));
 
-    // let mut stdout = io::stdout();
-
     'mainloop: loop {
-        // print_board(&mut stdout, game.pos());
-        // stdout.flush().unwrap();
         println!("{}", debug_string(game.pos()));
 
         if game.game_over() {
