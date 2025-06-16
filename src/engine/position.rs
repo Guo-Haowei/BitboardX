@@ -2,7 +2,7 @@ use crate::engine::move_gen;
 
 use super::board::*;
 use super::types::*;
-use super::utils::{dump_castling, parse_move};
+use super::utils::parse_move;
 
 mod utils;
 
@@ -115,7 +115,7 @@ impl Position {
             "{} {} {} {} {} {}",
             utils::dump_board(&self.bitboards),
             if self.side_to_move == Color::WHITE { "w" } else { "b" },
-            dump_castling(self.castling),
+            utils::dump_castling(self.castling),
             match self.en_passant {
                 Some(sq) => sq.to_string(),
                 None => "-".to_string(),

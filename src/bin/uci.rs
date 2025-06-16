@@ -100,7 +100,6 @@ impl UCI {
 
     pub fn cmd_d(&self, out: &mut io::Stdout) {
         writeln!(out, "{}", utils::debug_string(&self.pos)).unwrap();
-        writeln!(out, "fen: {}", self.pos.fen()).unwrap();
     }
 }
 

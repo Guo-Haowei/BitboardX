@@ -74,26 +74,10 @@ pub fn debug_string(pos: &Position) -> String {
         s.push('\n');
     }
     s.push_str("  ａｂｃｄｅｆｇｈ\n");
-    s.push_str(format!("Side: {}\n", pos.side_to_move).as_str());
-    s.push_str(format!("Castling: {}\n", dump_castling(pos.castling)).as_str());
-    match pos.en_passant {
-        Some(ep_sq) => s.push_str(format!("En passant: {}\n", ep_sq).as_str()),
-        None => s.push_str("En passant: -\n"),
-    }
-    s.push_str(format!("Halfmove clock: {}\n", pos.halfmove_clock).as_str());
-    s.push_str(format!("Fullmove number: {}\n", pos.fullmove_number).as_str());
+
+    s.push_str(format!("\nFen: {}\n", pos.fen()).as_str());
 
     s
-}
-
-pub fn dump_castling(castling: u8) -> String {
-    let mut result = String::new();
-    for (i, c) in ['K', 'Q', 'k', 'q'].iter().enumerate() {
-        if castling & (1 << i) != 0 {
-            result.push(*c);
-        }
-    }
-    if result.is_empty() { "-".to_string() } else { result }
 }
 
 pub fn to_board_string(pos: &Position) -> String {

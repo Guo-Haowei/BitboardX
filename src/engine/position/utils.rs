@@ -86,6 +86,16 @@ pub fn parse_castling(input: &str) -> Result<u8, &'static str> {
     Ok(castling)
 }
 
+pub fn dump_castling(castling: u8) -> String {
+    let mut result = String::new();
+    for (i, c) in ['K', 'Q', 'k', 'q'].iter().enumerate() {
+        if castling & (1 << i) != 0 {
+            result.push(*c);
+        }
+    }
+    if result.is_empty() { "-".to_string() } else { result }
+}
+
 pub fn parse_en_passant(input: &str) -> Option<Option<Square>> {
     if input == "-" {
         return Some(None);

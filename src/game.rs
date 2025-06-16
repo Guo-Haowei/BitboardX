@@ -48,7 +48,7 @@ impl Game {
         Self { pos, undo_stack: Vec::new(), redo_stack: Vec::new() }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn debug_string(&self) -> String {
         utils::debug_string(&self.pos)
     }
 
