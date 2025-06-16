@@ -595,4 +595,23 @@ mod tests {
             sq2
         );
     }
+
+    #[test]
+    fn test_is_square_pinned() {
+        // 2 . . . . . . . k
+        // 1 K B . . . . . r
+        //   a b c d e f g h
+        let pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
+
+        assert!(pos.is_square_pinned(Square::B1, Color::WHITE));
+    }
+
+    #[test]
+    fn test_rook_pin_pawn() {
+        let pos = Position::from("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
+
+        let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
+
+        assert!(is_pinned, "Pawn B5 is pinned by rook on H5");
+    }
 }

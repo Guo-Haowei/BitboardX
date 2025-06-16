@@ -1,15 +1,8 @@
 stages:
-  - build
   - test
 
-build-cli:
-  stage: build
-  script:
-    - cargo build
-    - cargo build --release
-
 build-wasm:
-  stage: build
+  stage: test
   script:
     - wasm-pack build --target web
 
@@ -18,6 +11,7 @@ unit-test:
   script:
     - cargo test --release -- --nocapture
 
+# @TODO: move tests to rust
 functional-test:
   stage: test
   script:

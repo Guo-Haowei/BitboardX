@@ -105,7 +105,7 @@ mod tests {
         assert!(!c.same_line_inclusive(a, b));
 
         let a = Square::A1;
-        let b = Square::B1;
+        let b: Square = Square::B1;
         let c = Square::C3;
         assert!(!a.same_line_inclusive(b, c));
         assert!(!b.same_line_inclusive(a, c));
