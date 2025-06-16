@@ -106,7 +106,7 @@ export class Game implements EventListener, RuntimeModule {
 
     this.canvas!.style.cursor = 'grabbing';
 
-    this._selected = { piece, ...event, rank, file  };
+    this._selected = { piece, ...event, rank, file };
   }
 
   private onMouseMove(event: Point2D) {
@@ -135,10 +135,15 @@ export class Game implements EventListener, RuntimeModule {
     }
 
     const { file, rank } = selected;
-
     const file2 = x;
     const rank2 = 7 - y;
-    const move = `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}`;
+
+    let promotion = '';
+    if (rank === 6 && rank2 === 7 && selected.piece.toLowerCase() === 'p') {
+      promotion = prompt("Enter what piece to promote: ") || '';
+    }
+
+    const move = `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}${promotion}`;
     this.game!.inject_move(move);
   }
 

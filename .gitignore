@@ -7,4 +7,4 @@ pkg/
 dist/
 
 # user-specific files
-history.txt
+*.txt

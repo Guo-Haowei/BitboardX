@@ -1,8 +1,7 @@
-// use std::io::{self, Write};
-
 use bitboard_x::engine::utils::debug_string;
 use bitboard_x::game::ai_player::AiPlayer;
 use bitboard_x::game::*;
+use std::env;
 
 // fn print_board(out: &mut io::Stdout, pos: &Position) {
 //     const SEP: &str = " +---+---+---+---+---+---+---+---+";
@@ -22,13 +21,16 @@ use bitboard_x::game::*;
 // }
 
 fn main() {
+    unsafe {
+        env::set_var("RUST_BACKTRACE", "1");
+    };
     let mut game = GameState::new();
 
     let player: Box<dyn Player> = Box::new(AiPlayer::new());
     game.set_white(player);
 
     let player: Box<dyn Player> = Box::new(AiPlayer::new());
-    game.set_white(player);
+    game.set_black(player);
 
     'mainloop: loop {
         println!("{}", debug_string(game.pos()));
