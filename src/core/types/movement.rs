@@ -152,9 +152,9 @@ impl MoveList {
         Self { moves: [Move::none(); 256], count: 0 }
     }
 
-    pub fn add(&mut self, m: Move) {
+    pub fn add(&mut self, mv: Move) {
         if self.count < self.moves.len() {
-            self.moves[self.count] = m;
+            self.moves[self.count] = mv;
             self.count += 1;
         } else {
             panic!("MoveList is full, cannot add more moves");
@@ -188,29 +188,29 @@ mod tests {
 
     #[test]
     fn castling_move_creation() {
-        let m = Move::new(Square::E2, Square::E4, MoveType::Castling, None);
-        assert_eq!(m.src_sq(), Square::E2);
-        assert_eq!(m.dst_sq(), Square::E4);
-        assert_eq!(m.get_type(), MoveType::Castling);
-        assert_eq!(m.get_promotion(), None);
+        let mv = Move::new(Square::E2, Square::E4, MoveType::Castling, None);
+        assert_eq!(mv.src_sq(), Square::E2);
+        assert_eq!(mv.dst_sq(), Square::E4);
+        assert_eq!(mv.get_type(), MoveType::Castling);
+        assert_eq!(mv.get_promotion(), None);
     }
 
     #[test]
     fn promotion_move_creation() {
-        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::QUEEN));
-        assert_eq!(m.src_sq(), Square::E7);
-        assert_eq!(m.dst_sq(), Square::E8);
-        assert_eq!(m.get_type(), MoveType::Promotion);
-        assert_eq!(m.get_promotion(), Some(PieceType::QUEEN));
+        let mv = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::QUEEN));
+        assert_eq!(mv.src_sq(), Square::E7);
+        assert_eq!(mv.dst_sq(), Square::E8);
+        assert_eq!(mv.get_type(), MoveType::Promotion);
+        assert_eq!(mv.get_promotion(), Some(PieceType::QUEEN));
 
-        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::ROOK));
-        assert_eq!(m.get_promotion(), Some(PieceType::ROOK));
+        let mv = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::ROOK));
+        assert_eq!(mv.get_promotion(), Some(PieceType::ROOK));
 
-        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::KNIGHT));
-        assert_eq!(m.get_promotion(), Some(PieceType::KNIGHT));
+        let mv = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::KNIGHT));
+        assert_eq!(mv.get_promotion(), Some(PieceType::KNIGHT));
 
-        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::BISHOP));
-        assert_eq!(m.get_promotion(), Some(PieceType::BISHOP));
+        let mv = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::BISHOP));
+        assert_eq!(mv.get_promotion(), Some(PieceType::BISHOP));
     }
 
     #[test]

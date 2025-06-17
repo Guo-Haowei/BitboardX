@@ -45,8 +45,8 @@ use super::super::utils;
 /// | Checker is knight/pawn    | Cannot be blocked                   |
 /// | Checker is sliding piece  | Can be blocked                      |
 
-pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
-    let mover = pos.get_piece_at(m.src_sq());
+pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
+    let mover = pos.get_piece_at(mv.src_sq());
     let mover_type = mover.get_type();
     let mover_color = pos.side_to_move;
     debug_assert!(mover_type != PieceType::NONE, "Mover must be a valid piece");
@@ -57,8 +57,8 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
     let checker = &pos.checkers[mover_color.as_usize()];
     let checker_count = checker.count();
 
-    let src_sq = m.src_sq();
-    let dst_sq = m.dst_sq();
+    let src_sq = mv.src_sq();
+    let dst_sq = mv.dst_sq();
     // if move king, check if the destination square is safe
     if mover_type == PieceType::KING {
         for i in 0..=1 {
@@ -103,8 +103,8 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
 
     match checker.get(0) {
         Some(checker_sq) => {
-            if m.get_type() == MoveType::EnPassant {
-                let captured_sq = m.get_en_passant_capture();
+            if mv.get_type() == MoveType::EnPassant {
+                let captured_sq = mv.get_en_passant_capture();
                 if checker_sq == captured_sq {
                     return true;
                 }
@@ -118,9 +118,9 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
             }
         }
         None => {
-            if m.get_type() == MoveType::EnPassant {
+            if mv.get_type() == MoveType::EnPassant {
                 // En passant is a special case, it can only be legal if it captures the checking piece
-                return is_pseudo_en_passant_legal(pos, m, mover_color);
+                return is_pseudo_en_passant_legal(pos, mv, mover_color);
             }
 
             debug_assert!(
@@ -172,11 +172,11 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
 ///
 /// This is a rare but critical edge case for legal move generation in chess engines.
 
-fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bool {
-    debug_assert!(m.get_type() == MoveType::EnPassant, "Move must be an en passant move");
+fn is_pseudo_en_passant_legal(pos: &Position, mv: Move, mover_color: Color) -> bool {
+    debug_assert!(mv.get_type() == MoveType::EnPassant, "Move must be an en passant move");
 
-    let captured_sq = m.get_en_passant_capture();
-    let (src_file, _) = m.src_sq().file_rank();
+    let captured_sq = mv.get_en_passant_capture();
+    let (src_file, _) = mv.src_sq().file_rank();
     let (captured_file, captured_rank) = captured_sq.file_rank();
 
     debug_assert!(

@@ -20,9 +20,9 @@ impl Player for AiPlayer {
 
                 let n = self.rand.next_u32(&fen);
                 let n = n % moves.len() as u32;
-                let m = moves.get(n as usize).unwrap().to_string();
+                let mv = moves.get(n as usize).unwrap().to_string();
 
-                PlayerAction::Ready(m)
+                PlayerAction::Ready(mv)
             }
             Err(_) => PlayerAction::Error("Invalid FEN string".to_string()),
         }

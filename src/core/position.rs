@@ -212,27 +212,27 @@ impl Position {
         self.checkers = checkers;
     }
 
-    pub fn make_move(&mut self, m: Move) -> UndoState {
-        internal::make_move(self, m)
+    pub fn make_move(&mut self, mv: Move) -> UndoState {
+        internal::make_move(self, mv)
     }
 
-    pub fn unmake_move(&mut self, m: Move, undo_state: &UndoState) {
-        internal::unmake_move(self, m, undo_state)
+    pub fn unmake_move(&mut self, mv: Move, undo_state: &UndoState) {
+        internal::unmake_move(self, mv, undo_state)
     }
 
     /// @TODO: get rid of this method
     pub fn apply_move_str(&mut self, move_str: &str) -> bool {
-        let m = parse_move(move_str);
-        if m.is_none() {
+        let mv = parse_move(move_str);
+        if mv.is_none() {
             return false;
         }
 
-        let (from, to, promotion) = m.unwrap();
+        let (from, to, promotion) = mv.unwrap();
 
         let legal_moves = move_gen::legal_moves(&self);
-        for m in legal_moves.iter() {
-            if m.src_sq() == from && m.dst_sq() == to && m.get_promotion() == promotion {
-                self.make_move(m.clone());
+        for mv in legal_moves.iter() {
+            if mv.src_sq() == from && mv.dst_sq() == to && mv.get_promotion() == promotion {
+                self.make_move(mv.clone());
                 return true;
             }
         }
@@ -330,13 +330,13 @@ mod tests {
     #[test]
     fn undo_castling_should_put_rook_back() {
         let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
-        let m = Move::new(Square::E8, Square::G8, MoveType::Castling, None);
+        let mv = Move::new(Square::E8, Square::G8, MoveType::Castling, None);
 
-        let undo_state = pos.make_move(m);
+        let undo_state = pos.make_move(mv);
 
         assert_eq!(pos.get_piece_at(Square::G8), Piece::B_KING);
         assert_eq!(pos.get_piece_at(Square::F8), Piece::B_ROOK);
-        pos.unmake_move(m, &undo_state);
+        pos.unmake_move(mv, &undo_state);
         assert_eq!(pos.get_piece_at(Square::E8), Piece::B_KING);
         assert_eq!(pos.get_piece_at(Square::H8), Piece::B_ROOK);
     }
@@ -344,17 +344,17 @@ mod tests {
     #[test]
     fn undo_en_passant_should_put_pawn_back() {
         let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
-        let m = Move::new(Square::B7, Square::B5, MoveType::Normal, None);
-        pos.make_move(m);
+        let mv = Move::new(Square::B7, Square::B5, MoveType::Normal, None);
+        pos.make_move(mv);
 
-        let m = Move::new(Square::A5, Square::B6, MoveType::EnPassant, None);
-        let undo_state = pos.make_move(m);
+        let mv = Move::new(Square::A5, Square::B6, MoveType::EnPassant, None);
+        let undo_state = pos.make_move(mv);
 
         assert_eq!(pos.get_piece_at(Square::B6), Piece::W_PAWN);
         assert_eq!(pos.get_piece_at(Square::A5), Piece::NONE);
         assert_eq!(pos.get_piece_at(Square::B5), Piece::NONE);
 
-        pos.unmake_move(m, &undo_state);
+        pos.unmake_move(mv, &undo_state);
 
         assert_eq!(pos.get_piece_at(Square::A5), Piece::W_PAWN);
         assert_eq!(pos.get_piece_at(Square::B5), Piece::B_PAWN);
@@ -363,13 +363,13 @@ mod tests {
     #[test]
     fn undo_should_revert_promoted_piece() {
         let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
-        let m = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::BISHOP));
-        let undo_state = pos.make_move(m);
+        let mv = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::BISHOP));
+        let undo_state = pos.make_move(mv);
 
         assert_eq!(pos.get_piece_at(Square::C2), Piece::NONE);
         assert_eq!(pos.get_piece_at(Square::C1), Piece::B_BISHOP);
 
-        pos.unmake_move(m, &undo_state);
+        pos.unmake_move(mv, &undo_state);
 
         assert_eq!(pos.get_piece_at(Square::C2), Piece::B_PAWN);
         assert_eq!(pos.get_piece_at(Square::C1), Piece::NONE);

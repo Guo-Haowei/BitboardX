@@ -22,10 +22,10 @@ fn perft_test_inner(pos: &mut Position, depth: u8) -> u64 {
     }
 
     let mut nodes = 0u64;
-    for m in move_list.iter() {
-        let undo_state = pos.make_move(m.clone());
+    for mv in move_list.iter() {
+        let undo_state = pos.make_move(mv.clone());
         nodes += perft_test_inner(pos, depth - 1);
-        pos.unmake_move(m.clone(), &undo_state);
+        pos.unmake_move(mv.clone(), &undo_state);
     }
 
     nodes

@@ -54,21 +54,21 @@ impl GameState {
         &mut *self.players[side_to_move]
     }
 
-    pub fn execute(&mut self, m: &String) -> bool {
-        let m = utils::parse_move(m.as_str());
-        if m.is_none() {
+    pub fn execute(&mut self, mv: &String) -> bool {
+        let mv = utils::parse_move(mv.as_str());
+        if mv.is_none() {
             return false;
         }
 
-        let (src, dst, promtion) = m.unwrap();
+        let (src, dst, promtion) = mv.unwrap();
         let legal_moves = move_gen::legal_moves(&self.pos);
-        for m in legal_moves.iter() {
-            if m.src_sq() == src && m.dst_sq() == dst && m.get_promotion() == promtion {
-                let m = m.clone();
-                let undo_state = self.pos.make_move(m);
+        for mv in legal_moves.iter() {
+            if mv.src_sq() == src && mv.dst_sq() == dst && mv.get_promotion() == promtion {
+                let mv = mv.clone();
+                let undo_state = self.pos.make_move(mv);
                 self.post_move();
 
-                self.undo_stack.push((m, undo_state));
+                self.undo_stack.push((mv, undo_state));
                 self.redo_stack.clear();
                 return true;
             }
@@ -89,11 +89,11 @@ impl GameState {
     }
 
     pub fn undo(&mut self) -> bool {
-        if let Some((m, undo_state)) = self.undo_stack.pop() {
-            self.pos.unmake_move(m, &undo_state);
+        if let Some((mv, undo_state)) = self.undo_stack.pop() {
+            self.pos.unmake_move(mv, &undo_state);
             self.post_move();
 
-            self.redo_stack.push((m, undo_state));
+            self.redo_stack.push((mv, undo_state));
             return true;
         }
 
@@ -101,11 +101,11 @@ impl GameState {
     }
 
     pub fn redo(&mut self) -> bool {
-        if let Some((m, undo_state)) = self.redo_stack.pop() {
-            self.pos.make_move(m);
+        if let Some((mv, undo_state)) = self.redo_stack.pop() {
+            self.pos.make_move(mv);
             self.post_move();
 
-            self.undo_stack.push((m, undo_state));
+            self.undo_stack.push((mv, undo_state));
             return true;
         }
 

@@ -32,17 +32,17 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
 pub fn legal_moves(pos: &Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
-    for m in pseudo_moves.iter() {
-        if validation::is_pseudo_move_legal(pos, m.clone()) {
-            moves.add(m.clone());
+    for mv in pseudo_moves.iter() {
+        if validation::is_pseudo_move_legal(pos, mv.clone()) {
+            moves.add(mv.clone());
         }
     }
 
     moves
 }
 
-pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
-    validation::is_pseudo_move_legal(pos, m)
+pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
+    validation::is_pseudo_move_legal(pos, mv)
 }
 
 pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {

@@ -2,14 +2,14 @@ use super::UndoState;
 use crate::core::position::*;
 
 // Assume passed in moves are legal
-pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
-    let src_sq = m.src_sq();
-    let dst_sq = m.dst_sq();
+pub fn make_move(pos: &mut Position, mv: Move) -> UndoState {
+    let src_sq = mv.src_sq();
+    let dst_sq = mv.dst_sq();
     let src_piece = pos.get_piece_at(src_sq);
     let dst_piece = pos.get_piece_at(dst_sq);
     let src_piece_type = src_piece.get_type();
     let src_piece_idx = src_piece.as_usize();
-    let move_type = m.get_type();
+    let move_type = mv.get_type();
     let mover_color = src_piece.color();
     let enemy_color = mover_color.opponent();
     let is_mover_pawn = src_piece_type == PieceType::PAWN;
@@ -91,7 +91,7 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
         }
         MoveType::Promotion => {
             assert!(src_piece_type == PieceType::PAWN);
-            let promotion = Piece::get_piece(mover_color, m.get_promotion().unwrap());
+            let promotion = Piece::get_piece(mover_color, mv.get_promotion().unwrap());
             pos.bitboards[src_piece_idx].unset(dst_sq.as_u8()); // Remove the pawn from the board
             pos.bitboards[promotion.as_usize()].set(dst_sq.as_u8()); // Place the promoted piece on the board
         }
@@ -127,10 +127,10 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
     undo_state
 }
 
-pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
+pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
     // Keep in mind that the move is already applied to the position
-    let src_sq = m.src_sq();
-    let dst_sq = m.dst_sq();
+    let src_sq = mv.src_sq();
+    let dst_sq = mv.dst_sq();
     let src_piece = pos.get_piece_at(dst_sq); // the src_piece is the piece that was moved to the dst_sq
     let captured_piece = undo_state.captured_piece;
     let mover_color = src_piece.color();
@@ -143,7 +143,7 @@ pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
         pos.bitboards[captured_piece.as_usize()].set(dst_sq.as_u8()); // Place captured piece back on 'to' square
     }
 
-    match m.get_type() {
+    match mv.get_type() {
         MoveType::Castling => {
             debug_assert!(src_piece.get_type() == PieceType::KING);
             // Restore Rook position
@@ -154,7 +154,7 @@ pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
             move_piece(&mut pos.bitboards[piece.as_usize()], to_sq, src_sq);
         }
         MoveType::Promotion => {
-            let promotion = Piece::get_piece(mover_color, m.get_promotion().unwrap());
+            let promotion = Piece::get_piece(mover_color, mv.get_promotion().unwrap());
             let our_pawn = Piece::get_piece(mover_color, PieceType::PAWN);
 
             pos.bitboards[our_pawn.as_usize()].set(src_sq.as_u8()); // Place the pawn back on the board
