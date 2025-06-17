@@ -15,8 +15,7 @@ pub struct WasmGameState {
 impl WasmGameState {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        let fen = "8/8/8/8/2Q5/6K1/5P2/7k w - - 0 1";
-        let mut game = Self { internal: GameState::from_fen(&fen).unwrap() };
+        let mut game = Self { internal: GameState::new() };
 
         let player: Box<dyn Player> = Box::new(GuiPlayer::new());
         game.internal.set_white(player);
@@ -25,6 +24,26 @@ impl WasmGameState {
         game.internal.set_black(player);
 
         game
+    }
+
+    pub fn reset_game(&mut self, fen: String, is_white_human: bool, is_black_human: bool) {
+        console::log_1(&format!("Resetting game with FEN: {}", fen).into());
+        let game = match GameState::from_fen(fen.as_str()) {
+            Ok(game) => game,
+            Err(err) => {
+                console::error_1(&format!("Invalid FEN string: {}", err).into());
+                GameState::new()
+            }
+        };
+
+        self.internal = game;
+
+        fn create_player(human: bool) -> Box<dyn Player> {
+            if human { Box::new(GuiPlayer::new()) } else { Box::new(AiPlayer::new()) }
+        }
+
+        self.internal.set_white(create_player(is_white_human));
+        self.internal.set_black(create_player(is_black_human));
     }
 
     pub fn tick(&mut self) {
@@ -56,15 +75,20 @@ impl WasmGameState {
         }
     }
 
-    // @TODO: fen?
+    pub fn debug_string(&self) -> String {
+        utils::debug_string(self.internal.pos())
+    }
+
     pub fn to_board_string(&self) -> String {
         utils::to_board_string(self.internal.pos())
     }
 
+    // @TODO: game status, running, draw, white wins, black wins
     pub fn game_over(&self) -> bool {
         self.internal.game_over()
     }
 
+    // @TODO: fix undo and redo
     pub fn can_undo(&self) -> bool {
         self.internal.can_undo()
     }

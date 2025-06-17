@@ -27,9 +27,13 @@ export class Game implements EventListener, RuntimeModule {
   }
 
   public set board(value) {
+    if (value === this._board) {
+      return;
+    }
     this._board = value;
 
-    // console.log(this.game!.debug_string());
+    // eslint-disable-next-line no-console
+    console.log(this.game!.debug_string());
     const undoButton = document.getElementById('undoButton') as HTMLButtonElement;
     if (undoButton) {
       undoButton.disabled = !this.game!.can_undo();
@@ -50,8 +54,9 @@ export class Game implements EventListener, RuntimeModule {
 
   public init(): boolean {
     this.reset();
+    this.game = new BitboardX.WasmGameState();
     runtime.eventManager.addListener(this);
-    return this.restart(DEFAULT_FEN);
+    return this.restart();
   }
 
   public tick() {
@@ -72,12 +77,19 @@ export class Game implements EventListener, RuntimeModule {
     this._board = '';
   }
 
-  public restart(fen: string): boolean {
-    // eslint-disable-next-line no-console
-    console.log(`Initializing game with FEN: ${fen}`);
+  public restart(): boolean {
+    const fen = (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
     try {
-      this.game = new BitboardX.WasmGameState();
-      this.board = this.game.to_board_string();
+      const isPlayerHuman = (player: string) => {
+        const element = document.querySelector(`input[name="${player}"]:checked`);
+        if (element && element instanceof HTMLInputElement) {
+          return element.value === 'human';
+        }
+        return false;
+      };
+
+      this.game!.reset_game(fen, isPlayerHuman('player1'), isPlayerHuman('player2'));
+      this.board = this.game!.to_board_string();
       this.canvas = runtime.display.canvas;
       return true;
     } catch (e) {
@@ -177,7 +189,7 @@ export class Game implements EventListener, RuntimeModule {
       this.redo();
       break;
     case 'restart':
-      this.restart(event.payload as string);
+      this.restart();
       break;
     default:
       // eslint-disable-next-line no-console

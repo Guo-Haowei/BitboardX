@@ -53,7 +53,7 @@ pub struct Position {
     pub bitboards: [BitBoard; Piece::COUNT],
 
     pub side_to_move: Color,
-    pub castling: u8,
+    pub castling_rights: u8,
     pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
@@ -97,7 +97,7 @@ impl Position {
         let mut pos = Self {
             bitboards,
             side_to_move,
-            castling,
+            castling_rights: castling,
             en_passant,
             halfmove_clock,
             fullmove_number,
@@ -116,7 +116,7 @@ impl Position {
             "{} {} {} {} {} {}",
             utils::dump_board(&self.bitboards),
             if self.side_to_move == Color::WHITE { "w" } else { "b" },
-            utils::dump_castling(self.castling),
+            utils::dump_castling(self.castling_rights),
             match self.en_passant {
                 Some(sq) => sq.to_string(),
                 None => "-".to_string(),
@@ -255,7 +255,7 @@ mod tests {
         assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
 
         assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, CastlingRight::KQkq);
+        assert_eq!(pos.castling_rights, CastlingRight::KQkq);
         assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 0);
         assert_eq!(pos.fullmove_number, 1);
@@ -268,7 +268,7 @@ mod tests {
         let pos = Position::from_fen(FEN).unwrap();
 
         assert_eq!(pos.side_to_move, Color::WHITE);
-        assert_eq!(pos.castling, CastlingRight::K | CastlingRight::q);
+        assert_eq!(pos.castling_rights, CastlingRight::K | CastlingRight::q);
         assert!(pos.en_passant.is_none());
         assert_eq!(pos.halfmove_clock, 6);
         assert_eq!(pos.fullmove_number, 7);
