@@ -12,8 +12,8 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
     let move_type = m.get_type();
     let mover_color = src_piece.color();
     let enemy_color = mover_color.opponent();
-    let is_mover_pawn = src_piece_type == PieceType::Pawn;
-    let enemy_pawn = Piece::get_piece(enemy_color, PieceType::Pawn);
+    let is_mover_pawn = src_piece_type == PieceType::PAWN;
+    let enemy_pawn = Piece::get_piece(enemy_color, PieceType::PAWN);
     let (src_file, src_rank) = src_sq.file_rank();
     let (dst_file, dst_rank) = dst_sq.file_rank();
 
@@ -31,7 +31,7 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
 
     // check if the move will change the castling rights
     let disabled_castling = match src_piece_type {
-        PieceType::King | PieceType::Rook => {
+        PieceType::KING | PieceType::ROOK => {
             drop_castling(pos, src_sq, dst_sq, src_piece, dst_piece)
         }
         _ => 0,
@@ -79,7 +79,7 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
     match move_type {
         MoveType::Castling => {
             // Castling move, we need to move the king and rook
-            debug_assert!(src_piece_type == PieceType::King, "Castling must be a king move");
+            debug_assert!(src_piece_type == PieceType::KING, "Castling must be a king move");
             debug_assert!(dst_piece == Piece::NONE, "Castling must not capture any piece");
 
             // king already moved to the destination square, only need to move the rook
@@ -90,15 +90,15 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
             move_piece(&mut pos.bitboards[piece.as_usize()], src_sq, to_sq);
         }
         MoveType::Promotion => {
-            assert!(src_piece_type == PieceType::Pawn);
+            assert!(src_piece_type == PieceType::PAWN);
             let promotion = Piece::get_piece(mover_color, m.get_promotion().unwrap());
             pos.bitboards[src_piece_idx].unset(dst_sq.as_u8()); // Remove the pawn from the board
             pos.bitboards[promotion.as_usize()].set(dst_sq.as_u8()); // Place the promoted piece on the board
         }
         MoveType::EnPassant => {
-            assert!(src_piece_type == PieceType::Pawn, "En passant must be a pawn move");
+            assert!(src_piece_type == PieceType::PAWN, "En passant must be a pawn move");
             let enemy_sq = Square::make(dst_file, src_rank);
-            let enemy = Piece::get_piece(enemy_color, PieceType::Pawn);
+            let enemy = Piece::get_piece(enemy_color, PieceType::PAWN);
 
             debug_assert!(pos.get_piece_at(enemy_sq) == enemy);
             debug_assert!(
@@ -122,7 +122,7 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
         pos.halfmove_clock += 1; // increment halfmove clock for a pawn move
     }
 
-    pos.post_move();
+    post_move(pos);
 
     undo_state
 }
@@ -135,7 +135,7 @@ pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
     let captured_piece = undo_state.captured_piece;
     let mover_color = src_piece.color();
     let enemy_color = mover_color.opponent();
-    let enemy_pawn = Piece::get_piece(enemy_color, PieceType::Pawn);
+    let enemy_pawn = Piece::get_piece(enemy_color, PieceType::PAWN);
 
     move_piece(&mut pos.bitboards[src_piece.as_usize()], dst_sq, src_sq);
 
@@ -145,7 +145,7 @@ pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
 
     match m.get_type() {
         MoveType::Castling => {
-            debug_assert!(src_piece.get_type() == PieceType::King);
+            debug_assert!(src_piece.get_type() == PieceType::KING);
             // Restore Rook position
             let index = castling_type(src_piece, src_sq, dst_sq);
             debug_assert!(index != CastlingType::None);
@@ -155,7 +155,7 @@ pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
         }
         MoveType::Promotion => {
             let promotion = Piece::get_piece(mover_color, m.get_promotion().unwrap());
-            let our_pawn = Piece::get_piece(mover_color, PieceType::Pawn);
+            let our_pawn = Piece::get_piece(mover_color, PieceType::PAWN);
 
             pos.bitboards[our_pawn.as_usize()].set(src_sq.as_u8()); // Place the pawn back on the board
             pos.bitboards[promotion.as_usize()].unset(src_sq.as_u8()); // Remove the promoted piece from the board
@@ -174,13 +174,40 @@ pub fn unmake_move(pos: &mut Position, m: Move, undo_state: &UndoState) {
         _ => {}
     }
 
-    pos.post_move();
+    post_move(pos);
 
     // Restore from the undo state
     pos.castling = undo_state.castling;
     pos.en_passant = undo_state.en_passant;
     pos.halfmove_clock = undo_state.halfmove_clock;
     pos.fullmove_number = undo_state.fullmove_number;
+}
+
+pub fn post_move(pos: &mut Position) {
+    pos.side_to_move = pos.side_to_move.opponent();
+
+    // update occupancies
+    pos.occupancies[Color::WHITE.as_usize()] = pos.bitboards[Piece::W_PAWN.as_usize()]
+        | pos.bitboards[Piece::W_KNIGHT.as_usize()]
+        | pos.bitboards[Piece::W_BISHOP.as_usize()]
+        | pos.bitboards[Piece::W_ROOK.as_usize()]
+        | pos.bitboards[Piece::W_QUEEN.as_usize()]
+        | pos.bitboards[Piece::W_KING.as_usize()];
+    pos.occupancies[Color::BLACK.as_usize()] = pos.bitboards[Piece::B_PAWN.as_usize()]
+        | pos.bitboards[Piece::B_KNIGHT.as_usize()]
+        | pos.bitboards[Piece::B_BISHOP.as_usize()]
+        | pos.bitboards[Piece::B_ROOK.as_usize()]
+        | pos.bitboards[Piece::B_QUEEN.as_usize()]
+        | pos.bitboards[Piece::B_KING.as_usize()];
+    pos.occupancies[Color::BOTH.as_usize()] =
+        pos.occupancies[Color::WHITE.as_usize()] | pos.occupancies[Color::BLACK.as_usize()];
+
+    // update attack maps
+    pos.update_attack_map_and_checker();
+
+    // maybe only need to update the side to move attack map?
+    pos.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);
+    pos.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(pos, Color::BLACK);
 }
 
 fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {
@@ -218,7 +245,7 @@ fn drop_castling(
     dst_piece: Piece,
 ) -> u8 {
     debug_assert!(
-        src_piece.get_type() == PieceType::King || src_piece.get_type() == PieceType::Rook
+        src_piece.get_type() == PieceType::KING || src_piece.get_type() == PieceType::ROOK
     );
 
     fn helper<const TEST_BIT: u8>(

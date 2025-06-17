@@ -1,4 +1,5 @@
 // wasm-pack build --target web
+pub mod ai;
 pub mod core;
 pub mod game;
 

@@ -49,7 +49,7 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
     let mover = pos.get_piece_at(m.src_sq());
     let mover_type = mover.get_type();
     let mover_color = pos.side_to_move;
-    debug_assert!(mover_type != PieceType::None, "Mover must be a valid piece");
+    debug_assert!(mover_type != PieceType::NONE, "Mover must be a valid piece");
     debug_assert!(mover.color() == mover_color, "Mover color must match position side to move");
     let attacker_color = mover_color.opponent();
 
@@ -60,14 +60,14 @@ pub fn is_pseudo_move_legal(pos: &Position, m: Move) -> bool {
     let src_sq = m.src_sq();
     let dst_sq = m.dst_sq();
     // if move king, check if the destination square is safe
-    if mover_type == PieceType::King {
+    if mover_type == PieceType::KING {
         for i in 0..=1 {
             let checker = checker.get(i);
             if let Some(checker_sq) = checker {
                 if checker_sq != dst_sq {
                     let checker = pos.get_piece_at(checker_sq);
                     match checker.get_type() {
-                        PieceType::Bishop | PieceType::Rook | PieceType::Queen => {
+                        PieceType::BISHOP | PieceType::ROOK | PieceType::QUEEN => {
                             if src_sq.same_line(dst_sq, checker_sq) {
                                 return false; // can't move the king along the line of the checker, unless it's a capture
                             }
@@ -180,7 +180,7 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bo
     let (captured_file, captured_rank) = captured_sq.file_rank();
 
     debug_assert!(
-        pos.get_piece_at(captured_sq) == Piece::get_piece(mover_color.opponent(), PieceType::Pawn),
+        pos.get_piece_at(captured_sq) == Piece::get_piece(mover_color.opponent(), PieceType::PAWN),
         "En passant capture must have an enemy pawn on the square to capture"
     );
 
@@ -191,7 +191,7 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bo
     for file in (Rank::_1.0..f_min).rev() {
         let sq = Square::make(File(file), captured_rank);
         let piece = pos.get_piece_at(sq);
-        if piece.get_type() != PieceType::None {
+        if piece.get_type() != PieceType::NONE {
             pieces[0] = piece;
             break;
         }
@@ -199,21 +199,21 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bo
     for file in f_max + 1..=Rank::_8.0 {
         let sq = Square::make(File(file), captured_rank);
         let piece = pos.get_piece_at(sq);
-        if piece.get_type() != PieceType::None {
+        if piece.get_type() != PieceType::NONE {
             pieces[1] = piece;
             break;
         }
     }
 
-    let my_king = Piece::get_piece(mover_color, PieceType::King);
+    let my_king = Piece::get_piece(mover_color, PieceType::KING);
     if pieces[0] != my_king && pieces[1] != my_king {
         return true;
     }
 
     let their_piece = if pieces[0] == my_king { pieces[1] } else { pieces[0] };
 
-    let their_rook = Piece::get_piece(mover_color.opponent(), PieceType::Rook);
-    let their_queen = Piece::get_piece(mover_color.opponent(), PieceType::Queen);
+    let their_rook = Piece::get_piece(mover_color.opponent(), PieceType::ROOK);
+    let their_queen = Piece::get_piece(mover_color.opponent(), PieceType::QUEEN);
     if their_piece == their_rook || their_piece == their_queen {
         return false;
     }

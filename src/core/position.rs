@@ -106,8 +106,8 @@ impl Position {
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
         };
+        internal::post_move(&mut pos);
 
-        pos.post_move();
         Ok(pos)
     }
 
@@ -124,34 +124,6 @@ impl Position {
             self.halfmove_clock,
             self.fullmove_number
         )
-    }
-
-    // @TODO: make private
-    pub fn post_move(&mut self) {
-        self.side_to_move = self.side_to_move.opponent();
-
-        // update occupancies
-        self.occupancies[Color::WHITE.as_usize()] = self.bitboards[Piece::W_PAWN.as_usize()]
-            | self.bitboards[Piece::W_KNIGHT.as_usize()]
-            | self.bitboards[Piece::W_BISHOP.as_usize()]
-            | self.bitboards[Piece::W_ROOK.as_usize()]
-            | self.bitboards[Piece::W_QUEEN.as_usize()]
-            | self.bitboards[Piece::W_KING.as_usize()];
-        self.occupancies[Color::BLACK.as_usize()] = self.bitboards[Piece::B_PAWN.as_usize()]
-            | self.bitboards[Piece::B_KNIGHT.as_usize()]
-            | self.bitboards[Piece::B_BISHOP.as_usize()]
-            | self.bitboards[Piece::B_ROOK.as_usize()]
-            | self.bitboards[Piece::B_QUEEN.as_usize()]
-            | self.bitboards[Piece::B_KING.as_usize()];
-        self.occupancies[Color::BOTH.as_usize()] =
-            self.occupancies[Color::WHITE.as_usize()] | self.occupancies[Color::BLACK.as_usize()];
-
-        // update attack maps
-        self.update_attack_map_and_checker();
-
-        // maybe only need to update the side to move attack map?
-        self.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(self, Color::WHITE);
-        self.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(self, Color::BLACK);
     }
 
     pub fn get_piece_at(&self, sq: Square) -> Piece {
@@ -190,7 +162,7 @@ impl Position {
     }
 
     pub fn get_king_square(&self, color: Color) -> Square {
-        let piece = Piece::get_piece(color, PieceType::King);
+        let piece = Piece::get_piece(color, PieceType::KING);
         let bb = self.bitboards[piece.as_usize()];
         debug_assert!(bb.any(), "No king found for color {:?}", color);
         bb.to_square().unwrap()
@@ -224,7 +196,7 @@ impl Position {
             let mut attack_mask = BitBoard::new();
             let opponent = color.opponent();
             let king_sq = self.get_king_square(opponent);
-            for i in 0..PieceType::None as u8 {
+            for i in 0..PieceType::COUNT {
                 let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
                 let piece = Piece::get_piece(color, piece_type);
                 attack_mask |= move_gen::calc_attack_map_impl(
@@ -391,7 +363,7 @@ mod tests {
     #[test]
     fn undo_should_revert_promoted_piece() {
         let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
-        let m = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::Bishop));
+        let m = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::BISHOP));
         let undo_state = pos.make_move(m);
 
         assert_eq!(pos.get_piece_at(Square::C2), Piece::NONE);

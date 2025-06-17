@@ -18,10 +18,10 @@ pub fn parse_move(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
 
             if len == 5 {
                 let promotion = match input.chars().nth(4)? {
-                    'q' | 'Q' => Some(PieceType::Queen),
-                    'r' | 'R' => Some(PieceType::Rook),
-                    'b' | 'B' => Some(PieceType::Bishop),
-                    'n' | 'N' => Some(PieceType::Knight),
+                    'q' | 'Q' => Some(PieceType::QUEEN),
+                    'r' | 'R' => Some(PieceType::ROOK),
+                    'b' | 'B' => Some(PieceType::BISHOP),
+                    'n' | 'N' => Some(PieceType::KNIGHT),
                     _ => return None,
                 };
                 return Some((src, dst, promotion));
@@ -112,7 +112,7 @@ mod test {
         assert_eq!(parse_move("a7a8"), Some((Square::A7, Square::A8, None)));
         assert_eq!(parse_move("h1h2"), Some((Square::H1, Square::H2, None)));
         assert_eq!(parse_move("d4d5"), Some((Square::D4, Square::D5, None)));
-        assert_eq!(parse_move("d7d8q"), Some((Square::D7, Square::D8, Some(PieceType::Queen))));
+        assert_eq!(parse_move("d7d8q"), Some((Square::D7, Square::D8, Some(PieceType::QUEEN))));
         assert_eq!(parse_move("z1z2"), None);
         assert_eq!(parse_move("e9e4"), None);
         assert_eq!(parse_move("e2e"), None);

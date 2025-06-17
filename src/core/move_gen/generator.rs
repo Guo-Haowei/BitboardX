@@ -194,7 +194,7 @@ fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square,
         if check_if_promotion::<COLOR>(dst_sq) {
             // Promotion move
             let promotion_types =
-                [PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight];
+                [PieceType::QUEEN, PieceType::ROOK, PieceType::BISHOP, PieceType::KNIGHT];
             for &promotion in &promotion_types {
                 move_list.add(Move::new(sq, dst_sq, MoveType::Promotion, Some(promotion)));
             }
@@ -223,7 +223,7 @@ fn check_if_eq_capture<const COLOR: u8>(
     dst_sq: Square,
     to: Piece,
 ) -> bool {
-    if to.get_type() != PieceType::None {
+    if to.get_type() != PieceType::NONE {
         return false;
     }
 
@@ -327,7 +327,7 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
     let mut pin_map = BitBoard::new();
 
     let occupied = pos.occupancies[Color::BOTH.as_usize()];
-    let king_bb = pos.bitboards[Piece::get_piece(color, PieceType::King).as_usize()];
+    let king_bb = pos.bitboards[Piece::get_piece(color, PieceType::KING).as_usize()];
     debug_assert!(king_bb.count() == 1, "There must be exactly one king on the board");
 
     for i in 0..8 {
@@ -365,9 +365,9 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
         }
 
         let pinned = match attacker.get_type() {
-            PieceType::Queen => true,
-            PieceType::Rook => i < 4, // Rook moves in 0-3 directions
-            PieceType::Bishop => i >= 4 && i < 8, // Bishop moves in 4-7 directions
+            PieceType::QUEEN => true,
+            PieceType::ROOK => i < 4, // Rook moves in 0-3 directions
+            PieceType::BISHOP => i >= 4 && i < 8, // Bishop moves in 4-7 directions
             _ => false,
         };
         if pinned {
@@ -594,7 +594,7 @@ fn move_mask_castle_check<const COLOR: u8>(
     let opponent = color.opponent();
 
     // check if the rook is in the right place
-    let rook_type = Piece::get_piece(color, PieceType::Rook);
+    let rook_type = Piece::get_piece(color, PieceType::ROOK);
     if pos.bitboards[rook_type.as_usize()].test(rook_sq.as_u8()) == false {
         return false;
     }
