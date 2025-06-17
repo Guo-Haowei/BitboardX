@@ -9,8 +9,9 @@ export class Display implements RuntimeModule {
     canvas.width = TILE_SIZE * (BOARD_SIZE + 1);
     canvas.height = TILE_SIZE * (BOARD_SIZE + 1);
     canvas.tabIndex = 0;
-    canvas.style = 'position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; margin: auto;';
-    document.body.appendChild(canvas);
+    const container = document.getElementById('left-column');
+    container?.appendChild(canvas);
+    // document.body.appendChild(canvas);
     this._canvas = canvas;
   }
 

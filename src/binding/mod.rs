@@ -15,7 +15,7 @@ pub struct WasmGameState {
 impl WasmGameState {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        let fen = "8/8/8/8/2Q5/6K1/5P2/7k w - - 0 1";
+        let fen = "r4r1k/2p1p2p/p5p1/1p1Q1p2/1P3bq1/P1P2N2/1B3P2/4R1RK w - - 0 1";
         let mut game = Self { internal: GameState::from_fen(&fen).unwrap() };
 
         let player: Box<dyn Player> = Box::new(GuiPlayer::new());
@@ -54,6 +54,10 @@ impl WasmGameState {
             console::log_1(&format!("Injected move: {}", &mv).into());
             player.inject_move(mv);
         }
+    }
+
+    pub fn debug_string(&self) -> String {
+        utils::debug_string(self.internal.pos())
     }
 
     // @TODO: fen?
