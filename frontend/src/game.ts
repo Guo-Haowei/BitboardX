@@ -80,7 +80,15 @@ export class Game implements EventListener, RuntimeModule {
   public restart(): boolean {
     const fen = (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
     try {
-      this.game!.reset_game(fen, false, false);
+      const isPlayerHuman = (player: string) => {
+        const element = document.querySelector(`input[name="${player}"]:checked`);
+        if (element && element instanceof HTMLInputElement) {
+          return element.value === 'human';
+        }
+        return false;
+      };
+
+      this.game!.reset_game(fen, isPlayerHuman('player1'), isPlayerHuman('player2'));
       this.board = this.game!.to_board_string();
       this.canvas = runtime.display.canvas;
       return true;
