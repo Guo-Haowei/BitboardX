@@ -15,8 +15,6 @@ pub struct WasmGameState {
 impl WasmGameState {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        // let fen = "r4r1k/2p1p2p/p5p1/1p1Q1p2/1P3bq1/P1P2N2/1B3P2/4R1RK b - - 0 1";
-        // black moves first
         let mut game = Self { internal: GameState::new() };
 
         let player: Box<dyn Player> = Box::new(GuiPlayer::new());
@@ -28,7 +26,7 @@ impl WasmGameState {
         game
     }
 
-    pub fn reset_game(&mut self, fen: String, white_player_human: bool, black_player_human: bool) {
+    pub fn reset_game(&mut self, fen: String, is_white_human: bool, is_black_human: bool) {
         console::log_1(&format!("Resetting game with FEN: {}", fen).into());
         let game = match GameState::from_fen(fen.as_str()) {
             Ok(game) => game,
@@ -40,21 +38,12 @@ impl WasmGameState {
 
         self.internal = game;
 
-        if white_player_human {
-            let player: Box<dyn Player> = Box::new(GuiPlayer::new());
-            self.internal.set_white(player);
-        } else {
-            let player: Box<dyn Player> = Box::new(AiPlayer::new());
-            self.internal.set_white(player);
+        fn create_player(human: bool) -> Box<dyn Player> {
+            if human { Box::new(GuiPlayer::new()) } else { Box::new(AiPlayer::new()) }
         }
 
-        if black_player_human {
-            let player: Box<dyn Player> = Box::new(GuiPlayer::new());
-            self.internal.set_black(player);
-        } else {
-            let player: Box<dyn Player> = Box::new(AiPlayer::new());
-            self.internal.set_black(player);
-        }
+        self.internal.set_white(create_player(is_white_human));
+        self.internal.set_black(create_player(is_black_human));
     }
 
     pub fn tick(&mut self) {
@@ -90,15 +79,16 @@ impl WasmGameState {
         utils::debug_string(self.internal.pos())
     }
 
-    // @TODO: fen?
     pub fn to_board_string(&self) -> String {
         utils::to_board_string(self.internal.pos())
     }
 
+    // @TODO: game status, running, draw, white wins, black wins
     pub fn game_over(&self) -> bool {
         self.internal.game_over()
     }
 
+    // @TODO: fix undo and redo
     pub fn can_undo(&self) -> bool {
         self.internal.can_undo()
     }

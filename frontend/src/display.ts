@@ -11,7 +11,6 @@ export class Display implements RuntimeModule {
     canvas.tabIndex = 0;
     const container = document.getElementById('left-column');
     container?.appendChild(canvas);
-    // document.body.appendChild(canvas);
     this._canvas = canvas;
   }
 

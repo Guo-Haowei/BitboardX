@@ -1,104 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta charset="UTF-8" />
-    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-    <title>Chess Engine</title>
-    <style>
-        body {
-        display: flex;
-        margin: 0;
-        height: 100vh;
-        }
+    <head>
+        <meta charset="UTF-8" />
+        <meta charset="UTF-8" />
+        <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+        <title>Chess Engine</title>
+        <style>
+            body {
+                display: flex;
+                margin: 0;
+                height: 100vh;
+            }
 
-        #left-column {
-        flex: 3;
-        background-color: #f9f9f9;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-right: 1px solid #ccc;
-        }
+            #left-column {
+                flex: 3;
+                background-color: #f9f9f9;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                border-right: 1px solid #ccc;
+            }
 
-        #right-column {
-        flex: 2;
-        padding: 20px;
-        background-color: #f0f0f0;
-        box-sizing: border-box;
-        }
+            #right-column {
+                flex: 2;
+                padding: 20px;
+                background-color: #f0f0f0;
+                box-sizing: border-box;
+            }
 
-        fieldset {
-        margin-bottom: 20px;
-        }
+            fieldset {
+                margin-bottom: 20px;
+            }
 
-        label {
-        margin-right: 10px;
-        }
+            label {
+                margin-right: 10px;
+            }
 
-        button {
-        margin-right: 10px;
-        margin-top: 10px;
-        }
+            button {
+                margin-right: 10px;
+                margin-top: 10px;
+            }
 
-        input[type="text"] {
-        width: 100%;
-        padding: 6px;
-        margin-top: 10px;
-        box-sizing: border-box;
-        }
-    </style>
-</head>
+            input[type="text"] {
+                width: 100%;
+                padding: 6px;
+                margin-top: 10px;
+                box-sizing: border-box;
+            }
+        </style>
+    </head>
 
-<body>
-    <div id="left-column">
-        <!-- Canvas will be created programatically  -->
-    </div>
-
-    <div id="right-column">
-
-        <h1>Chess Engine</h1>
-        <p></p>
-
-        <!-- <p></p>
-        <button id="undoButton" disabled>Undo</button>
-        <p></p>
-        <button id="redoButton" disabled>Redo</button>
-        <p></p> -->
-
-        <div class="player-section">
-        <fieldset>
-            <legend>Player 1</legend>
-            <label>
-                <input type="radio" name="player1" value="human" checked> Human
-            </label>
-            <label>
-                <input type="radio" name="player1" value="computer"> Computer
-            </label>
-        </fieldset>
+    <body>
+        <div id="left-column">
+            <!-- Canvas will be created programatically  -->
         </div>
 
-        <div class="player-section">
-        <fieldset>
-            <legend>Player 2</legend>
-            <label>
-                <input type="radio" name="player2" value="human"> Human
-            </label>
-            <label>
-                <input type="radio" name="player2" value="computer" checked> Computer
-            </label>
-        </fieldset>
+        <div id="right-column">
+            <h1>Chess Engine</h1>
+            <p></p>
+
+            <!-- <p></p>
+            <button id="undoButton" disabled>Undo</button>
+            <p></p>
+            <button id="redoButton" disabled>Redo</button>
+            <p></p> -->
+
+            <div class="player-section">
+                <fieldset>
+                    <legend>Player 1</legend>
+                    <label> <input type="radio" name="player1" value="human" checked /> Human </label>
+                    <label> <input type="radio" name="player1" value="computer" /> Computer </label>
+                </fieldset>
+            </div>
+
+            <div class="player-section">
+                <fieldset>
+                    <legend>Player 2</legend>
+                    <label> <input type="radio" name="player2" value="human" /> Human </label>
+                    <label> <input type="radio" name="player2" value="computer" checked /> Computer </label>
+                </fieldset>
+            </div>
+
+            <input type="text" id="fenInput" style="width: 500px;" placeholder="please enter FEN here" />
+            <p></p>
+            <button id="fenButton">Go!</button>
+            <p></p>
         </div>
 
-        <input type="text" id="fenInput" style="width: 500px;"
-            placeholder="please enter FEN here" />
-        <p></p>
-        <button id="fenButton">Go!</button>
-        <p></p>
-
-    </div>
-
-    <script type="module" src="./src/index.ts"></script>
-</body>
-
+        <script type="module" src="./src/index.ts"></script>
+    </body>
 </html>
