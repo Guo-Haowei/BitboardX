@@ -25,7 +25,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
 
     // Copy undo state before making changes to the position
     let undo_state = UndoState {
-        castling: pos.castling,
+        castling: pos.castling_rights,
         en_passant: pos.en_passant,
         halfmove_clock: pos.halfmove_clock,
         fullmove_number: pos.fullmove_number,
@@ -33,12 +33,8 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
     };
 
     // check if the move will change the castling rights
-    let disabled_castling = match src_piece_type {
-        PieceType::KING | PieceType::ROOK => {
-            drop_castling(pos, src_sq, dst_sq, src_piece, dst_piece)
-        }
-        _ => 0,
-    };
+    let castling_rights =
+        castling_right_mask(pos.castling_rights, src_sq, dst_sq, src_piece, dst_piece);
 
     // check if the move will generate an en passant square
     let mut en_passant_sq: Option<Square> = None;
@@ -117,7 +113,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
 
     // -------------- Update Board End --------------
 
-    pos.castling &= !disabled_castling;
+    pos.castling_rights = castling_rights;
     pos.en_passant = en_passant_sq;
     pos.fullmove_number += if mover_color == Color::WHITE { 0 } else { 1 };
 
@@ -182,7 +178,7 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
     post_move(pos);
 
     // Restore from the undo state
-    pos.castling = undo_state.castling;
+    pos.castling_rights = undo_state.castling;
     pos.en_passant = undo_state.en_passant;
     pos.halfmove_clock = undo_state.halfmove_clock;
     pos.fullmove_number = undo_state.fullmove_number;
@@ -242,59 +238,52 @@ fn castling_type(src_piece: Piece, src_sq: Square, dst_sq: Square) -> CastlingTy
 // if king moved, disable castling rights, return
 // if rook moved, disable castling rights, return
 // if rook taken out, disable castling rights, return
-fn drop_castling(
-    pos: &Position,
+fn castling_right_mask(
+    old_flags: u8,
     src_sq: Square,
     dst_sq: Square,
     src_piece: Piece,
     dst_piece: Piece,
 ) -> u8 {
-    debug_assert!(
-        src_piece.get_type() == PieceType::KING || src_piece.get_type() == PieceType::ROOK
-    );
-
-    fn helper<const TEST_BIT: u8>(
-        pos: &Position,
+    fn lost_castle_right_at_bit(
+        castling_type: CastlingType,
         src_sq: Square,
         dst_sq: Square,
         src_piece: Piece,
         dst_piece: Piece,
-    ) -> u8 {
-        if pos.castling & TEST_BIT == 0 {
-            return 0;
+    ) -> bool {
+        let index = castling_type as usize;
+        let mask = 1u8 << index;
+        let (rook_piece, rook_sq, _) = CASTLING_ROOK_SQUARES[index];
+
+        // if the rook is moving away, the castling rights are disabled
+        if src_piece == rook_piece && src_sq == rook_sq {
+            return true;
         }
 
-        if src_piece == Piece::W_KING && (TEST_BIT & CastlingRight::KQ) != 0 {
-            return TEST_BIT;
+        // if the rook was captured, the castling rights are disabled
+        if dst_piece == rook_piece && dst_sq == rook_sq {
+            return true;
         }
 
-        if src_piece == Piece::B_KING && (TEST_BIT & CastlingRight::kq) != 0 {
-            return TEST_BIT;
+        match src_piece {
+            Piece::W_KING if (mask & CastlingRight::KQ) != 0 => true,
+            Piece::B_KING if (mask & CastlingRight::kq) != 0 => true,
+            _ => false,
         }
-
-        match (src_piece, src_sq) {
-            (Piece::W_ROOK, Square::A1) if (TEST_BIT & CastlingRight::Q) != 0 => return TEST_BIT,
-            (Piece::W_ROOK, Square::H1) if (TEST_BIT & CastlingRight::K) != 0 => return TEST_BIT,
-            (Piece::B_ROOK, Square::A8) if (TEST_BIT & CastlingRight::q) != 0 => return TEST_BIT,
-            (Piece::B_ROOK, Square::H8) if (TEST_BIT & CastlingRight::k) != 0 => return TEST_BIT,
-            _ => {}
-        }
-
-        match (dst_piece, dst_sq) {
-            (Piece::W_ROOK, Square::A1) if (TEST_BIT & CastlingRight::Q) != 0 => return TEST_BIT,
-            (Piece::W_ROOK, Square::H1) if (TEST_BIT & CastlingRight::K) != 0 => return TEST_BIT,
-            (Piece::B_ROOK, Square::A8) if (TEST_BIT & CastlingRight::q) != 0 => return TEST_BIT,
-            (Piece::B_ROOK, Square::H8) if (TEST_BIT & CastlingRight::k) != 0 => return TEST_BIT,
-            _ => {}
-        }
-
-        0
     }
 
-    let mut mask = 0;
-    mask |= helper::<{ CastlingRight::K }>(pos, src_sq, dst_sq, src_piece, dst_piece);
-    mask |= helper::<{ CastlingRight::Q }>(pos, src_sq, dst_sq, src_piece, dst_piece);
-    mask |= helper::<{ CastlingRight::k }>(pos, src_sq, dst_sq, src_piece, dst_piece);
-    mask |= helper::<{ CastlingRight::q }>(pos, src_sq, dst_sq, src_piece, dst_piece);
-    mask
+    let mut new_flags = old_flags;
+    for i in 0..4 {
+        let castling_type = unsafe { std::mem::transmute::<u8, CastlingType>(i as u8) };
+        let bitmask = 1u8 << i;
+        if new_flags & bitmask == 0 {
+            continue; // If the right already lost, skip
+        }
+        if lost_castle_right_at_bit(castling_type, src_sq, dst_sq, src_piece, dst_piece) {
+            new_flags &= !bitmask; // Disable the castling right if it can't be performed
+        }
+    }
+
+    new_flags
 }

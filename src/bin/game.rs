@@ -1,32 +1,34 @@
-use bitboard_x::core::utils::debug_string;
+// use bitboard_x::core::utils::debug_string;
 use bitboard_x::game::ai_player::AiPlayer;
 use bitboard_x::game::*;
-use std::env;
 
-// fn print_board(out: &mut io::Stdout, pos: &Position) {
-//     const SEP: &str = " +---+---+---+---+---+---+---+---+";
-//     write!(out, "{}\n", SEP).unwrap();
-//     for rank in (0..8).rev() {
-//         write!(out, " | ").unwrap();
-//         for file in 0..8 {
-//             let sq = Square::make(file, rank);
-//             let piece = pos.get_piece_at(sq).to_char();
-//             write!(out, "{} | ", if piece == '.' { ' ' } else { piece }).unwrap();
-//         }
+use bitboard_x::core::position::Position;
+use bitboard_x::core::types::*;
+use std::io::{self, Write};
 
-//         write!(out, "{} \n{}\n", rank + 1, SEP).unwrap();
-//     }
-//     write!(out, "   a   b   c   d   e   f   g   h\n").unwrap();
-//     write!(out, "\nFen: {}\n\n", pos.fen()).unwrap();
-// }
+fn print_board(out: &mut io::Stdout, pos: &Position) {
+    const SEP: &str = " +---+---+---+---+---+---+---+---+";
+    write!(out, "{}\n", SEP).unwrap();
+    for rank in (0..8).rev() {
+        write!(out, " | ").unwrap();
+        for file in 0..8 {
+            let sq = Square::make(File(file), Rank(rank));
+            let piece = pos.get_piece_at(sq).to_char();
+            write!(out, "{} | ", if piece == '.' { ' ' } else { piece }).unwrap();
+        }
+
+        write!(out, "{} \n{}\n", rank + 1, SEP).unwrap();
+    }
+    write!(out, "   a   b   c   d   e   f   g   h\n").unwrap();
+    write!(out, "\nFen: {}\n\n", pos.fen()).unwrap();
+}
 
 fn main() {
     unsafe {
+        use std::env;
         env::set_var("RUST_BACKTRACE", "1");
     };
 
-    // let fen = "8/8/8/8/2Q5/6K1/5P2/7k w - - 0 1";
-    // let mut game = GameState::from_fen(fen).unwrap();
     let mut game = GameState::new();
 
     let player: Box<dyn Player> = Box::new(AiPlayer::new());
@@ -36,7 +38,8 @@ fn main() {
     game.set_black(player);
 
     'mainloop: loop {
-        println!("{}", debug_string(game.pos()));
+        let mut io = io::stdout();
+        print_board(&mut io, &game.pos());
 
         if game.game_over() {
             println!("Game over!");

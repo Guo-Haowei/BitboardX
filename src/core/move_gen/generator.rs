@@ -550,26 +550,26 @@ fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
         moves &= !pos.attack_mask[color.opponent().as_usize()];
 
         if is_white {
-            if (pos.castling & CastlingRight::K != 0)
+            if (pos.castling_rights & CastlingRight::K != 0)
                 && move_mask_castle_check::<COLOR>(pos, sq, Square::G1, Square::H1)
             {
                 assert!(sq == Square::E1);
                 moves.set_sq(Square::G1);
             }
-            if (pos.castling & CastlingRight::Q != 0)
+            if (pos.castling_rights & CastlingRight::Q != 0)
                 && move_mask_castle_check::<COLOR>(pos, sq, Square::C1, Square::A1)
             {
                 assert!(sq == Square::E1);
                 moves.set_sq(Square::C1);
             }
         } else {
-            if (pos.castling & CastlingRight::k != 0)
+            if (pos.castling_rights & CastlingRight::k != 0)
                 && move_mask_castle_check::<COLOR>(pos, sq, Square::G8, Square::H8)
             {
                 assert!(sq == Square::E8);
                 moves.set_sq(Square::G8);
             }
-            if (pos.castling & CastlingRight::q != 0)
+            if (pos.castling_rights & CastlingRight::q != 0)
                 && move_mask_castle_check::<COLOR>(pos, sq, Square::C8, Square::A8)
             {
                 assert!(sq == Square::E8);
