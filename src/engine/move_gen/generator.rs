@@ -174,15 +174,11 @@ fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
         let (ep_file, ep_rank) = ep_sq.file_rank();
         if file.diff(ep_file).abs() == 1 {
             if is_white && rank == Rank::_5 && ep_rank == Rank::_6 {
-                debug_assert!(
-                    pos.get_piece_at(Square::from_u8(ep_sq.as_u8() - 8)) == Piece::B_PAWN
-                );
+                debug_assert!(pos.get_piece_at(Square::new(ep_sq.as_u8() - 8)) == Piece::B_PAWN);
                 return ep_sq.to_bitboard();
             }
             if is_black && rank == Rank::_4 && ep_rank == Rank::_3 {
-                debug_assert!(
-                    pos.get_piece_at(Square::from_u8(ep_sq.as_u8() + 8)) == Piece::W_PAWN
-                );
+                debug_assert!(pos.get_piece_at(Square::new(ep_sq.as_u8() + 8)) == Piece::W_PAWN);
                 return ep_sq.to_bitboard();
             }
         }
@@ -242,18 +238,18 @@ fn check_if_eq_capture<const COLOR: u8>(
     //   a b c d e f g h
 
     // if the to square is empty, but it still moves diagonally, then
-    let (from_file, from_rank) = src_sq.file_rank();
-    let (to_file, to_rank) = dst_sq.file_rank();
-    if from_file == to_file {
+    let (src_file, src_rank) = src_sq.file_rank();
+    let (dst_file, dst_rank) = dst_sq.file_rank();
+    if src_file == dst_file {
         return false;
     }
-    debug_assert!(from_file.diff(to_file).abs() == 1);
-    debug_assert!(from_rank.diff(to_rank).abs() == 1);
+    debug_assert!(src_file.diff(dst_file).abs() == 1);
+    debug_assert!(src_rank.diff(dst_rank).abs() == 1);
 
     if cfg!(debug_assertions) {
-        let color = Color::from(COLOR);
+        let color = Color::new(COLOR);
         let enemy = if color == Color::WHITE { Piece::B_PAWN } else { Piece::W_PAWN };
-        let enemy_sq = Square::make(to_file, from_rank);
+        let enemy_sq = Square::make(dst_file, src_rank);
 
         debug_assert!(
             pos.bitboards[enemy.as_usize()].test(enemy_sq.as_u8()),
@@ -539,7 +535,7 @@ fn pseudo_legal_move_knight(move_list: &mut MoveList, sq: Square, my_occupancy: 
 /// - The king does not pass through or land on a square that is under attack
 
 fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Position) -> BitBoard {
-    let color = Color::from(COLOR);
+    let color = Color::new(COLOR);
     let is_white = color.is_white();
 
     let bb = sq.to_bitboard();
@@ -594,7 +590,7 @@ fn move_mask_castle_check<const COLOR: u8>(
 ) -> bool {
     // r . . . k . . r
     // a b c d e f g h
-    let color = Color::from(COLOR);
+    let color = Color::new(COLOR);
     let opponent = color.opponent();
 
     // check if the rook is in the right place

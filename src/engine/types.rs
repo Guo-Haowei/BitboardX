@@ -23,7 +23,7 @@ impl Color {
     pub const NONE: Color = Color(COLOR_NONE);
     pub const COUNT: usize = 2;
 
-    pub const fn from(color: u8) -> Color {
+    pub const fn new(color: u8) -> Color {
         debug_assert!(color < COLOR_BOTH);
         Color(color)
     }
@@ -100,7 +100,7 @@ impl Piece {
 
     const NB_PIECE_TYPES: u8 = PieceType::None as u8;
 
-    pub const fn from(piece: u8) -> Piece {
+    pub const fn new(piece: u8) -> Piece {
         debug_assert!(piece <= Self::COUNT as u8);
         Piece(piece)
     }

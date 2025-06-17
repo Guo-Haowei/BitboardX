@@ -82,7 +82,7 @@ impl Square {
         Square(((rank.0 << 3) + file.0) as u8)
     }
 
-    pub const fn from_u8(value: u8) -> Square {
+    pub const fn new(value: u8) -> Square {
         debug_assert!(value < 64);
         Square(value)
     }
@@ -103,7 +103,7 @@ impl Square {
     }
 
     pub const fn to_bitboard(&self) -> BitBoard {
-        BitBoard::from_bit(self.0)
+        BitBoard::from(1u64 << self.0)
     }
 
     pub const fn is_none(&self) -> bool {

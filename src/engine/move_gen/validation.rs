@@ -176,7 +176,7 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bo
     debug_assert!(m.get_type() == MoveType::EnPassant, "Move must be an en passant move");
 
     let captured_sq = m.get_en_passant_capture();
-    let (from_file, _) = m.src_sq().file_rank();
+    let (src_file, _) = m.src_sq().file_rank();
     let (captured_file, captured_rank) = captured_sq.file_rank();
 
     debug_assert!(
@@ -184,7 +184,7 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bo
         "En passant capture must have an enemy pawn on the square to capture"
     );
 
-    let (f_min, f_max) = utils::min_max(from_file.0, captured_file.0);
+    let (f_min, f_max) = utils::min_max(src_file.0, captured_file.0);
 
     let mut pieces = [Piece::NONE; 2];
 

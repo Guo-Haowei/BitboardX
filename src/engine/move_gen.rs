@@ -18,7 +18,7 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
     };
 
     for i in start..=end {
-        let piece = Piece::from(i);
+        let piece = Piece::new(i);
 
         for sq in pos.bitboards[i as usize].iter() {
             generator::pseudo_legal_moves_src_sq(pos, sq, piece, &mut move_list);

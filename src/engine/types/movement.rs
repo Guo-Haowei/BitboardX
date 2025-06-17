@@ -95,11 +95,11 @@ impl Move {
     }
 
     pub fn src_sq(&self) -> Square {
-        Square::from_u8((self.0 & Self::SQUARE_MASK) as u8)
+        Square::new((self.0 & Self::SQUARE_MASK) as u8)
     }
 
     pub fn dst_sq(&self) -> Square {
-        Square::from_u8(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
+        Square::new(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
     }
 
     pub fn get_type(&self) -> MoveType {
@@ -120,8 +120,8 @@ impl Move {
     }
 
     pub fn to_string(&self) -> String {
-        let from = self.src_sq();
-        let to = self.dst_sq();
+        let src = self.src_sq();
+        let dst = self.dst_sq();
         let promo = match self.get_promotion() {
             Some(PieceType::Knight) => "n",
             Some(PieceType::Bishop) => "b",
@@ -130,15 +130,15 @@ impl Move {
             None => "",
             _ => panic!("Invalid promotion piece"),
         };
-        format!("{}{}{}", from.to_string(), to.to_string(), promo)
+        format!("{}{}{}", src.to_string(), dst.to_string(), promo)
     }
 
     pub fn get_en_passant_capture(&self) -> Square {
         debug_assert!(self.get_type() == MoveType::EnPassant);
-        let (_, from_rank) = self.src_sq().file_rank();
-        let (to_file, _) = self.dst_sq().file_rank();
+        let (_, src_rank) = self.src_sq().file_rank();
+        let (dst_file, _) = self.dst_sq().file_rank();
 
-        Square::make(to_file, from_rank)
+        Square::make(dst_file, src_rank)
     }
 }
 

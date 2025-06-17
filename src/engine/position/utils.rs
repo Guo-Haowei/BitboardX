@@ -38,7 +38,7 @@ pub fn dump_board(bitboards: &[BitBoard; Piece::COUNT]) -> String {
 
             let piece_char = (Piece::W_PAWN.as_usize()..Piece::COUNT)
                 .find(|&p| bitboards[p].test(sq))
-                .map(|p| Piece::from(p as u8).to_char());
+                .map(|p| Piece::new(p as u8).to_char());
 
             match piece_char {
                 Some(c) => {

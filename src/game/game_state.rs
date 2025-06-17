@@ -60,10 +60,10 @@ impl GameState {
             return false;
         }
 
-        let (from, to, promtion) = m.unwrap();
+        let (src, dst, promtion) = m.unwrap();
         let legal_moves = move_gen::legal_moves(&self.pos);
         for m in legal_moves.iter() {
-            if m.src_sq() == from && m.dst_sq() == to && m.get_promotion() == promtion {
+            if m.src_sq() == src && m.dst_sq() == dst && m.get_promotion() == promtion {
                 let m = m.clone();
                 let undo_state = self.pos.make_move(m);
                 self.post_move();
@@ -116,45 +116,3 @@ impl GameState {
         self.legal_moves = move_gen::legal_moves(&self.pos);
     }
 }
-
-// #[wasm_bindgen]
-// pub struct WasmGame {
-//     game: Game,
-// }
-
-// #[wasm_bindgen]
-// impl WasmGame {
-//     pub fn new() -> WasmGame {
-//         WasmGame {
-//             game: Game {
-//                 pos: Position::start(),
-//                 players: [Box::new(WebPlayer::default()), Box::new(AiPlayer)],
-//                 turn: Color::White,
-//                 history: vec![],
-//             },
-//         }
-//     }
-
-//     pub fn tick(&mut self) {
-//         self.game.tick();
-//     }
-
-//     pub fn inject_move(&mut self, mv: Move) {
-//         if let Some(web_player) = self.game.players[0].as_any().downcast_mut::<WebPlayer>() {
-//             web_player.inject_move(mv);
-//         }
-//     }
-// }
-
-// let game = WasmGame.new();
-
-// function gameLoop() {
-//     game.tick();
-//     requestAnimationFrame(gameLoop);
-// }
-// gameLoop();
-
-// canvas.addEventListener('click', ev => {
-//     let move = calc_move_from_click(ev);
-//     game.inject_move(move);
-// });

@@ -44,10 +44,6 @@ impl BitBoard {
         Self(val)
     }
 
-    pub const fn from_bit(bit: u8) -> Self {
-        Self(1u64 << bit)
-    }
-
     pub const fn none(&self) -> bool {
         self.0 == 0
     }
@@ -133,7 +129,7 @@ impl BitBoard {
 
     pub fn to_square(&self) -> Option<Square> {
         if self.0.count_ones() == 1 {
-            Some(Square::from_u8(self.0.trailing_zeros() as u8))
+            Some(Square::new(self.0.trailing_zeros() as u8))
         } else {
             None
         }
@@ -174,7 +170,7 @@ impl Iterator for BitBoardIter {
             //       A - 1 = 0b1001000111
             // A & (A - 1) = 0b1001000000
             self.remaining &= self.remaining - 1;
-            Some(Square::from_u8(tz as u8))
+            Some(Square::new(tz as u8))
         }
     }
 }

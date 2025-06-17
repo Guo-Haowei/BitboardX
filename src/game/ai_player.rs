@@ -14,7 +14,7 @@ impl Player for AiPlayer {
     fn request_move(&mut self) {}
 
     fn poll_move(&mut self, fen: String) -> PlayerAction {
-        match Position::from(fen.as_str()) {
+        match Position::from_fen(fen.as_str()) {
             Ok(pos) => {
                 let moves = move_gen::legal_moves(&pos);
 

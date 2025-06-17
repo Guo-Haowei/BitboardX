@@ -69,10 +69,10 @@ const DEFAULT_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 
 
 impl Position {
     pub fn new() -> Self {
-        Self::from(DEFAULT_FEN).unwrap()
+        Self::from_fen(DEFAULT_FEN).unwrap()
     }
 
-    pub fn from(fen: &str) -> Result<Self, &'static str> {
+    pub fn from_fen(fen: &str) -> Result<Self, &'static str> {
         let parts: Vec<&str> = fen.trim().split_whitespace().collect();
         if parts.len() != 6 {
             return Err("Invalid FEN: must have 6 fields");
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn test_constructor_from_parts() {
         const FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let pos = Position::from(FEN).unwrap();
+        let pos = Position::from_fen(FEN).unwrap();
         assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
         assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
         assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
@@ -293,7 +293,7 @@ mod tests {
     #[test]
     fn test_constructor_from() {
         const FEN: &str = "r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7";
-        let pos = Position::from(FEN).unwrap();
+        let pos = Position::from_fen(FEN).unwrap();
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, CastlingRight::K | CastlingRight::q);
@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_checkers() {
-        let pos = Position::from("r3k3/8/4B3/8/4r3/8/2n5/R3K2R w - - 0 1").unwrap();
+        let pos = Position::from_fen("r3k3/8/4B3/8/4r3/8/2n5/R3K2R w - - 0 1").unwrap();
 
         let checkers = pos.checkers[Color::WHITE.as_usize()];
         assert_eq!(checkers.count(), 2);
@@ -327,14 +327,14 @@ mod tests {
         // 2 . . . . . . . k
         // 1 K B . . . . . r
         //   a b c d e f g h
-        let pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
+        let pos = Position::from_fen("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
 
         assert!(pos.is_square_pinned(Square::B1, Color::WHITE));
     }
 
     #[test]
     fn test_rook_pin_pawn() {
-        let pos = Position::from("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
+        let pos = Position::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
 
         let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
 
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn undo_castling_should_put_rook_back() {
-        let mut pos = Position::from(UNDO_TEST_FEN).unwrap();
+        let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
         let m = Move::new(Square::E8, Square::G8, MoveType::Castling, None);
 
         let undo_state = pos.make_move(m);
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn undo_en_passant_should_put_pawn_back() {
-        let mut pos = Position::from(UNDO_TEST_FEN).unwrap();
+        let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
         let m = Move::new(Square::B7, Square::B5, MoveType::Normal, None);
         pos.make_move(m);
 
@@ -390,7 +390,7 @@ mod tests {
 
     #[test]
     fn undo_should_revert_promoted_piece() {
-        let mut pos = Position::from(UNDO_TEST_FEN).unwrap();
+        let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
         let m = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::Bishop));
         let undo_state = pos.make_move(m);
 

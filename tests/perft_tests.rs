@@ -62,7 +62,7 @@ fn perft_test(pos: &Position, depth: u8) -> u64 {
 }
 
 fn perft_test_wrapper(fen: &str, depth: u8, expectations: &Vec<u64>) {
-    let mut pos = Position::from(fen).unwrap();
+    let mut pos = Position::from_fen(fen).unwrap();
 
     for (i, expected) in expectations.iter().enumerate() {
         let test_depth = i as u8;
