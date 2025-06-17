@@ -70,9 +70,9 @@ fn perft_test_wrapper(fen: &str, depth: u8, expectations: &Vec<u64>) {
             break; // Skip depth 0, which is always 1
         }
 
-        let start = Instant::now(); // Start timer
+        let now = Instant::now(); // Start timer
         let actual = perft_test(&mut pos, test_depth);
-        let elapsed = start.elapsed();
+        let elapsed = now.elapsed();
         let msg = format!("depth {}: {} nodes, took {:?}", test_depth, actual, elapsed);
         println!("{}", if actual == *expected { msg.green() } else { msg.red() });
         assert_eq!(actual, *expected);

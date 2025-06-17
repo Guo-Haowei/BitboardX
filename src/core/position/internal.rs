@@ -2,7 +2,10 @@ use super::UndoState;
 use crate::core::position::*;
 
 // Assume passed in moves are legal
-pub fn make_move(pos: &mut Position, mv: Move) -> UndoState {
+pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
+    // borrow the position immutably because we are just checking the move at this point, no actual moving
+    let pos: &Position = _pos;
+
     let src_sq = mv.src_sq();
     let dst_sq = mv.dst_sq();
     let src_piece = pos.get_piece_at(src_sq);
@@ -62,6 +65,8 @@ pub fn make_move(pos: &mut Position, mv: Move) -> UndoState {
     }
 
     // -------------- Update Board Start --------------
+    // rebind pos to the mutable reference to update the position
+    let pos = _pos;
 
     debug_assert!(pos.occupancies[pos.side_to_move.as_usize()].test(src_sq.as_u8()));
 

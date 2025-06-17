@@ -24,6 +24,9 @@ fn main() {
     unsafe {
         env::set_var("RUST_BACKTRACE", "1");
     };
+
+    // let fen = "8/8/8/8/2Q5/6K1/5P2/7k w - - 0 1";
+    // let mut game = GameState::from_fen(fen).unwrap();
     let mut game = GameState::new();
 
     let player: Box<dyn Player> = Box::new(AiPlayer::new());

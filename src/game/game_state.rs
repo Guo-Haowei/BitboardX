@@ -33,6 +33,20 @@ impl GameState {
         game
     }
 
+    pub fn from_fen(fen: &str) -> Result<Self, String> {
+        let pos = Position::from_fen(fen)?;
+        let mut game = Self {
+            pos,
+            legal_moves: MoveList::new(),
+            players: [Box::new(NullPlayer), Box::new(NullPlayer)],
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+        };
+
+        game.post_move();
+        Ok(game)
+    }
+
     pub fn set_white(&mut self, player: Box<dyn Player>) {
         self.players[0] = player;
     }

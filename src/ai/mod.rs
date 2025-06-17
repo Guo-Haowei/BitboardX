@@ -10,6 +10,9 @@ const KING_SCORE: i32 = 0; // skip king score for simplicity
 const PIECE_SCORES: [i32; PieceType::COUNT as usize] =
     [PAWN_SCORE, KNIGHT_SCORE, BISHOP_SCORE, ROOK_SCORE, QUEEN_SCORE, KING_SCORE];
 
+const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
+const MAX: i32 = i32::MAX;
+
 fn count_material(pos: &Position, color: Color) -> i32 {
     let mut score = 0;
     for i in 0..PieceType::COUNT {
@@ -22,13 +25,13 @@ fn count_material(pos: &Position, color: Color) -> i32 {
     score
 }
 
-pub fn evaluate(pos: &Position) -> i32 {
+fn evaluate(pos: &Position) -> i32 {
     debug_assert!(pos.side_to_move == Color::WHITE || pos.side_to_move == Color::BLACK);
     let score = count_material(pos, Color::WHITE) - count_material(pos, Color::BLACK);
     match pos.side_to_move {
         Color::WHITE => score,
         Color::BLACK => -score, // return score in favor of the side to move
-        _ => unreachable!(),
+        _ => panic!("Invalid side to move"),
     }
 }
 
@@ -47,7 +50,7 @@ pub fn evaluate(pos: &Position) -> i32 {
 ///             / | \   / | \   / | \
 ///           4 -6  0 -8  7 -9  4  2  6
 
-fn negamax(pos: &mut Position, depth: u8) -> i32 {
+fn negamax(pos: &mut Position, depth: u8, alpha: i32, beta: i32) -> i32 {
     if depth == 0 {
         return evaluate(pos);
     }
@@ -55,21 +58,24 @@ fn negamax(pos: &mut Position, depth: u8) -> i32 {
     let move_list = move_gen::legal_moves(pos);
     if move_list.len() == 0 {
         if pos.is_in_check(pos.side_to_move) {
-            return i32::MIN;
+            return MIN;
         }
         return 0; // draw
     }
 
-    let mut best_score = i32::MIN;
-
+    let mut alpha = alpha;
     for mv in move_list.iter() {
         let undo_state = pos.make_move(*mv);
-        let score = -negamax(pos, depth - 1);
+        let eval = -negamax(pos, depth - 1, -beta, -alpha);
         pos.unmake_move(*mv, &undo_state);
-        best_score = best_score.max(score);
+
+        if eval >= beta {
+            return beta; // beta cutoff
+        }
+        alpha = alpha.max(eval);
     }
 
-    best_score
+    alpha
 }
 
 pub fn search(pos: &mut Position, depth: u8) -> Option<Move> {
@@ -82,15 +88,19 @@ pub fn search(pos: &mut Position, depth: u8) -> Option<Move> {
     let mut best_move = None;
     let mut best_score = i32::MIN;
 
+    let mut alpha = MIN;
+    let beta = MAX;
+
     for mv in move_list.iter() {
         let undo_state = pos.make_move(*mv);
-        let score = -negamax(pos, depth - 1);
+        let score = -negamax(pos, depth - 1, alpha, beta);
         pos.unmake_move(*mv, &undo_state);
 
         if score > best_score {
             best_score = score;
             best_move = Some(*mv);
         }
+        alpha = alpha.max(score);
     }
 
     best_move
