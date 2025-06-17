@@ -4,7 +4,6 @@ use super::position::Position;
 use super::types::*;
 
 mod generator;
-mod internal;
 mod validation;
 
 /// Pseudo-legal move generation

@@ -1,14 +1,12 @@
 use std::fmt;
 
 pub mod bitboard;
-pub mod constants;
 pub mod movement;
 pub mod square;
 
 pub use bitboard::BitBoard;
-pub use constants::*;
 pub use movement::*;
-pub use square::Square;
+pub use square::{File, Rank, Square};
 
 const COLOR_WHITE: u8 = 0;
 const COLOR_BLACK: u8 = 1;

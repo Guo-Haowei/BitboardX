@@ -101,10 +101,10 @@ pub fn parse_en_passant(input: &str) -> Option<Option<Square>> {
     }
 
     if input.len() == 2 {
-        let file = input.chars().nth(0)? as u8 - b'a';
-        let rank = input.chars().nth(1)? as u8 - b'1';
+        let file = File(input.chars().nth(0)? as u8 - b'a');
+        let rank = Rank(input.chars().nth(1)? as u8 - b'1');
         match rank {
-            RANK_3 | RANK_6 if file <= FILE_H => {
+            Rank::_3 | Rank::_6 if file <= File::H => {
                 return Some(Some(Square::make(file, rank)));
             }
             _ => {}

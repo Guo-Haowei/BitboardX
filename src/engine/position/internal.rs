@@ -1,8 +1,5 @@
 use super::UndoState;
-use crate::engine::position::{
-    CastlingRight, CastlingType, Move, MoveType, Piece, Position, Square,
-};
-use crate::engine::types::{BitBoard, Color, FILE_A, FILE_H, PieceType};
+use crate::engine::position::*;
 
 // Assume passed in moves are legal
 pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
@@ -46,17 +43,21 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
         if !is_mover_pawn {
             break;
         }
-        let dy = (dst_rank as i32 - src_rank as i32).abs();
+        let dy = dst_rank.diff(src_rank).abs();
         debug_assert!(dy <= 2, "Pawn move must be 1 or 2 squares");
         if dy == 1 {
             break;
         }
         let enemy_pawns = pos.bitboards[enemy_pawn.as_usize()];
-        if (src_file < FILE_H && enemy_pawns.test(Square::make(src_file + 1, dst_rank).as_u8()))
-            || (src_file > FILE_A && enemy_pawns.test(Square::make(src_file - 1, dst_rank).as_u8()))
-        {
-            en_passant_sq = Some(Square::make(src_file, (src_rank + dst_rank) / 2));
+        let dst_sq_bb = dst_sq.to_bitboard();
+        let east = bitboard::shift_east(dst_sq_bb);
+        let west = bitboard::shift_west(dst_sq_bb);
+
+        // if there's an enemy pawn on the east or west square, we can generate an en passant square
+        if (east & enemy_pawns).any() || (west & enemy_pawns).any() {
+            en_passant_sq = Some(Square::make(src_file, Rank((src_rank.0 + dst_rank.0) / 2)));
         }
+
         break;
     }
 

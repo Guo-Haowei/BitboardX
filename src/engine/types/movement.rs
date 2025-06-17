@@ -95,11 +95,11 @@ impl Move {
     }
 
     pub fn src_sq(&self) -> Square {
-        Square((self.0 & Self::SQUARE_MASK) as u8)
+        Square::from_u8((self.0 & Self::SQUARE_MASK) as u8)
     }
 
     pub fn dst_sq(&self) -> Square {
-        Square(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
+        Square::from_u8(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
     }
 
     pub fn get_type(&self) -> MoveType {
@@ -184,7 +184,6 @@ impl MoveList {
 #[cfg(test)]
 mod tests {
     use super::super::bitboard::BitBoard;
-    use super::super::constants::*;
     use super::*;
 
     #[test]
@@ -216,26 +215,26 @@ mod tests {
 
     #[test]
     fn make_square_test() {
-        assert_eq!(Square::make(0, RANK_8), Square::A8);
-        assert_eq!(Square::make(1, RANK_7), Square::B7);
-        assert_eq!(Square::make(2, RANK_6), Square::C6);
-        assert_eq!(Square::make(3, RANK_5), Square::D5);
-        assert_eq!(Square::make(4, RANK_4), Square::E4);
-        assert_eq!(Square::make(5, RANK_3), Square::F3);
-        assert_eq!(Square::make(6, RANK_2), Square::G2);
-        assert_eq!(Square::make(7, RANK_1), Square::H1);
+        assert_eq!(Square::make(File::A, Rank::_8), Square::A8);
+        assert_eq!(Square::make(File::B, Rank::_7), Square::B7);
+        assert_eq!(Square::make(File::C, Rank::_6), Square::C6);
+        assert_eq!(Square::make(File::D, Rank::_5), Square::D5);
+        assert_eq!(Square::make(File::E, Rank::_4), Square::E4);
+        assert_eq!(Square::make(File::F, Rank::_3), Square::F3);
+        assert_eq!(Square::make(File::G, Rank::_2), Square::G2);
+        assert_eq!(Square::make(File::H, Rank::_1), Square::H1);
     }
 
     #[test]
     fn get_file_rank_test() {
-        assert_eq!(Square::A8.file_rank(), (FILE_A, RANK_8));
-        assert_eq!(Square::B7.file_rank(), (FILE_B, RANK_7));
-        assert_eq!(Square::C6.file_rank(), (FILE_C, RANK_6));
-        assert_eq!(Square::D5.file_rank(), (FILE_D, RANK_5));
-        assert_eq!(Square::E4.file_rank(), (FILE_E, RANK_4));
-        assert_eq!(Square::F3.file_rank(), (FILE_F, RANK_3));
-        assert_eq!(Square::G2.file_rank(), (FILE_G, RANK_2));
-        assert_eq!(Square::H1.file_rank(), (FILE_H, RANK_1));
+        assert_eq!(Square::A8.file_rank(), (File::A, Rank::_8));
+        assert_eq!(Square::B7.file_rank(), (File::B, Rank::_7));
+        assert_eq!(Square::C6.file_rank(), (File::C, Rank::_6));
+        assert_eq!(Square::D5.file_rank(), (File::D, Rank::_5));
+        assert_eq!(Square::E4.file_rank(), (File::E, Rank::_4));
+        assert_eq!(Square::F3.file_rank(), (File::F, Rank::_3));
+        assert_eq!(Square::G2.file_rank(), (File::G, Rank::_2));
+        assert_eq!(Square::H1.file_rank(), (File::H, Rank::_1));
     }
 
     #[test]

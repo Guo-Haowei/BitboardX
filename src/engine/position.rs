@@ -193,7 +193,7 @@ impl Position {
         let piece = Piece::get_piece(color, PieceType::King);
         let bb = self.bitboards[piece.as_usize()];
         debug_assert!(bb.any(), "No king found for color {:?}", color);
-        Square(bb.get().trailing_zeros() as u8)
+        bb.to_square().unwrap()
     }
 
     pub fn is_square_pinned(&self, sq: Square, color: Color) -> bool {

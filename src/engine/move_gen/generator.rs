@@ -1,6 +1,10 @@
 use super::super::position::{Position, SmallSquareList};
 use super::super::types::*;
-use super::internal::*;
+use crate::engine::types::bitboard::*;
+use crate::engine::utils;
+
+const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
+    [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
 
 /// Generates all pseudo-legal moves for a given piece on a specific square.
 ///
@@ -127,7 +131,7 @@ fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
             moves |= next_bb;
         }
 
-        if (is_white && rank == RANK_2 || is_black && rank == RANK_7) && moves.any() {
+        if (is_white && rank == Rank::_2 || is_black && rank == Rank::_7) && moves.any() {
             let next_bb = if is_white { shift_north(next_bb) } else { shift_south(next_bb) };
             if (next_bb & pos.occupancies[Color::BOTH.as_usize()]).none() {
                 moves |= next_bb;
@@ -160,13 +164,17 @@ fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
     if let Some(ep_sq) = pos.en_passant {
         debug_assert!(pos.get_piece_at(ep_sq) == Piece::NONE, "En passant square must be empty");
         let (ep_file, ep_rank) = ep_sq.file_rank();
-        if (file as i32 - ep_file as i32).abs() == 1 {
-            if is_white && rank == RANK_5 && ep_rank == RANK_6 {
-                debug_assert!(pos.get_piece_at(Square(ep_sq.0 - 8)) == Piece::B_PAWN);
+        if file.diff(ep_file).abs() == 1 {
+            if is_white && rank == Rank::_5 && ep_rank == Rank::_6 {
+                debug_assert!(
+                    pos.get_piece_at(Square::from_u8(ep_sq.as_u8() - 8)) == Piece::B_PAWN
+                );
                 return ep_sq.to_bitboard();
             }
-            if is_black && rank == RANK_4 && ep_rank == RANK_3 {
-                debug_assert!(pos.get_piece_at(Square(ep_sq.0 + 8)) == Piece::W_PAWN);
+            if is_black && rank == Rank::_4 && ep_rank == Rank::_3 {
+                debug_assert!(
+                    pos.get_piece_at(Square::from_u8(ep_sq.as_u8() + 8)) == Piece::W_PAWN
+                );
                 return ep_sq.to_bitboard();
             }
         }
@@ -199,8 +207,8 @@ fn check_if_promotion<const COLOR: u8>(dst_sq: Square) -> bool {
     let (_, rank) = dst_sq.file_rank();
 
     match rank {
-        RANK_8 if COLOR == Color::WHITE.as_u8() => true,
-        RANK_1 if COLOR == Color::BLACK.as_u8() => true,
+        Rank::_8 if COLOR == Color::WHITE.as_u8() => true,
+        Rank::_1 if COLOR == Color::BLACK.as_u8() => true,
         _ => false,
     }
 }
@@ -231,8 +239,8 @@ fn check_if_eq_capture<const COLOR: u8>(
     if from_file == to_file {
         return false;
     }
-    debug_assert!((from_file as i8 - to_file as i8).abs() == 1);
-    debug_assert!((from_rank as i8 - to_rank as i8).abs() == 1);
+    debug_assert!(from_file.diff(to_file).abs() == 1);
+    debug_assert!(from_rank.diff(to_rank).abs() == 1);
 
     if cfg!(debug_assertions) {
         let color = Color::from(COLOR);
@@ -316,20 +324,24 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
 
     let occupied = pos.occupancies[Color::BOTH.as_usize()];
     let king_bb = pos.bitboards[Piece::get_piece(color, PieceType::King).as_usize()];
+    debug_assert!(king_bb.count() == 1, "There must be exactly one king on the board");
 
     for i in 0..8 {
         let mut next_bb = SHIFT_FUNCS[i as usize](king_bb);
 
         let mut squares = SmallSquareList::new();
 
-        while next_bb.any() {
-            if (next_bb & occupied).any() {
-                squares.add(next_bb.first_nonzero_sq());
+        loop {
+            let next_sq = match next_bb.to_square() {
+                Some(sq) => sq,
+                None => break, // No more squares in this direction
+            };
+            if occupied.test_sq(next_sq) {
+                squares.add(next_sq);
                 if squares.count() == 2 {
                     break; // Found two pieces in this direction
                 }
             }
-
             next_bb = SHIFT_FUNCS[i as usize](next_bb);
         }
 
@@ -583,17 +595,13 @@ fn move_mask_castle_check<const COLOR: u8>(
         return false;
     }
 
-    fn min_max(a: Square, b: Square) -> (Square, Square) {
-        if a.0 < b.0 { (a, b) } else { (b, a) }
-    }
-
     // check if the cells are under attack
-    let (s1, e1) = min_max(sq, dst_sq);
-    let (s2, e2) = min_max(sq, rook_sq);
+    let (s1, e1) = utils::min_max(sq.as_u8(), dst_sq.as_u8());
+    let (s2, e2) = utils::min_max(sq.as_u8(), rook_sq.as_u8());
 
     let checks = [
-        (s1.0, e1.0 + 1, pos.attack_mask[opponent.as_usize()]),
-        (s2.0 + 1, e2.0, pos.occupancies[Color::BOTH.as_usize()]),
+        (s1, e1 + 1, pos.attack_mask[opponent.as_usize()]),
+        (s2 + 1, e2, pos.occupancies[Color::BOTH.as_usize()]),
     ];
 
     for (start, end, mask) in checks {
@@ -613,18 +621,18 @@ pub fn pseudo_legal_move_king<const COLOR: u8>(
     pos: &Position,
 ) {
     let mask = king_mask::<COLOR, false>(sq, pos);
-    for target_sq in mask.iter() {
+    for dst_sq in mask.iter() {
         // check if it's a castling move
-        let (from_file, _) = sq.file_rank();
-        let (to_file, _) = target_sq.file_rank();
-        let diff = from_file as i8 - to_file as i8;
+        let (src_file, _) = sq.file_rank();
+        let (dst_file, _) = dst_sq.file_rank();
+        let diff = src_file.diff(dst_file);
         let move_type = match diff.abs() {
             0 | 1 => MoveType::Normal,
             2 => MoveType::Castling,
-            _ => panic!("Invalid castling move from {} to {}", sq, target_sq),
+            _ => panic!("Invalid castling move from {} to {}", sq, dst_sq),
         };
 
-        move_list.add(Move::new(sq, target_sq, move_type, None));
+        move_list.add(Move::new(sq, dst_sq, move_type, None));
     }
 }
 

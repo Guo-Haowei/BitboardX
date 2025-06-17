@@ -13,8 +13,8 @@ pub fn parse_move(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
                 return None;
             }
 
-            let from = Square::make(f1, r1);
-            let to = Square::make(f2, r2);
+            let from = Square::make(File(f1), Rank(r1));
+            let to = Square::make(File(f2), Rank(r2));
 
             if len == 5 {
                 let promotion = match input.chars().nth(4)? {
@@ -91,7 +91,7 @@ pub fn to_board_string(pos: &Position) -> String {
     for rank in (0..8).rev() {
         for file in 0..8 {
             let sq = rank * 8 + file;
-            let piece = pos.get_piece_at(Square(sq));
+            let piece = pos.get_piece_at(Square::from_u8(sq));
             s.push(piece.to_char());
         }
     }

@@ -184,20 +184,20 @@ fn is_pseudo_en_passant_legal(pos: &Position, m: Move, mover_color: Color) -> bo
         "En passant capture must have an enemy pawn on the square to capture"
     );
 
-    let (f_min, f_max) = utils::min_max(from_file as u8, captured_file as u8);
+    let (f_min, f_max) = utils::min_max(from_file.0, captured_file.0);
 
     let mut pieces = [Piece::NONE; 2];
 
-    for file in (RANK_1..f_min).rev() {
-        let sq = Square::make(file, captured_rank);
+    for file in (Rank::_1.0..f_min).rev() {
+        let sq = Square::make(File(file), captured_rank);
         let piece = pos.get_piece_at(sq);
         if piece.get_type() != PieceType::None {
             pieces[0] = piece;
             break;
         }
     }
-    for file in f_max + 1..=RANK_8 {
-        let sq = Square::make(file, captured_rank);
+    for file in f_max + 1..=Rank::_8.0 {
+        let sq = Square::make(File(file), captured_rank);
         let piece = pos.get_piece_at(sq);
         if piece.get_type() != PieceType::None {
             pieces[1] = piece;
