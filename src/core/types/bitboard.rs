@@ -10,7 +10,7 @@
 use std::fmt;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
-use crate::engine::types::*;
+use crate::core::types::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct BitBoard(u64);

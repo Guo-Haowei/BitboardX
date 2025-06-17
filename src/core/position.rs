@@ -1,4 +1,4 @@
-use crate::engine::move_gen;
+use crate::core::move_gen;
 
 use super::types::*;
 use super::utils::parse_move;

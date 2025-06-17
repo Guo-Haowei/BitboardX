@@ -1,4 +1,4 @@
-use bitboard_x::engine::utils::debug_string;
+use bitboard_x::core::utils::debug_string;
 use bitboard_x::game::ai_player::AiPlayer;
 use bitboard_x::game::*;
 use std::env;

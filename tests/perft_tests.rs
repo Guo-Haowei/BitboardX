@@ -5,7 +5,7 @@ use pretty_assertions::assert_eq;
 use std::thread;
 use std::time::Instant;
 
-use bitboard_x::engine::{move_gen, position::*};
+use bitboard_x::core::{move_gen, position::*};
 use bitboard_x::named_test;
 
 const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 8 } else { 5 };

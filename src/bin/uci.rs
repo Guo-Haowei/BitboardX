@@ -1,4 +1,4 @@
-use bitboard_x::engine::{move_gen, name, position::Position, utils};
+use bitboard_x::core::{move_gen, name, position::Position, utils};
 use rustyline::{DefaultEditor, Result};
 use std::io::{self, Write};
 

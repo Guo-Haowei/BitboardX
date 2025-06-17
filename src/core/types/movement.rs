@@ -1,4 +1,4 @@
-use crate::engine::types::PieceType;
+use crate::core::types::PieceType;
 
 use super::square::*;
 

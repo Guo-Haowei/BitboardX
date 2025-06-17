@@ -1,4 +1,4 @@
-use crate::engine::position::CheckerList;
+use crate::core::position::CheckerList;
 
 use super::position::Position;
 use super::types::*;

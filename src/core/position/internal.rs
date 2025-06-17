@@ -1,5 +1,5 @@
 use super::UndoState;
-use crate::engine::position::*;
+use crate::core::position::*;
 
 // Assume passed in moves are legal
 pub fn make_move(pos: &mut Position, m: Move) -> UndoState {

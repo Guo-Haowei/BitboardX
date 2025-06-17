@@ -1,5 +1,5 @@
 // wasm-pack build --target web
-pub mod engine;
+pub mod core;
 pub mod game;
 
 // #[cfg(target_arch = "wasm32")]

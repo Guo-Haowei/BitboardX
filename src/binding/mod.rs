@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use crate::{
-    engine::utils,
+    core::utils,
     game::{player::GuiPlayer, *},
 };
 

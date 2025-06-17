@@ -1,5 +1,5 @@
 use super::player::{Player, PlayerAction};
-use crate::engine::{move_gen, position::Position};
+use crate::core::{move_gen, position::Position};
 use std::any::Any;
 
 pub struct AiPlayer {

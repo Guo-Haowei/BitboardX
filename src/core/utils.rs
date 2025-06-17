@@ -1,5 +1,5 @@
 use super::position::Position;
-use crate::engine::types::*;
+use crate::core::types::*;
 
 pub fn parse_move(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
     let len = input.len();
