@@ -3,8 +3,16 @@ use super::super::types::*;
 use crate::engine::types::bitboard::*;
 use crate::engine::utils;
 
-const SHIFT_FUNCS: [fn(BitBoard) -> BitBoard; 8] =
-    [shift_north, shift_south, shift_east, shift_west, shift_ne, shift_nw, shift_se, shift_sw];
+const SHIFT_FUNCS: [fn(&BitBoard) -> BitBoard; 8] = [
+    BitBoard::shift_north,
+    BitBoard::shift_south,
+    BitBoard::shift_east,
+    BitBoard::shift_west,
+    BitBoard::shift_ne,
+    BitBoard::shift_nw,
+    BitBoard::shift_se,
+    BitBoard::shift_sw,
+];
 
 /// Generates all pseudo-legal moves for a given piece on a specific square.
 ///
@@ -125,14 +133,14 @@ fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
 
     if !ATTACK_MASK {
         // Handle forward moves
-        let next_bb = if is_white { shift_north(bb) } else { shift_south(bb) };
+        let next_bb = if is_white { bb.shift_north() } else { bb.shift_south() };
 
         if (next_bb & pos.occupancies[Color::BOTH.as_usize()]).none() {
             moves |= next_bb;
         }
 
         if (is_white && rank == Rank::_2 || is_black && rank == Rank::_7) && moves.any() {
-            let next_bb = if is_white { shift_north(next_bb) } else { shift_south(next_bb) };
+            let next_bb = if is_white { next_bb.shift_north() } else { next_bb.shift_south() };
             if (next_bb & pos.occupancies[Color::BOTH.as_usize()]).none() {
                 moves |= next_bb;
             }
@@ -143,11 +151,11 @@ fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
     }
 
     // Handle attacks moves
-    let attack_left = if is_white { shift_nw(bb) } else { shift_sw(bb) };
+    let attack_left = if is_white { bb.shift_nw() } else { bb.shift_sw() };
     if ATTACK_MASK || (attack_left & pos.occupancies[opponent as usize]).any() {
         moves |= attack_left;
     }
-    let attack_right = if is_white { shift_ne(bb) } else { shift_se(bb) };
+    let attack_right = if is_white { bb.shift_ne() } else { bb.shift_se() };
     if ATTACK_MASK || (attack_right & pos.occupancies[opponent as usize]).any() {
         moves |= attack_right;
     }
@@ -295,7 +303,7 @@ fn sliding_mask<const START: u8, const END: u8, const ATTACK_MASK: bool>(
     let bb = sq.to_bitboard();
 
     for i in START..END {
-        let mut next_bb = SHIFT_FUNCS[i as usize](bb);
+        let mut next_bb = SHIFT_FUNCS[i as usize](&bb);
 
         while next_bb.any() {
             if (next_bb & my_occupancy).any() {
@@ -312,7 +320,7 @@ fn sliding_mask<const START: u8, const END: u8, const ATTACK_MASK: bool>(
 
             masks |= next_bb;
 
-            next_bb = SHIFT_FUNCS[i as usize](next_bb);
+            next_bb = SHIFT_FUNCS[i as usize](&next_bb);
         }
     }
 
@@ -327,7 +335,7 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
     debug_assert!(king_bb.count() == 1, "There must be exactly one king on the board");
 
     for i in 0..8 {
-        let mut next_bb = SHIFT_FUNCS[i as usize](king_bb);
+        let mut next_bb = SHIFT_FUNCS[i as usize](&king_bb);
 
         let mut squares = SmallSquareList::new();
 
@@ -342,7 +350,7 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
                     break; // Found two pieces in this direction
                 }
             }
-            next_bb = SHIFT_FUNCS[i as usize](next_bb);
+            next_bb = SHIFT_FUNCS[i as usize](&next_bb);
         }
 
         if squares.count() != 2 {
@@ -457,20 +465,25 @@ fn pseudo_legal_move_queen(
 
 fn knight_mask<const ATTACK_MASK: bool>(sq: Square, my_occupancy: BitBoard) -> BitBoard {
     let mut moves = BitBoard::new();
-    let bb = sq.to_bitboard();
+    let bb = sq.to_bitboard().get();
 
     let mask = if ATTACK_MASK { 0u64 } else { my_occupancy.get() };
     let mask = BitBoard::from(!mask);
 
-    moves |= shift(bb & !(BOUND_H | BOUND_78), NE + NORTH) & mask;
-    moves |= shift(bb & !(BOUND_A | BOUND_78), NW + NORTH) & mask;
-    moves |= shift(bb & !(BOUND_H | BOUND_12), SE + SOUTH) & mask;
-    moves |= shift(bb & !(BOUND_A | BOUND_12), SW + SOUTH) & mask;
+    const B_AB: u64 = BitBoard::MASK_A & BitBoard::MASK_B;
+    const B_GH: u64 = BitBoard::MASK_G & BitBoard::MASK_H;
+    const B_12: u64 = BitBoard::MASK_R1 & BitBoard::MASK_R2;
+    const B_78: u64 = BitBoard::MASK_R7 & BitBoard::MASK_R8;
 
-    moves |= shift(bb & !(BOUND_AB | BOUND_8), NW + WEST) & mask;
-    moves |= shift(bb & !(BOUND_AB | BOUND_1), SW + WEST) & mask;
-    moves |= shift(bb & !(BOUND_GH | BOUND_8), NE + EAST) & mask;
-    moves |= shift(bb & !(BOUND_GH | BOUND_1), SE + EAST) & mask;
+    moves |= BitBoard::from(bb & BitBoard::MASK_H & B_78).shift(BitBoard::NE + BitBoard::N) & mask;
+    moves |= BitBoard::from(bb & BitBoard::MASK_A & B_78).shift(BitBoard::NW + BitBoard::N) & mask;
+    moves |= BitBoard::from(bb & BitBoard::MASK_H & B_12).shift(BitBoard::SE + BitBoard::S) & mask;
+    moves |= BitBoard::from(bb & BitBoard::MASK_A & B_12).shift(BitBoard::SW + BitBoard::S) & mask;
+
+    moves |= BitBoard::from(bb & B_AB & BitBoard::MASK_R8).shift(BitBoard::NW + BitBoard::W) & mask;
+    moves |= BitBoard::from(bb & B_AB & BitBoard::MASK_R1).shift(BitBoard::SW + BitBoard::W) & mask;
+    moves |= BitBoard::from(bb & B_GH & BitBoard::MASK_R8).shift(BitBoard::NE + BitBoard::E) & mask;
+    moves |= BitBoard::from(bb & B_GH & BitBoard::MASK_R1).shift(BitBoard::SE + BitBoard::E) & mask;
 
     moves
 }
@@ -532,14 +545,9 @@ fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
     let bb = sq.to_bitboard();
     let mut moves = BitBoard::new();
     let occupancy = !(if ATTACK_MASK { BitBoard::new() } else { pos.occupancies[COLOR as usize] });
-    moves |= shift_north(bb) & occupancy;
-    moves |= shift_south(bb) & occupancy;
-    moves |= shift_east(bb) & occupancy;
-    moves |= shift_west(bb) & occupancy;
-    moves |= shift_ne(bb) & occupancy;
-    moves |= shift_nw(bb) & occupancy;
-    moves |= shift_se(bb) & occupancy;
-    moves |= shift_sw(bb) & occupancy;
+    for shift_func in &SHIFT_FUNCS {
+        moves |= shift_func(&bb) & occupancy;
+    }
 
     if !ATTACK_MASK {
         // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack

@@ -18,6 +18,24 @@ pub struct BitBoard(u64);
 pub type Board = [BitBoard; Piece::COUNT];
 
 impl BitBoard {
+    pub const N: i32 = 8;
+    pub const S: i32 = -BitBoard::N;
+    pub const E: i32 = 1;
+    pub const W: i32 = -BitBoard::E;
+    pub const NE: i32 = BitBoard::N + BitBoard::E;
+    pub const NW: i32 = BitBoard::N + BitBoard::W;
+    pub const SE: i32 = BitBoard::S + BitBoard::E;
+    pub const SW: i32 = BitBoard::S + BitBoard::W;
+
+    pub const MASK_A: u64 = !0x0101010101010101;
+    pub const MASK_B: u64 = !0x0202020202020202;
+    pub const MASK_G: u64 = !0x4040404040404040;
+    pub const MASK_H: u64 = !0x8080808080808080;
+    pub const MASK_R1: u64 = !0x00000000000000FF;
+    pub const MASK_R2: u64 = !0x000000000000FF00;
+    pub const MASK_R7: u64 = !0x00FF000000000000;
+    pub const MASK_R8: u64 = !0xFF00000000000000;
+
     pub const fn new() -> Self {
         Self(0u64)
     }
@@ -69,8 +87,44 @@ impl BitBoard {
     }
 
     pub fn shift(&self, dir: i32) -> BitBoard {
-        let val = if dir < 0 { self.0 >> (-dir) } else { self.0 << dir };
+        debug_assert!(
+            self.0.count_ones() <= 1,
+            "BitBoard should have at most one bit set for shift operations"
+        );
+        let val = if dir < 0 { self.0 >> -dir } else { self.0 << dir };
         BitBoard(val)
+    }
+
+    pub fn shift_east(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_H).shift(BitBoard::E)
+    }
+
+    pub fn shift_west(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_A).shift(BitBoard::W)
+    }
+
+    pub fn shift_north(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_R8).shift(BitBoard::N)
+    }
+
+    pub fn shift_south(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_R1).shift(BitBoard::S)
+    }
+
+    pub fn shift_ne(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_H & BitBoard::MASK_R8).shift(BitBoard::NE)
+    }
+
+    pub fn shift_nw(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_A & BitBoard::MASK_R8).shift(BitBoard::NW)
+    }
+
+    pub fn shift_se(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_H & BitBoard::MASK_R1).shift(BitBoard::SE)
+    }
+
+    pub fn shift_sw(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_A & BitBoard::MASK_R1).shift(BitBoard::SW)
     }
 
     pub fn count(&self) -> u32 {
@@ -177,65 +231,6 @@ impl fmt::Display for BitBoard {
         }
         Ok(())
     }
-}
-
-pub const NORTH: i32 = 8;
-pub const SOUTH: i32 = -NORTH;
-pub const EAST: i32 = 1;
-pub const WEST: i32 = -EAST;
-pub const NE: i32 = NORTH + EAST;
-pub const NW: i32 = NORTH + WEST;
-pub const SE: i32 = SOUTH + EAST;
-pub const SW: i32 = SOUTH + WEST;
-
-pub const BOUND_A: BitBoard = BitBoard::from(0x0101010101010101);
-pub const BOUND_B: BitBoard = BitBoard::from(0x0202020202020202);
-pub const BOUND_G: BitBoard = BitBoard::from(0x4040404040404040);
-pub const BOUND_H: BitBoard = BitBoard::from(0x8080808080808080);
-pub const BOUND_1: BitBoard = BitBoard::from(0x00000000000000FF);
-pub const BOUND_2: BitBoard = BitBoard::from(0x000000000000FF00);
-pub const BOUND_7: BitBoard = BitBoard::from(0x00FF000000000000);
-pub const BOUND_8: BitBoard = BitBoard::from(0xFF00000000000000);
-pub const BOUND_AB: BitBoard = BitBoard::from(BOUND_A.get() | BOUND_B.get());
-pub const BOUND_GH: BitBoard = BitBoard::from(BOUND_G.get() | BOUND_H.get());
-pub const BOUND_12: BitBoard = BitBoard::from(BOUND_1.get() | BOUND_2.get());
-pub const BOUND_78: BitBoard = BitBoard::from(BOUND_7.get() | BOUND_8.get());
-
-pub fn shift(bb: BitBoard, dir: i32) -> BitBoard {
-    // if dir > 0 { bb.get() << dir } else { bb.get() >> -dir }
-    BitBoard::from(if dir < 0 { bb.get() >> -dir } else { bb.get() << dir })
-}
-
-pub fn shift_east(bb: BitBoard) -> BitBoard {
-    (bb & !BOUND_H).shift(EAST)
-}
-
-pub fn shift_west(bb: BitBoard) -> BitBoard {
-    (bb & !BOUND_A).shift(WEST)
-}
-
-pub fn shift_north(bb: BitBoard) -> BitBoard {
-    (bb & !BOUND_8).shift(NORTH)
-}
-
-pub fn shift_south(bb: BitBoard) -> BitBoard {
-    (bb & !BOUND_1).shift(SOUTH)
-}
-
-pub fn shift_ne(bb: BitBoard) -> BitBoard {
-    (bb & !(BOUND_H | BOUND_8)).shift(NE)
-}
-
-pub fn shift_nw(bb: BitBoard) -> BitBoard {
-    (bb & !(BOUND_A | BOUND_8)).shift(NW)
-}
-
-pub fn shift_se(bb: BitBoard) -> BitBoard {
-    (bb & !(BOUND_H | BOUND_1)).shift(SE)
-}
-
-pub fn shift_sw(bb: BitBoard) -> BitBoard {
-    (bb & !(BOUND_A | BOUND_1)).shift(SW)
 }
 
 #[cfg(test)]

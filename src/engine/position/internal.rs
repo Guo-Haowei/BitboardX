@@ -50,8 +50,8 @@ pub fn make_move(pos: &mut Position, m: Move) -> UndoState {
         }
         let enemy_pawns = pos.bitboards[enemy_pawn.as_usize()];
         let dst_sq_bb = dst_sq.to_bitboard();
-        let east = bitboard::shift_east(dst_sq_bb);
-        let west = bitboard::shift_west(dst_sq_bb);
+        let east = dst_sq_bb.shift_east();
+        let west = dst_sq_bb.shift_west();
 
         // if there's an enemy pawn on the east or west square, we can generate an en passant square
         if (east & enemy_pawns).any() || (west & enemy_pawns).any() {
