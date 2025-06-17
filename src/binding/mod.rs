@@ -15,8 +15,8 @@ pub struct WasmGameState {
 impl WasmGameState {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        let fen = "r4r1k/2p1p2p/p5p1/1p1Q1p2/1P3bq1/P1P2N2/1B3P2/4R1RK w - - 0 1";
-        let mut game = Self { internal: GameState::from_fen(&fen).unwrap() };
+        // let fen = "r4r1k/2p1p2p/p5p1/1p1Q1p2/1P3bq1/P1P2N2/1B3P2/4R1RK w - - 0 1";
+        let mut game = Self { internal: GameState::new() };
 
         let player: Box<dyn Player> = Box::new(GuiPlayer::new());
         game.internal.set_white(player);
@@ -25,6 +25,35 @@ impl WasmGameState {
         game.internal.set_black(player);
 
         game
+    }
+
+    pub fn reset_game(&mut self, fen: String, white_player_human: bool, black_player_human: bool) {
+        console::log_1(&format!("Resetting game with FEN: {}", fen).into());
+        let game = match GameState::from_fen(fen.as_str()) {
+            Ok(game) => game,
+            Err(err) => {
+                console::error_1(&format!("Invalid FEN string: {}", err).into());
+                GameState::new()
+            }
+        };
+
+        self.internal = game;
+
+        if white_player_human {
+            let player: Box<dyn Player> = Box::new(GuiPlayer::new());
+            self.internal.set_white(player);
+        } else {
+            let player: Box<dyn Player> = Box::new(AiPlayer::new());
+            self.internal.set_white(player);
+        }
+
+        if black_player_human {
+            let player: Box<dyn Player> = Box::new(GuiPlayer::new());
+            self.internal.set_black(player);
+        } else {
+            let player: Box<dyn Player> = Box::new(AiPlayer::new());
+            self.internal.set_black(player);
+        }
     }
 
     pub fn tick(&mut self) {

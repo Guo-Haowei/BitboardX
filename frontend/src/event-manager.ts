@@ -53,8 +53,7 @@ export class EventManager implements RuntimeModule {
     });
 
     document.getElementById('fenButton')?.addEventListener('click', () => {
-      const fen = (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
-      queue.push({ type: 'restart', payload: fen });
+      queue.push({ type: 'restart', payload: null });
     });
 
     canvas.addEventListener('mousedown', (e) => {

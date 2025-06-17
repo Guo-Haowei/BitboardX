@@ -57,21 +57,14 @@
 
     <div id="right-column">
 
-        <h2>Controls</h2>
         <h1>Chess Engine</h1>
         <p></p>
 
-        <p></p>
+        <!-- <p></p>
         <button id="undoButton" disabled>Undo</button>
         <p></p>
         <button id="redoButton" disabled>Redo</button>
-        <p></p>
-
-        <input type="text" id="fenInput" style="width: 500px;"
-            placeholder="please enter FEN here" />
-        <p></p>
-        <button id="fenButton">Go!</button>
-        <p></p>
+        <p></p> -->
 
         <div class="player-section">
         <fieldset>
@@ -89,13 +82,19 @@
         <fieldset>
             <legend>Player 2</legend>
             <label>
-                <input type="radio" name="player2" value="human" checked> Human
+                <input type="radio" name="player2" value="human"> Human
             </label>
             <label>
-                <input type="radio" name="player2" value="computer"> Computer
+                <input type="radio" name="player2" value="computer" checked> Computer
             </label>
         </fieldset>
         </div>
+
+        <input type="text" id="fenInput" style="width: 500px;"
+            placeholder="please enter FEN here" />
+        <p></p>
+        <button id="fenButton">Go!</button>
+        <p></p>
 
     </div>
 
