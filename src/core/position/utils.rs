@@ -1,4 +1,4 @@
-use crate::engine::types::*;
+use crate::core::types::*;
 
 pub fn parse_board(input: &str) -> Result<[BitBoard; Piece::COUNT], &'static str> {
     let mut bitboards = [BitBoard::new(); Piece::COUNT];
@@ -38,7 +38,7 @@ pub fn dump_board(bitboards: &[BitBoard; Piece::COUNT]) -> String {
 
             let piece_char = (Piece::W_PAWN.as_usize()..Piece::COUNT)
                 .find(|&p| bitboards[p].test(sq))
-                .map(|p| Piece::from(p as u8).to_char());
+                .map(|p| Piece::new(p as u8).to_char());
 
             match piece_char {
                 Some(c) => {
@@ -101,10 +101,10 @@ pub fn parse_en_passant(input: &str) -> Option<Option<Square>> {
     }
 
     if input.len() == 2 {
-        let file = input.chars().nth(0)? as u8 - b'a';
-        let rank = input.chars().nth(1)? as u8 - b'1';
+        let file = File(input.chars().nth(0)? as u8 - b'a');
+        let rank = Rank(input.chars().nth(1)? as u8 - b'1');
         match rank {
-            RANK_3 | RANK_6 if file <= FILE_H => {
+            Rank::_3 | Rank::_6 if file <= File::H => {
                 return Some(Some(Square::make(file, rank)));
             }
             _ => {}

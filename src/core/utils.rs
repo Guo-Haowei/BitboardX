@@ -1,5 +1,5 @@
 use super::position::Position;
-use crate::engine::types::*;
+use crate::core::types::*;
 
 pub fn parse_move(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
     let len = input.len();
@@ -13,21 +13,21 @@ pub fn parse_move(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
                 return None;
             }
 
-            let from = Square::make(f1, r1);
-            let to = Square::make(f2, r2);
+            let src = Square::make(File(f1), Rank(r1));
+            let dst = Square::make(File(f2), Rank(r2));
 
             if len == 5 {
                 let promotion = match input.chars().nth(4)? {
-                    'q' | 'Q' => Some(PieceType::Queen),
-                    'r' | 'R' => Some(PieceType::Rook),
-                    'b' | 'B' => Some(PieceType::Bishop),
-                    'n' | 'N' => Some(PieceType::Knight),
+                    'q' | 'Q' => Some(PieceType::QUEEN),
+                    'r' | 'R' => Some(PieceType::ROOK),
+                    'b' | 'B' => Some(PieceType::BISHOP),
+                    'n' | 'N' => Some(PieceType::KNIGHT),
                     _ => return None,
                 };
-                return Some((from, to, promotion));
+                return Some((src, dst, promotion));
             }
 
-            Some((from, to, None))
+            Some((src, dst, None))
         }
         _ => return None,
     }
@@ -91,7 +91,7 @@ pub fn to_board_string(pos: &Position) -> String {
     for rank in (0..8).rev() {
         for file in 0..8 {
             let sq = rank * 8 + file;
-            let piece = pos.get_piece_at(Square(sq));
+            let piece = pos.get_piece_at(Square::new(sq));
             s.push(piece.to_char());
         }
     }
@@ -112,7 +112,7 @@ mod test {
         assert_eq!(parse_move("a7a8"), Some((Square::A7, Square::A8, None)));
         assert_eq!(parse_move("h1h2"), Some((Square::H1, Square::H2, None)));
         assert_eq!(parse_move("d4d5"), Some((Square::D4, Square::D5, None)));
-        assert_eq!(parse_move("d7d8q"), Some((Square::D7, Square::D8, Some(PieceType::Queen))));
+        assert_eq!(parse_move("d7d8q"), Some((Square::D7, Square::D8, Some(PieceType::QUEEN))));
         assert_eq!(parse_move("z1z2"), None);
         assert_eq!(parse_move("e9e4"), None);
         assert_eq!(parse_move("e2e"), None);

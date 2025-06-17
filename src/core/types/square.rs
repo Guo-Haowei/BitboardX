@@ -3,6 +3,56 @@ use super::bitboard::BitBoard;
 use paste::paste;
 use std::fmt;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct File(pub u8);
+impl File {
+    pub const A: File = File(0);
+    pub const B: File = File(1);
+    pub const C: File = File(2);
+    pub const D: File = File(3);
+    pub const E: File = File(4);
+    pub const F: File = File(5);
+    pub const G: File = File(6);
+    pub const H: File = File(7);
+
+    pub fn diff(&self, other: File) -> i32 {
+        (self.0 as i32) - (other.0 as i32)
+    }
+
+    pub fn west(&self) -> Option<File> {
+        if self.0 == 0 { None } else { Some(File(self.0 - 1)) }
+    }
+
+    pub fn east(&self) -> Option<File> {
+        if self.0 == 7 { None } else { Some(File(self.0 + 1)) }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Rank(pub u8);
+impl Rank {
+    pub const _1: Rank = Rank(0);
+    pub const _2: Rank = Rank(1);
+    pub const _3: Rank = Rank(2);
+    pub const _4: Rank = Rank(3);
+    pub const _5: Rank = Rank(4);
+    pub const _6: Rank = Rank(5);
+    pub const _7: Rank = Rank(6);
+    pub const _8: Rank = Rank(7);
+
+    pub fn diff(&self, other: Rank) -> i32 {
+        (self.0 as i32) - (other.0 as i32)
+    }
+
+    pub fn north(&self) -> Option<Rank> {
+        if self.0 == 7 { None } else { Some(Rank(self.0 + 1)) }
+    }
+
+    pub fn east(&self) -> Option<Rank> {
+        if self.0 == 0 { None } else { Some(Rank(self.0 - 1)) }
+    }
+}
+
 macro_rules! square_consts {
     ($($rank:literal),*) => {
         paste! {
@@ -21,14 +71,20 @@ macro_rules! square_consts {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Square(pub u8);
+pub struct Square(u8);
 
 impl Square {
     square_consts!(1, 2, 3, 4, 5, 6, 7, 8);
 
-    pub const fn make(file: u8, rank: u8) -> Square {
-        debug_assert!(file < 8 && rank < 8);
-        Square((rank << 3) + file)
+    pub const NONE: Square = Square(64);
+
+    pub const fn make(file: File, rank: Rank) -> Square {
+        Square(((rank.0 << 3) + file.0) as u8)
+    }
+
+    pub const fn new(value: u8) -> Square {
+        debug_assert!(value < 64);
+        Square(value)
     }
 
     pub const fn as_u8(&self) -> u8 {
@@ -39,15 +95,19 @@ impl Square {
         self.0 as u16
     }
 
-    pub const fn file_rank(&self) -> (u8, u8) {
+    pub const fn file_rank(&self) -> (File, Rank) {
         debug_assert!(self.0 < 64);
-        let file = self.0 & 0b111;
-        let rank = self.0 >> 3;
-        (file, rank)
+        let f = self.0 & 0b111;
+        let r = self.0 >> 3;
+        (File(f), Rank(r))
     }
 
     pub const fn to_bitboard(&self) -> BitBoard {
-        BitBoard::from_bit(self.0)
+        BitBoard::from(1u64 << self.0)
+    }
+
+    pub const fn is_none(&self) -> bool {
+        self.0 >= 64
     }
 
     // Shoelace Formula (also called the Surveyor's Formula) for the area of a triangle in 2D space.
@@ -58,9 +118,8 @@ impl Square {
         let (bx, by) = b.file_rank();
         let (cx, cy) = self.file_rank();
 
-        let two_signed_area = ax as i32 * (by as i32 - cy as i32)
-            + bx as i32 * (cy as i32 - ay as i32)
-            + cx as i32 * (ay as i32 - by as i32);
+        let two_signed_area =
+            ax.0 as i32 * by.diff(cy) + bx.0 as i32 * cy.diff(ay) + cx.0 as i32 * ay.diff(by);
 
         two_signed_area == 0
     }
@@ -75,10 +134,10 @@ impl Square {
             return false;
         }
 
-        let (x_min, x_max) = utils::min_max(ax, bx);
-        let (y_min, y_max) = utils::min_max(ay, by);
-        let between_x = cx >= x_min && cx <= x_max;
-        let between_y = cy >= y_min && cy <= y_max;
+        let (x_min, x_max) = utils::min_max(ax.0, bx.0);
+        let (y_min, y_max) = utils::min_max(ay.0, by.0);
+        let between_x = cx.0 >= x_min && cx.0 <= x_max;
+        let between_y = cy.0 >= y_min && cy.0 <= y_max;
 
         between_x && between_y
     }
@@ -87,7 +146,7 @@ impl Square {
 impl fmt::Display for Square {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (file, rank) = self.file_rank();
-        write!(f, "{}{}", (b'a' + file) as char, rank + 1)
+        write!(f, "{}{}", (b'a' + file.0) as char, rank.0 + 1)
     }
 }
 

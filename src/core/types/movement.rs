@@ -1,4 +1,4 @@
-use crate::engine::types::PieceType;
+use crate::core::types::PieceType;
 
 use super::square::*;
 
@@ -75,10 +75,10 @@ impl Move {
             debug_assert!(move_type == MoveType::Promotion);
             debug_assert!(matches!(
                 promo,
-                PieceType::Knight | PieceType::Bishop | PieceType::Rook | PieceType::Queen
+                PieceType::KNIGHT | PieceType::BISHOP | PieceType::ROOK | PieceType::QUEEN
             ));
 
-            data |= (promo as u16 - 1) << 14; // Promotion piece
+            data |= (promo.0 as u16 - 1) << 14; // Promotion piece
         } else {
             debug_assert!(move_type != MoveType::Promotion);
         }
@@ -95,11 +95,11 @@ impl Move {
     }
 
     pub fn src_sq(&self) -> Square {
-        Square((self.0 & Self::SQUARE_MASK) as u8)
+        Square::new((self.0 & Self::SQUARE_MASK) as u8)
     }
 
     pub fn dst_sq(&self) -> Square {
-        Square(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
+        Square::new(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
     }
 
     pub fn get_type(&self) -> MoveType {
@@ -120,25 +120,25 @@ impl Move {
     }
 
     pub fn to_string(&self) -> String {
-        let from = self.src_sq();
-        let to = self.dst_sq();
+        let src = self.src_sq();
+        let dst = self.dst_sq();
         let promo = match self.get_promotion() {
-            Some(PieceType::Knight) => "n",
-            Some(PieceType::Bishop) => "b",
-            Some(PieceType::Rook) => "r",
-            Some(PieceType::Queen) => "q",
+            Some(PieceType::KNIGHT) => "n",
+            Some(PieceType::BISHOP) => "b",
+            Some(PieceType::ROOK) => "r",
+            Some(PieceType::QUEEN) => "q",
             None => "",
             _ => panic!("Invalid promotion piece"),
         };
-        format!("{}{}{}", from.to_string(), to.to_string(), promo)
+        format!("{}{}{}", src.to_string(), dst.to_string(), promo)
     }
 
     pub fn get_en_passant_capture(&self) -> Square {
         debug_assert!(self.get_type() == MoveType::EnPassant);
-        let (_, from_rank) = self.src_sq().file_rank();
-        let (to_file, _) = self.dst_sq().file_rank();
+        let (_, src_rank) = self.src_sq().file_rank();
+        let (dst_file, _) = self.dst_sq().file_rank();
 
-        Square::make(to_file, from_rank)
+        Square::make(dst_file, src_rank)
     }
 }
 
@@ -152,9 +152,9 @@ impl MoveList {
         Self { moves: [Move::none(); 256], count: 0 }
     }
 
-    pub fn add(&mut self, m: Move) {
+    pub fn add(&mut self, mv: Move) {
         if self.count < self.moves.len() {
-            self.moves[self.count] = m;
+            self.moves[self.count] = mv;
             self.count += 1;
         } else {
             panic!("MoveList is full, cannot add more moves");
@@ -184,58 +184,57 @@ impl MoveList {
 #[cfg(test)]
 mod tests {
     use super::super::bitboard::BitBoard;
-    use super::super::constants::*;
     use super::*;
 
     #[test]
     fn castling_move_creation() {
-        let m = Move::new(Square::E2, Square::E4, MoveType::Castling, None);
-        assert_eq!(m.src_sq(), Square::E2);
-        assert_eq!(m.dst_sq(), Square::E4);
-        assert_eq!(m.get_type(), MoveType::Castling);
-        assert_eq!(m.get_promotion(), None);
+        let mv = Move::new(Square::E2, Square::E4, MoveType::Castling, None);
+        assert_eq!(mv.src_sq(), Square::E2);
+        assert_eq!(mv.dst_sq(), Square::E4);
+        assert_eq!(mv.get_type(), MoveType::Castling);
+        assert_eq!(mv.get_promotion(), None);
     }
 
     #[test]
     fn promotion_move_creation() {
-        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::Queen));
-        assert_eq!(m.src_sq(), Square::E7);
-        assert_eq!(m.dst_sq(), Square::E8);
-        assert_eq!(m.get_type(), MoveType::Promotion);
-        assert_eq!(m.get_promotion(), Some(PieceType::Queen));
+        let mv = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::QUEEN));
+        assert_eq!(mv.src_sq(), Square::E7);
+        assert_eq!(mv.dst_sq(), Square::E8);
+        assert_eq!(mv.get_type(), MoveType::Promotion);
+        assert_eq!(mv.get_promotion(), Some(PieceType::QUEEN));
 
-        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::Rook));
-        assert_eq!(m.get_promotion(), Some(PieceType::Rook));
+        let mv = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::ROOK));
+        assert_eq!(mv.get_promotion(), Some(PieceType::ROOK));
 
-        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::Knight));
-        assert_eq!(m.get_promotion(), Some(PieceType::Knight));
+        let mv = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::KNIGHT));
+        assert_eq!(mv.get_promotion(), Some(PieceType::KNIGHT));
 
-        let m = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::Bishop));
-        assert_eq!(m.get_promotion(), Some(PieceType::Bishop));
+        let mv = Move::new(Square::E7, Square::E8, MoveType::Promotion, Some(PieceType::BISHOP));
+        assert_eq!(mv.get_promotion(), Some(PieceType::BISHOP));
     }
 
     #[test]
     fn make_square_test() {
-        assert_eq!(Square::make(0, RANK_8), Square::A8);
-        assert_eq!(Square::make(1, RANK_7), Square::B7);
-        assert_eq!(Square::make(2, RANK_6), Square::C6);
-        assert_eq!(Square::make(3, RANK_5), Square::D5);
-        assert_eq!(Square::make(4, RANK_4), Square::E4);
-        assert_eq!(Square::make(5, RANK_3), Square::F3);
-        assert_eq!(Square::make(6, RANK_2), Square::G2);
-        assert_eq!(Square::make(7, RANK_1), Square::H1);
+        assert_eq!(Square::make(File::A, Rank::_8), Square::A8);
+        assert_eq!(Square::make(File::B, Rank::_7), Square::B7);
+        assert_eq!(Square::make(File::C, Rank::_6), Square::C6);
+        assert_eq!(Square::make(File::D, Rank::_5), Square::D5);
+        assert_eq!(Square::make(File::E, Rank::_4), Square::E4);
+        assert_eq!(Square::make(File::F, Rank::_3), Square::F3);
+        assert_eq!(Square::make(File::G, Rank::_2), Square::G2);
+        assert_eq!(Square::make(File::H, Rank::_1), Square::H1);
     }
 
     #[test]
     fn get_file_rank_test() {
-        assert_eq!(Square::A8.file_rank(), (FILE_A, RANK_8));
-        assert_eq!(Square::B7.file_rank(), (FILE_B, RANK_7));
-        assert_eq!(Square::C6.file_rank(), (FILE_C, RANK_6));
-        assert_eq!(Square::D5.file_rank(), (FILE_D, RANK_5));
-        assert_eq!(Square::E4.file_rank(), (FILE_E, RANK_4));
-        assert_eq!(Square::F3.file_rank(), (FILE_F, RANK_3));
-        assert_eq!(Square::G2.file_rank(), (FILE_G, RANK_2));
-        assert_eq!(Square::H1.file_rank(), (FILE_H, RANK_1));
+        assert_eq!(Square::A8.file_rank(), (File::A, Rank::_8));
+        assert_eq!(Square::B7.file_rank(), (File::B, Rank::_7));
+        assert_eq!(Square::C6.file_rank(), (File::C, Rank::_6));
+        assert_eq!(Square::D5.file_rank(), (File::D, Rank::_5));
+        assert_eq!(Square::E4.file_rank(), (File::E, Rank::_4));
+        assert_eq!(Square::F3.file_rank(), (File::F, Rank::_3));
+        assert_eq!(Square::G2.file_rank(), (File::G, Rank::_2));
+        assert_eq!(Square::H1.file_rank(), (File::H, Rank::_1));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use crate::engine::move_gen;
+use crate::core::move_gen;
 
 use super::types::*;
 use super::utils::parse_move;
@@ -69,10 +69,10 @@ const DEFAULT_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 
 
 impl Position {
     pub fn new() -> Self {
-        Self::from(DEFAULT_FEN).unwrap()
+        Self::from_fen(DEFAULT_FEN).unwrap()
     }
 
-    pub fn from(fen: &str) -> Result<Self, &'static str> {
+    pub fn from_fen(fen: &str) -> Result<Self, &'static str> {
         let parts: Vec<&str> = fen.trim().split_whitespace().collect();
         if parts.len() != 6 {
             return Err("Invalid FEN: must have 6 fields");
@@ -106,8 +106,8 @@ impl Position {
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
         };
+        internal::post_move(&mut pos);
 
-        pos.post_move();
         Ok(pos)
     }
 
@@ -124,34 +124,6 @@ impl Position {
             self.halfmove_clock,
             self.fullmove_number
         )
-    }
-
-    // @TODO: make private
-    pub fn post_move(&mut self) {
-        self.side_to_move = self.side_to_move.opponent();
-
-        // update occupancies
-        self.occupancies[Color::WHITE.as_usize()] = self.bitboards[Piece::W_PAWN.as_usize()]
-            | self.bitboards[Piece::W_KNIGHT.as_usize()]
-            | self.bitboards[Piece::W_BISHOP.as_usize()]
-            | self.bitboards[Piece::W_ROOK.as_usize()]
-            | self.bitboards[Piece::W_QUEEN.as_usize()]
-            | self.bitboards[Piece::W_KING.as_usize()];
-        self.occupancies[Color::BLACK.as_usize()] = self.bitboards[Piece::B_PAWN.as_usize()]
-            | self.bitboards[Piece::B_KNIGHT.as_usize()]
-            | self.bitboards[Piece::B_BISHOP.as_usize()]
-            | self.bitboards[Piece::B_ROOK.as_usize()]
-            | self.bitboards[Piece::B_QUEEN.as_usize()]
-            | self.bitboards[Piece::B_KING.as_usize()];
-        self.occupancies[Color::BOTH.as_usize()] =
-            self.occupancies[Color::WHITE.as_usize()] | self.occupancies[Color::BLACK.as_usize()];
-
-        // update attack maps
-        self.update_attack_map_and_checker();
-
-        // maybe only need to update the side to move attack map?
-        self.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(self, Color::WHITE);
-        self.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(self, Color::BLACK);
     }
 
     pub fn get_piece_at(&self, sq: Square) -> Piece {
@@ -190,10 +162,10 @@ impl Position {
     }
 
     pub fn get_king_square(&self, color: Color) -> Square {
-        let piece = Piece::get_piece(color, PieceType::King);
+        let piece = Piece::get_piece(color, PieceType::KING);
         let bb = self.bitboards[piece.as_usize()];
         debug_assert!(bb.any(), "No king found for color {:?}", color);
-        Square(bb.get().trailing_zeros() as u8)
+        bb.to_square().unwrap()
     }
 
     pub fn is_square_pinned(&self, sq: Square, color: Color) -> bool {
@@ -224,7 +196,7 @@ impl Position {
             let mut attack_mask = BitBoard::new();
             let opponent = color.opponent();
             let king_sq = self.get_king_square(opponent);
-            for i in 0..PieceType::None as u8 {
+            for i in 0..PieceType::COUNT {
                 let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
                 let piece = Piece::get_piece(color, piece_type);
                 attack_mask |= move_gen::calc_attack_map_impl(
@@ -240,27 +212,27 @@ impl Position {
         self.checkers = checkers;
     }
 
-    pub fn make_move(&mut self, m: Move) -> UndoState {
-        internal::make_move(self, m)
+    pub fn make_move(&mut self, mv: Move) -> UndoState {
+        internal::make_move(self, mv)
     }
 
-    pub fn unmake_move(&mut self, m: Move, undo_state: &UndoState) {
-        internal::unmake_move(self, m, undo_state)
+    pub fn unmake_move(&mut self, mv: Move, undo_state: &UndoState) {
+        internal::unmake_move(self, mv, undo_state)
     }
 
     /// @TODO: get rid of this method
     pub fn apply_move_str(&mut self, move_str: &str) -> bool {
-        let m = parse_move(move_str);
-        if m.is_none() {
+        let mv = parse_move(move_str);
+        if mv.is_none() {
             return false;
         }
 
-        let (from, to, promotion) = m.unwrap();
+        let (from, to, promotion) = mv.unwrap();
 
         let legal_moves = move_gen::legal_moves(&self);
-        for m in legal_moves.iter() {
-            if m.src_sq() == from && m.dst_sq() == to && m.get_promotion() == promotion {
-                self.make_move(m.clone());
+        for mv in legal_moves.iter() {
+            if mv.src_sq() == from && mv.dst_sq() == to && mv.get_promotion() == promotion {
+                self.make_move(mv.clone());
                 return true;
             }
         }
@@ -276,7 +248,7 @@ mod tests {
     #[test]
     fn test_constructor_from_parts() {
         const FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        let pos = Position::from(FEN).unwrap();
+        let pos = Position::from_fen(FEN).unwrap();
         assert!(pos.bitboards[Piece::W_PAWN.as_usize()].equal(0x000000000000FF00u64));
         assert!(pos.bitboards[Piece::B_PAWN.as_usize()].equal(0x00FF000000000000u64));
         assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
@@ -293,7 +265,7 @@ mod tests {
     #[test]
     fn test_constructor_from() {
         const FEN: &str = "r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7";
-        let pos = Position::from(FEN).unwrap();
+        let pos = Position::from_fen(FEN).unwrap();
 
         assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.castling, CastlingRight::K | CastlingRight::q);
@@ -308,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_checkers() {
-        let pos = Position::from("r3k3/8/4B3/8/4r3/8/2n5/R3K2R w - - 0 1").unwrap();
+        let pos = Position::from_fen("r3k3/8/4B3/8/4r3/8/2n5/R3K2R w - - 0 1").unwrap();
 
         let checkers = pos.checkers[Color::WHITE.as_usize()];
         assert_eq!(checkers.count(), 2);
@@ -327,14 +299,14 @@ mod tests {
         // 2 . . . . . . . k
         // 1 K B . . . . . r
         //   a b c d e f g h
-        let pos = Position::from("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
+        let pos = Position::from_fen("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
 
         assert!(pos.is_square_pinned(Square::B1, Color::WHITE));
     }
 
     #[test]
     fn test_rook_pin_pawn() {
-        let pos = Position::from("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
+        let pos = Position::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
 
         let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
 
@@ -357,32 +329,32 @@ mod tests {
 
     #[test]
     fn undo_castling_should_put_rook_back() {
-        let mut pos = Position::from(UNDO_TEST_FEN).unwrap();
-        let m = Move::new(Square::E8, Square::G8, MoveType::Castling, None);
+        let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
+        let mv = Move::new(Square::E8, Square::G8, MoveType::Castling, None);
 
-        let undo_state = pos.make_move(m);
+        let undo_state = pos.make_move(mv);
 
         assert_eq!(pos.get_piece_at(Square::G8), Piece::B_KING);
         assert_eq!(pos.get_piece_at(Square::F8), Piece::B_ROOK);
-        pos.unmake_move(m, &undo_state);
+        pos.unmake_move(mv, &undo_state);
         assert_eq!(pos.get_piece_at(Square::E8), Piece::B_KING);
         assert_eq!(pos.get_piece_at(Square::H8), Piece::B_ROOK);
     }
 
     #[test]
     fn undo_en_passant_should_put_pawn_back() {
-        let mut pos = Position::from(UNDO_TEST_FEN).unwrap();
-        let m = Move::new(Square::B7, Square::B5, MoveType::Normal, None);
-        pos.make_move(m);
+        let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
+        let mv = Move::new(Square::B7, Square::B5, MoveType::Normal, None);
+        pos.make_move(mv);
 
-        let m = Move::new(Square::A5, Square::B6, MoveType::EnPassant, None);
-        let undo_state = pos.make_move(m);
+        let mv = Move::new(Square::A5, Square::B6, MoveType::EnPassant, None);
+        let undo_state = pos.make_move(mv);
 
         assert_eq!(pos.get_piece_at(Square::B6), Piece::W_PAWN);
         assert_eq!(pos.get_piece_at(Square::A5), Piece::NONE);
         assert_eq!(pos.get_piece_at(Square::B5), Piece::NONE);
 
-        pos.unmake_move(m, &undo_state);
+        pos.unmake_move(mv, &undo_state);
 
         assert_eq!(pos.get_piece_at(Square::A5), Piece::W_PAWN);
         assert_eq!(pos.get_piece_at(Square::B5), Piece::B_PAWN);
@@ -390,14 +362,14 @@ mod tests {
 
     #[test]
     fn undo_should_revert_promoted_piece() {
-        let mut pos = Position::from(UNDO_TEST_FEN).unwrap();
-        let m = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::Bishop));
-        let undo_state = pos.make_move(m);
+        let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
+        let mv = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::BISHOP));
+        let undo_state = pos.make_move(mv);
 
         assert_eq!(pos.get_piece_at(Square::C2), Piece::NONE);
         assert_eq!(pos.get_piece_at(Square::C1), Piece::B_BISHOP);
 
-        pos.unmake_move(m, &undo_state);
+        pos.unmake_move(mv, &undo_state);
 
         assert_eq!(pos.get_piece_at(Square::C2), Piece::B_PAWN);
         assert_eq!(pos.get_piece_at(Square::C1), Piece::NONE);

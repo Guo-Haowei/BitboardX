@@ -1,4 +1,4 @@
-use bitboard_x::engine::{move_gen, name, position::Position, utils};
+use bitboard_x::core::{move_gen, name, position::Position, utils};
 use rustyline::{DefaultEditor, Result};
 use std::io::{self, Write};
 
@@ -38,7 +38,7 @@ impl UCI {
             }
             ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => {
                 let result = [*p1, *p2, *p3, *p4, *p5, *p6].join(" ");
-                match Position::from(result.as_str()) {
+                match Position::from_fen(result.as_str()) {
                     Ok(pos) => {
                         self.pos = pos;
                         parts.drain(0..=6); // remove the FEN parts
@@ -112,14 +112,14 @@ fn perft_test(pos: &mut Position, depth: u8, max_depth: u8) -> u64 {
 
     let mut nodes = 0u64;
     let should_print = depth == max_depth;
-    for m in move_list.iter() {
-        let undo_state = pos.make_move(m.clone());
+    for mv in move_list.iter() {
+        let undo_state = pos.make_move(mv.clone());
         let count = perft_test(pos, depth - 1, max_depth);
         nodes += count;
-        pos.unmake_move(m.clone(), &undo_state);
+        pos.unmake_move(mv.clone(), &undo_state);
 
         if should_print {
-            eprintln!("{}: {}", m.to_string(), count);
+            eprintln!("{}: {}", mv.to_string(), count);
         }
     }
 

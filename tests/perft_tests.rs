@@ -5,7 +5,7 @@ use pretty_assertions::assert_eq;
 use std::thread;
 use std::time::Instant;
 
-use bitboard_x::engine::{move_gen, position::*};
+use bitboard_x::core::{move_gen, position::*};
 use bitboard_x::named_test;
 
 const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 8 } else { 5 };
@@ -22,10 +22,10 @@ fn perft_test_inner(pos: &mut Position, depth: u8) -> u64 {
     }
 
     let mut nodes = 0u64;
-    for m in move_list.iter() {
-        let undo_state = pos.make_move(m.clone());
+    for mv in move_list.iter() {
+        let undo_state = pos.make_move(mv.clone());
         nodes += perft_test_inner(pos, depth - 1);
-        pos.unmake_move(m.clone(), &undo_state);
+        pos.unmake_move(mv.clone(), &undo_state);
     }
 
     nodes
@@ -62,7 +62,7 @@ fn perft_test(pos: &Position, depth: u8) -> u64 {
 }
 
 fn perft_test_wrapper(fen: &str, depth: u8, expectations: &Vec<u64>) {
-    let mut pos = Position::from(fen).unwrap();
+    let mut pos = Position::from_fen(fen).unwrap();
 
     for (i, expected) in expectations.iter().enumerate() {
         let test_depth = i as u8;
@@ -70,9 +70,9 @@ fn perft_test_wrapper(fen: &str, depth: u8, expectations: &Vec<u64>) {
             break; // Skip depth 0, which is always 1
         }
 
-        let start = Instant::now(); // Start timer
+        let now = Instant::now(); // Start timer
         let actual = perft_test(&mut pos, test_depth);
-        let elapsed = start.elapsed();
+        let elapsed = now.elapsed();
         let msg = format!("depth {}: {} nodes, took {:?}", test_depth, actual, elapsed);
         println!("{}", if actual == *expected { msg.green() } else { msg.red() });
         assert_eq!(actual, *expected);

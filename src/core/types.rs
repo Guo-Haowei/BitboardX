@@ -1,14 +1,12 @@
 use std::fmt;
 
 pub mod bitboard;
-pub mod constants;
 pub mod movement;
 pub mod square;
 
 pub use bitboard::BitBoard;
-pub use constants::*;
 pub use movement::*;
-pub use square::Square;
+pub use square::{File, Rank, Square};
 
 const COLOR_WHITE: u8 = 0;
 const COLOR_BLACK: u8 = 1;
@@ -25,7 +23,7 @@ impl Color {
     pub const NONE: Color = Color(COLOR_NONE);
     pub const COUNT: usize = 2;
 
-    pub const fn from(color: u8) -> Color {
+    pub const fn new(color: u8) -> Color {
         debug_assert!(color < COLOR_BOTH);
         Color(color)
     }
@@ -66,15 +64,22 @@ pub const fn get_opposite_color(color: u8) -> u8 {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(u8)]
-pub enum PieceType {
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King,
-    None,
+pub struct PieceType(pub u8);
+
+impl PieceType {
+    pub const PAWN: PieceType = PieceType(0);
+    pub const KNIGHT: PieceType = PieceType(1);
+    pub const BISHOP: PieceType = PieceType(2);
+    pub const ROOK: PieceType = PieceType(3);
+    pub const QUEEN: PieceType = PieceType(4);
+    pub const KING: PieceType = PieceType(5);
+    pub const NONE: PieceType = PieceType(6);
+
+    pub const COUNT: u8 = Self::NONE.0;
+
+    pub const fn as_u8(&self) -> u8 {
+        self.0
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -100,9 +105,9 @@ impl Piece {
     pub const B_START: u8 = Self::B_PAWN.0;
     pub const B_END: u8 = Self::B_KING.0;
 
-    const NB_PIECE_TYPES: u8 = PieceType::None as u8;
+    const NB_PIECE_TYPES: u8 = PieceType::COUNT as u8;
 
-    pub const fn from(piece: u8) -> Piece {
+    pub const fn new(piece: u8) -> Piece {
         debug_assert!(piece <= Self::COUNT as u8);
         Piece(piece)
     }
@@ -119,7 +124,7 @@ impl Piece {
     pub const fn get_type(&self) -> PieceType {
         debug_assert!(self.0 <= Self::COUNT as u8);
         if self.0 >= Self::COUNT as u8 {
-            return PieceType::None;
+            return PieceType::NONE;
         }
 
         let piece_type = self.0 % Self::NB_PIECE_TYPES as u8;
@@ -129,8 +134,8 @@ impl Piece {
     pub fn get_piece(color: Color, piece_type: PieceType) -> Piece {
         let color = color.as_u8();
         debug_assert!(color < COLOR_BOTH);
-        debug_assert!(piece_type != PieceType::None);
-        unsafe { std::mem::transmute((color * Self::NB_PIECE_TYPES as u8) + piece_type as u8) }
+        debug_assert!(piece_type != PieceType::NONE);
+        unsafe { std::mem::transmute((color * Self::NB_PIECE_TYPES as u8) + piece_type.0 as u8) }
     }
 
     pub const fn as_usize(&self) -> usize {
@@ -240,17 +245,17 @@ mod tests {
 
     #[test]
     fn test_get_piece() {
-        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Pawn), Piece::W_PAWN);
-        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Knight), Piece::W_KNIGHT);
-        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Bishop), Piece::W_BISHOP);
-        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Rook), Piece::W_ROOK);
-        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::Queen), Piece::W_QUEEN);
-        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::King), Piece::W_KING);
-        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Pawn), Piece::B_PAWN);
-        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Knight), Piece::B_KNIGHT);
-        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Bishop), Piece::B_BISHOP);
-        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Rook), Piece::B_ROOK);
-        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::Queen), Piece::B_QUEEN);
-        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::King), Piece::B_KING);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::PAWN), Piece::W_PAWN);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::KNIGHT), Piece::W_KNIGHT);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::BISHOP), Piece::W_BISHOP);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::ROOK), Piece::W_ROOK);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::QUEEN), Piece::W_QUEEN);
+        assert_eq!(Piece::get_piece(Color::WHITE, PieceType::KING), Piece::W_KING);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::PAWN), Piece::B_PAWN);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::KNIGHT), Piece::B_KNIGHT);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::BISHOP), Piece::B_BISHOP);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::ROOK), Piece::B_ROOK);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::QUEEN), Piece::B_QUEEN);
+        assert_eq!(Piece::get_piece(Color::BLACK, PieceType::KING), Piece::B_KING);
     }
 }

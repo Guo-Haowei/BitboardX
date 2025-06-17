@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use crate::{
-    engine::utils,
+    core::utils,
     game::{player::GuiPlayer, *},
 };
 
@@ -15,7 +15,8 @@ pub struct WasmGameState {
 impl WasmGameState {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        let mut game = Self { internal: GameState::new() };
+        let fen = "8/8/8/8/2Q5/6K1/5P2/7k w - - 0 1";
+        let mut game = Self { internal: GameState::from_fen(&fen).unwrap() };
 
         let player: Box<dyn Player> = Box::new(GuiPlayer::new());
         game.internal.set_white(player);

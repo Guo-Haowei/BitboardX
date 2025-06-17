@@ -1,7 +1,7 @@
-use crate::engine::move_gen;
-use crate::engine::position::*;
-use crate::engine::types::{Move, MoveList};
-use crate::engine::utils;
+use crate::core::move_gen;
+use crate::core::position::*;
+use crate::core::types::{Move, MoveList};
+use crate::core::utils;
 
 use super::player::*;
 
@@ -33,6 +33,20 @@ impl GameState {
         game
     }
 
+    pub fn from_fen(fen: &str) -> Result<Self, String> {
+        let pos = Position::from_fen(fen)?;
+        let mut game = Self {
+            pos,
+            legal_moves: MoveList::new(),
+            players: [Box::new(NullPlayer), Box::new(NullPlayer)],
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+        };
+
+        game.post_move();
+        Ok(game)
+    }
+
     pub fn set_white(&mut self, player: Box<dyn Player>) {
         self.players[0] = player;
     }
@@ -54,21 +68,21 @@ impl GameState {
         &mut *self.players[side_to_move]
     }
 
-    pub fn execute(&mut self, m: &String) -> bool {
-        let m = utils::parse_move(m.as_str());
-        if m.is_none() {
+    pub fn execute(&mut self, mv: &String) -> bool {
+        let mv = utils::parse_move(mv.as_str());
+        if mv.is_none() {
             return false;
         }
 
-        let (from, to, promtion) = m.unwrap();
+        let (src, dst, promtion) = mv.unwrap();
         let legal_moves = move_gen::legal_moves(&self.pos);
-        for m in legal_moves.iter() {
-            if m.src_sq() == from && m.dst_sq() == to && m.get_promotion() == promtion {
-                let m = m.clone();
-                let undo_state = self.pos.make_move(m);
+        for mv in legal_moves.iter() {
+            if mv.src_sq() == src && mv.dst_sq() == dst && mv.get_promotion() == promtion {
+                let mv = mv.clone();
+                let undo_state = self.pos.make_move(mv);
                 self.post_move();
 
-                self.undo_stack.push((m, undo_state));
+                self.undo_stack.push((mv, undo_state));
                 self.redo_stack.clear();
                 return true;
             }
@@ -89,11 +103,11 @@ impl GameState {
     }
 
     pub fn undo(&mut self) -> bool {
-        if let Some((m, undo_state)) = self.undo_stack.pop() {
-            self.pos.unmake_move(m, &undo_state);
+        if let Some((mv, undo_state)) = self.undo_stack.pop() {
+            self.pos.unmake_move(mv, &undo_state);
             self.post_move();
 
-            self.redo_stack.push((m, undo_state));
+            self.redo_stack.push((mv, undo_state));
             return true;
         }
 
@@ -101,11 +115,11 @@ impl GameState {
     }
 
     pub fn redo(&mut self) -> bool {
-        if let Some((m, undo_state)) = self.redo_stack.pop() {
-            self.pos.make_move(m);
+        if let Some((mv, undo_state)) = self.redo_stack.pop() {
+            self.pos.make_move(mv);
             self.post_move();
 
-            self.undo_stack.push((m, undo_state));
+            self.undo_stack.push((mv, undo_state));
             return true;
         }
 
@@ -116,45 +130,3 @@ impl GameState {
         self.legal_moves = move_gen::legal_moves(&self.pos);
     }
 }
-
-// #[wasm_bindgen]
-// pub struct WasmGame {
-//     game: Game,
-// }
-
-// #[wasm_bindgen]
-// impl WasmGame {
-//     pub fn new() -> WasmGame {
-//         WasmGame {
-//             game: Game {
-//                 pos: Position::start(),
-//                 players: [Box::new(WebPlayer::default()), Box::new(AiPlayer)],
-//                 turn: Color::White,
-//                 history: vec![],
-//             },
-//         }
-//     }
-
-//     pub fn tick(&mut self) {
-//         self.game.tick();
-//     }
-
-//     pub fn inject_move(&mut self, mv: Move) {
-//         if let Some(web_player) = self.game.players[0].as_any().downcast_mut::<WebPlayer>() {
-//             web_player.inject_move(mv);
-//         }
-//     }
-// }
-
-// let game = WasmGame.new();
-
-// function gameLoop() {
-//     game.tick();
-//     requestAnimationFrame(gameLoop);
-// }
-// gameLoop();
-
-// canvas.addEventListener('click', ev => {
-//     let move = calc_move_from_click(ev);
-//     game.inject_move(move);
-// });

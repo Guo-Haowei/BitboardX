@@ -10,7 +10,7 @@
 use std::fmt;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
-use crate::engine::types::*;
+use crate::core::types::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct BitBoard(u64);
@@ -18,16 +18,30 @@ pub struct BitBoard(u64);
 pub type Board = [BitBoard; Piece::COUNT];
 
 impl BitBoard {
+    pub const N: i32 = 8;
+    pub const S: i32 = -BitBoard::N;
+    pub const E: i32 = 1;
+    pub const W: i32 = -BitBoard::E;
+    pub const NE: i32 = BitBoard::N + BitBoard::E;
+    pub const NW: i32 = BitBoard::N + BitBoard::W;
+    pub const SE: i32 = BitBoard::S + BitBoard::E;
+    pub const SW: i32 = BitBoard::S + BitBoard::W;
+
+    pub const MASK_A: u64 = !0x0101010101010101;
+    pub const MASK_B: u64 = !0x0202020202020202;
+    pub const MASK_G: u64 = !0x4040404040404040;
+    pub const MASK_H: u64 = !0x8080808080808080;
+    pub const MASK_R1: u64 = !0x00000000000000FF;
+    pub const MASK_R2: u64 = !0x000000000000FF00;
+    pub const MASK_R7: u64 = !0x00FF000000000000;
+    pub const MASK_R8: u64 = !0xFF00000000000000;
+
     pub const fn new() -> Self {
         Self(0u64)
     }
 
     pub const fn from(val: u64) -> Self {
         Self(val)
-    }
-
-    pub const fn from_bit(bit: u8) -> Self {
-        Self(1u64 << bit)
     }
 
     pub const fn none(&self) -> bool {
@@ -50,8 +64,14 @@ impl BitBoard {
         self.0 |= 1u64 << bit;
     }
 
+    pub const fn test_sq(&self, sq: Square) -> bool {
+        debug_assert!(sq.as_u8() < 64, "Square out of bounds");
+        self.test(sq.as_u8())
+    }
+
     pub fn set_sq(&mut self, sq: Square) {
-        self.set(sq.0);
+        debug_assert!(sq.as_u8() < 64, "Square out of bounds");
+        self.set(sq.as_u8());
     }
 
     pub const fn unset(&mut self, bit: u8) {
@@ -63,12 +83,56 @@ impl BitBoard {
     }
 
     pub fn shift(&self, dir: i32) -> BitBoard {
-        let val = if dir < 0 { self.0 >> (-dir) } else { self.0 << dir };
+        debug_assert!(
+            self.0.count_ones() <= 1,
+            "BitBoard should have at most one bit set for shift operations"
+        );
+        let val = if dir < 0 { self.0 >> -dir } else { self.0 << dir };
         BitBoard(val)
     }
 
-    pub fn first_nonzero_sq(&self) -> Square {
-        Square(self.0.trailing_zeros() as u8)
+    pub fn shift_east(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_H).shift(BitBoard::E)
+    }
+
+    pub fn shift_west(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_A).shift(BitBoard::W)
+    }
+
+    pub fn shift_north(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_R8).shift(BitBoard::N)
+    }
+
+    pub fn shift_south(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_R1).shift(BitBoard::S)
+    }
+
+    pub fn shift_ne(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_H & BitBoard::MASK_R8).shift(BitBoard::NE)
+    }
+
+    pub fn shift_nw(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_A & BitBoard::MASK_R8).shift(BitBoard::NW)
+    }
+
+    pub fn shift_se(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_H & BitBoard::MASK_R1).shift(BitBoard::SE)
+    }
+
+    pub fn shift_sw(&self) -> BitBoard {
+        BitBoard(self.0 & BitBoard::MASK_A & BitBoard::MASK_R1).shift(BitBoard::SW)
+    }
+
+    pub fn count(&self) -> u32 {
+        self.0.count_ones()
+    }
+
+    pub fn to_square(&self) -> Option<Square> {
+        if self.0.count_ones() == 1 {
+            Some(Square::new(self.0.trailing_zeros() as u8))
+        } else {
+            None
+        }
     }
 
     pub fn to_string(&self) -> String {
@@ -106,7 +170,7 @@ impl Iterator for BitBoardIter {
             //       A - 1 = 0b1001000111
             // A & (A - 1) = 0b1001000000
             self.remaining &= self.remaining - 1;
-            Some(Square(tz as u8))
+            Some(Square::new(tz as u8))
         }
     }
 }
@@ -166,7 +230,6 @@ impl fmt::Display for BitBoard {
 }
 
 #[cfg(test)]
-
 mod tests {
     use super::*;
 
@@ -178,8 +241,8 @@ mod tests {
         let squares = [1, 5, 6, 7, 8, 13, 14, 15];
 
         for sq in bb.iter() {
-            assert!(bb.test(sq.0));
-            assert_eq!(sq.0, squares[idx], "Square mismatch at index {}", idx);
+            assert!(bb.test_sq(sq));
+            assert_eq!(sq.as_u8(), squares[idx], "Square mismatch at index {}", idx);
             idx += 1;
         }
     }
