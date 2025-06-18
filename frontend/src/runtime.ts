@@ -1,10 +1,10 @@
-import { Game } from './game';
-import { Renderer } from './renderer';
-import { EventManager } from './event-manager';
+import { AnimationManager } from './animation-manager';
 import { Display } from './display';
+import { GameManager } from './game-manager';
+import { MessageQueue } from './message-queue';
+import { Renderer } from './renderer';
 
 export interface RuntimeModule {
-  getName(): string;
   init(): boolean;
   tick(): void;
 }
@@ -12,21 +12,24 @@ export interface RuntimeModule {
 class Runtime {
   public display: Display;
   public renderer: Renderer;
-  public game: Game;
-  public eventManager: EventManager;
+  public gameManager: GameManager;
+  public messageQueue: MessageQueue;
+  public animationManager: AnimationManager;
 
   private modules: RuntimeModule[];
 
   public constructor() {
+    this.messageQueue = new MessageQueue();
+    this.animationManager = new AnimationManager();
     this.display = new Display();
     this.renderer = new Renderer();
-    this.game = new Game();
-    this.eventManager = new EventManager();
+    this.gameManager = new GameManager();
     this.modules = [
+      this.animationManager,
       this.display,
       this.renderer,
-      this.game,
-      this.eventManager,
+      this.gameManager,
+      this.messageQueue,
     ];
   }
 
@@ -37,8 +40,6 @@ class Runtime {
   public init(): boolean {
     for (const module of this.modules) {
       if (!module.init()) {
-        // eslint-disable-next-line no-console
-        console.error(`Failed to initialize '${module.getName()}`);
         return false;
       }
     }

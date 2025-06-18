@@ -1,39 +1,9 @@
 use crate::core::{move_gen, position::Position, types::*};
 
-const PAWN_SCORE: i32 = 100;
-const KNIGHT_SCORE: i32 = 320;
-const BISHOP_SCORE: i32 = 330;
-const ROOK_SCORE: i32 = 500;
-const QUEEN_SCORE: i32 = 900;
-const KING_SCORE: i32 = 0; // skip king score for simplicity
-
-const PIECE_SCORES: [i32; PieceType::COUNT as usize] =
-    [PAWN_SCORE, KNIGHT_SCORE, BISHOP_SCORE, ROOK_SCORE, QUEEN_SCORE, KING_SCORE];
+mod eval;
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
-
-fn count_material(pos: &Position, color: Color) -> i32 {
-    let mut score = 0;
-    for i in 0..PieceType::COUNT {
-        let piece_type = PieceType(i);
-        let piece = Piece::get_piece(color, piece_type);
-        let count = pos.bitboards[piece.as_usize()].count() as i32;
-        score += count * PIECE_SCORES[piece_type.0 as usize];
-    }
-
-    score
-}
-
-fn evaluate(pos: &Position) -> i32 {
-    debug_assert!(pos.side_to_move == Color::WHITE || pos.side_to_move == Color::BLACK);
-    let score = count_material(pos, Color::WHITE) - count_material(pos, Color::BLACK);
-    match pos.side_to_move {
-        Color::WHITE => score,
-        Color::BLACK => -score, // return score in favor of the side to move
-        _ => panic!("Invalid side to move"),
-    }
-}
 
 /// evaluate() always returns the score in favor of the side to move
 /// if it's black's turn, the score will be score of black pieces minus score of white pieces.
@@ -50,32 +20,86 @@ fn evaluate(pos: &Position) -> i32 {
 ///             / | \   / | \   / | \
 ///           4 -6  0 -8  7 -9  4  2  6
 
-fn negamax(pos: &mut Position, depth: u8, alpha: i32, beta: i32) -> i32 {
-    if depth == 0 {
-        return evaluate(pos);
-    }
+struct Minimax {
+    pub node_evaluated: u64,
+}
 
-    let move_list = move_gen::legal_moves(pos);
-    if move_list.len() == 0 {
-        if pos.is_in_check(pos.side_to_move) {
-            return MIN;
+impl Minimax {
+    fn alpha_beta_helper(
+        &mut self,
+        pos: &mut Position,
+        depth: u8,
+        mut alpha: i32,
+        beta: i32,
+    ) -> i32 {
+        if depth == 0 {
+            return eval::evaluate(pos);
         }
-        return 0; // draw
-    }
 
-    let mut alpha = alpha;
-    for mv in move_list.iter() {
-        let undo_state = pos.make_move(*mv);
-        let eval = -negamax(pos, depth - 1, -beta, -alpha);
-        pos.unmake_move(*mv, &undo_state);
-
-        if eval >= beta {
-            return beta; // beta cutoff
+        let move_list = move_gen::legal_moves(pos);
+        if move_list.len() == 0 {
+            if pos.is_in_check(pos.side_to_move) {
+                return MIN;
+            }
+            return 0; // draw
         }
-        alpha = alpha.max(eval);
+
+        let move_list = sort_moves(pos, &move_list);
+
+        for mv in move_list.iter() {
+            let undo_state = pos.make_move(*mv);
+            let score = -self.alpha_beta_helper(pos, depth - 1, -beta, -alpha);
+            pos.unmake_move(*mv, &undo_state);
+
+            self.node_evaluated += 1;
+
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                break; // beta cut-off
+            }
+        }
+
+        alpha
     }
 
-    alpha
+    pub fn alpha_beta(&mut self, pos: &mut Position, depth: u8) -> Option<Move> {
+        debug_assert!(depth > 0);
+        let move_list = move_gen::legal_moves(pos);
+        if move_list.len() == 0 {
+            return None; // no legal moves
+        }
+
+        let mut alpha = MIN;
+        let mut final_move = None;
+
+        let move_list = sort_moves(pos, &move_list);
+
+        for mv in move_list.iter() {
+            let undo_state = pos.make_move(*mv);
+            let score = -self.alpha_beta_helper(pos, depth - 1, alpha, MAX);
+            pos.unmake_move(*mv, &undo_state);
+
+            self.node_evaluated += 1;
+
+            if score >= alpha {
+                alpha = score;
+                final_move = Some(*mv);
+            }
+        }
+
+        final_move
+    }
+}
+
+fn sort_moves(pos: &Position, move_list: &MoveList) -> Vec<Move> {
+    let mut scored_move: Vec<_> =
+        move_list.iter().map(|mv| (-eval::move_score_guess(pos, *mv), mv.clone())).collect();
+
+    // Sort by score in descending order
+    scored_move.sort_by_key(|(score, _)| *score);
+
+    let sorted_moves: Vec<Move> = scored_move.into_iter().map(|(_, mv)| mv).collect();
+    sorted_moves
 }
 
 pub fn search(pos: &mut Position, depth: u8) -> Option<Move> {
@@ -85,42 +109,70 @@ pub fn search(pos: &mut Position, depth: u8) -> Option<Move> {
         return None; // no legal moves
     }
 
-    let mut best_move = None;
-    let mut best_score = i32::MIN;
-
-    let mut alpha = MIN;
-    let beta = MAX;
-
-    for mv in move_list.iter() {
-        let undo_state = pos.make_move(*mv);
-        let score = -negamax(pos, depth - 1, alpha, beta);
-        pos.unmake_move(*mv, &undo_state);
-
-        if score > best_score {
-            best_score = score;
-            best_move = Some(*mv);
-        }
-        alpha = alpha.max(score);
-    }
-
-    best_move
+    let mut alpha_beta = Minimax { node_evaluated: 0 };
+    // @TODO: print stats
+    alpha_beta.alpha_beta(pos, depth)
 }
 
 #[cfg(test)]
-mod test {
+
+mod tests {
     use super::*;
-    use crate::core::position::Position;
+
+    fn no_pruning(pos: &mut Position, depth: u8) -> (i32, Option<Move>) {
+        if depth == 0 {
+            return (eval::evaluate(pos), None);
+        }
+
+        let move_list = move_gen::legal_moves(pos);
+        if move_list.len() == 0 {
+            if pos.is_in_check(pos.side_to_move) {
+                return (MIN, None);
+            }
+            return (0, None); // draw
+        }
+
+        let mut best_eval = MIN;
+        let mut final_move = None;
+        for mv in move_list.iter() {
+            let undo_state = pos.make_move(*mv);
+            let (eval, _) = no_pruning(pos, depth - 1);
+            let eval = -eval;
+            pos.unmake_move(*mv, &undo_state);
+
+            if eval >= best_eval {
+                best_eval = eval;
+                final_move = Some(*mv);
+            }
+        }
+
+        (best_eval, final_move)
+    }
 
     #[test]
-    fn test_evaluate_position() {
-        let pos = Position::from_fen("8/8/8/8/k1RbP2K/8/8/8 w - - 0 1").unwrap();
+    fn test_sort_moves_with_guess() {
+        let fen = "7k/2P5/1P6/8/8/8/8/K7 w - - 0 1";
+        let pos = Position::from_fen(fen).unwrap();
+        let move_list = move_gen::legal_moves(&pos);
 
-        let score = evaluate(&pos);
-        assert_eq!(score, ROOK_SCORE + PAWN_SCORE - BISHOP_SCORE);
+        let sorted_moves = sort_moves(&pos, &move_list);
+        let expected_best_move =
+            Move::new(Square::C7, Square::C8, MoveType::Promotion, Some(PieceType::QUEEN));
 
-        let pos = Position::from_fen("8/8/8/8/k1RbP2K/8/8/8 b - - 0 1").unwrap();
+        assert_eq!(expected_best_move, sorted_moves[0]);
+    }
 
-        let score = evaluate(&pos);
-        assert_eq!(score, BISHOP_SCORE - ROOK_SCORE - PAWN_SCORE);
+    #[test]
+    fn test_alpha_beta_proning_correctness() {
+        let fen = "8/8/8/8/k1RbP2K/8/8/8 w - - 0 1";
+        let mut pos = Position::from_fen(fen).unwrap();
+        let depth = 3;
+
+        let mv1 = search(&mut pos, depth);
+        let (_, mv2) = no_pruning(&mut pos, depth);
+
+        let mv1 = mv1.unwrap();
+        let mv2 = mv2.unwrap();
+        assert_eq!(mv1, mv2, "Minimax raw and alpha-beta best moves do not match");
     }
 }

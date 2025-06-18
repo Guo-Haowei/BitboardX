@@ -18,14 +18,11 @@ export class Display implements RuntimeModule {
     return this._canvas;
   }
 
-  public getName(): string {
-    return 'Display';
-  }
-
   public init(): boolean {
     return true;
   }
 
   public tick() {
+    // This method is intentionally left empty.
   }
 }

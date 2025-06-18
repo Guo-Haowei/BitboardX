@@ -29,7 +29,8 @@ fn main() {
         env::set_var("RUST_BACKTRACE", "1");
     };
 
-    let mut game = GameState::new();
+    let fen = "7k/2P5/1P6/8/8/8/8/K7 w - - 0 1";
+    let mut game = GameState::from_fen(fen).unwrap();
 
     let player: Box<dyn Player> = Box::new(AiPlayer::new());
     game.set_white(player);

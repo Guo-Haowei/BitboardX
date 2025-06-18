@@ -17,7 +17,7 @@ impl Player for AiPlayer {
         match Position::from_fen(fen.as_str()) {
             Ok(pos) => {
                 let mut pos = pos;
-                let mv = search(&mut pos, 5).unwrap();
+                let mv = search(&mut pos, 4).unwrap();
                 let mv = mv.to_string();
 
                 PlayerAction::Ready(mv)
