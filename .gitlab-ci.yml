@@ -16,7 +16,7 @@ unit-test:
 deploy:
   stage: deploy
   script:
-    - py -u ci-scripts/deploy-website.py
+    - py ci-scripts/deploy.py
   artifacts:
     paths:
       - frontend/chess/
