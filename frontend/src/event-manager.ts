@@ -1,4 +1,3 @@
-import { DEFAULT_FEN } from './constants';
 import { Point2D } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 

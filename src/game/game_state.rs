@@ -6,11 +6,11 @@ use crate::core::utils;
 use super::player::*;
 
 pub struct GameState {
-    pos: Position,
+    pub pos: Position,
 
-    legal_moves: MoveList,
+    pub legal_moves: MoveList,
 
-    players: [Box<dyn Player>; 2],
+    pub players: [Box<dyn Player>; 2],
 
     // undo and redo
     undo_stack: Vec<(Move, UndoState)>,

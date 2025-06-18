@@ -1,5 +1,5 @@
 import { BOARD_SIZE, COLORS, PIECE_SYMBOLS, TILE_SIZE } from './constants';
-import { isLowerCase } from './utils';
+import { isLowerCase, fileRankToString } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 
 export class Renderer implements RuntimeModule {
@@ -35,6 +35,7 @@ export class Renderer implements RuntimeModule {
       return;
     }
 
+    const legalMoves = runtime.game.selectedPiece?.legalMoves;
 
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
@@ -42,13 +43,15 @@ export class Renderer implements RuntimeModule {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
-        // const sq = col + (7 - row) * BOARD_SIZE;
-        // legalMoves?.forEach(to => {
-        //   if (to === sq) {
-        //     this.ctx!.fillStyle = 'rgba(255, 0, 0, 0.5)';
-        //     this.ctx!.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        //   }
-        // });
+        if (!!legalMoves) {
+          const sq = fileRankToString(col, 7 - row);
+          if (legalMoves.has(sq)) {
+            const x = col * TILE_SIZE;
+            const y = row * TILE_SIZE;
+            this.ctx!.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            this.ctx!.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+          }
+        }
       }
     }
 

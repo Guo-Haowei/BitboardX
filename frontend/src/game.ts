@@ -1,7 +1,7 @@
 import { BOARD_SIZE, DEFAULT_FEN, TILE_SIZE } from './constants';
 import { Event, EventListener } from './event-manager';
 import * as BitboardX from '../../pkg/bitboard_x';
-import { Point2D } from './utils';
+import { Point2D, fileRankToString } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 
 export type SelectedPiece = {
@@ -10,6 +10,7 @@ export type SelectedPiece = {
   y: number;
   file: number; // from file
   rank: number; // from rank
+  legalMoves: Set<string>;
 };
 
 export class Game implements EventListener, RuntimeModule {
@@ -17,9 +18,13 @@ export class Game implements EventListener, RuntimeModule {
   private _selected: SelectedPiece | null;
   private canvas: HTMLCanvasElement | null;
   private _board: string;
+  private moveLookup: Map<string, Set<string>> = new Map();
 
   public constructor() {
-    this.reset();
+    this.game = null;
+    this._selected = null;
+    this.canvas = null;
+    this._board = '';
   }
 
   public get board() {
@@ -31,6 +36,21 @@ export class Game implements EventListener, RuntimeModule {
       return;
     }
     this._board = value;
+    this.moveLookup.clear();
+
+    const legalMoves = this.game!.get_legal_moves();
+    legalMoves.forEach((move) => {
+      const from = move.slice(0, 2);
+      const to = move.slice(2, 4);
+      if (!this.moveLookup.has(from)) {
+        this.moveLookup.set(from, new Set());
+      }
+      this.moveLookup.get(from)!.add(to);
+    });
+
+    // this.moveLookup.forEach((value, key) => {
+    //   console.log(`Legal moves from: ${key}`);
+    // });
 
     // eslint-disable-next-line no-console
     console.log(this.game!.debug_string());
@@ -53,28 +73,20 @@ export class Game implements EventListener, RuntimeModule {
   }
 
   public init(): boolean {
-    this.reset();
-    this.game = new BitboardX.WasmGameState();
     runtime.eventManager.addListener(this);
+    this.game = new BitboardX.WasmGameState();
     return this.restart();
   }
 
   public tick() {
-    if (this.game?.game_over()) {
-      // eslint-disable-next-line no-console
-      console.log('Game over!');
-      return;
-    }
-
     this.game?.tick();
     this.board = this.game!.to_board_string();
-  }
 
-  private reset() {
-    this.game = null;
-    this._selected = null;
-    this.canvas = null;
-    this._board = '';
+    if (this.game?.game_over()) {
+      alert('Game over!');
+      this.restart();
+      return;
+    }
   }
 
   public restart(): boolean {
@@ -118,7 +130,9 @@ export class Game implements EventListener, RuntimeModule {
 
     this.canvas!.style.cursor = 'grabbing';
 
-    this._selected = { piece, ...event, rank, file };
+    const legalMoves = this.moveLookup.get(fileRankToString(file, rank)) || new Set();
+
+    this._selected = { piece, ...event, rank, file, legalMoves };
   }
 
   private onMouseMove(event: Point2D) {
@@ -155,7 +169,7 @@ export class Game implements EventListener, RuntimeModule {
       promotion = prompt("Enter what piece to promote: ") || '';
     }
 
-    const move = `${String.fromCharCode(97 + file)}${rank + 1}${String.fromCharCode(97 + file2)}${rank2 + 1}${promotion}`;
+    const move = `${fileRankToString(file, rank)}${fileRankToString(file2, rank2)}${promotion}`;
     this.game!.inject_move(move);
   }
 

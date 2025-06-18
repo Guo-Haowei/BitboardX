@@ -48,23 +48,29 @@ impl WasmGameState {
 
     pub fn tick(&mut self) {
         let fen = self.internal.fen();
-        let action = {
+        let (action, name) = {
             let player = self.internal.active_player();
             player.request_move();
-            player.poll_move(fen)
+            (player.poll_move(fen), player.name().clone())
         };
 
         match action {
             PlayerAction::Pending => {}
             PlayerAction::Ready(mv) => {
                 if self.internal.execute(&mv) {
-                    console::log_1(&format!("Move executed: {}", mv).into());
+                    console::log_1(&format!("Player {} => {}", name, mv).into());
+                } else {
+                    // console::error_1(&format!("Invalid move by {}: {}", name, mv).into());
                 }
             }
             PlayerAction::Error(err) => {
                 console::error_1(&format!("Player error: {}", err).into());
             }
         }
+    }
+
+    pub fn get_legal_moves(&self) -> Vec<String> {
+        self.internal.legal_moves.iter().map(|m| m.to_string()).collect()
     }
 
     pub fn inject_move(&mut self, mv: String) {

@@ -20,9 +20,9 @@ impl CastlingRight {
     pub const Q: u8 = 1u8 << CastlingType::WhiteQueenSide as u8;
     pub const k: u8 = 1u8 << CastlingType::BlackKingSide as u8;
     pub const q: u8 = 1u8 << CastlingType::BlackQueenSide as u8;
-    pub const KQ: u8 = Self::K | Self::Q;
-    pub const kq: u8 = Self::k | Self::q;
-    pub const KQkq: u8 = Self::KQ | Self::kq;
+    pub const KQ: u8 = CastlingRight::K | CastlingRight::Q;
+    pub const kq: u8 = CastlingRight::k | CastlingRight::q;
+    pub const KQkq: u8 = CastlingRight::KQ | CastlingRight::kq;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
