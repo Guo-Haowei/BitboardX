@@ -86,18 +86,6 @@ pub fn debug_string(pos: &Position) -> String {
     s
 }
 
-pub fn to_board_string(pos: &Position) -> String {
-    let mut s = String::new();
-    for rank in (0..8).rev() {
-        for file in 0..8 {
-            let sq = rank * 8 + file;
-            let piece = pos.get_piece_at(Square::new(sq));
-            s.push(piece.to_char());
-        }
-    }
-    s
-}
-
 pub fn min_max<T: PartialOrd + Copy>(a: T, b: T) -> (T, T) {
     if a < b { (a, b) } else { (b, a) }
 }

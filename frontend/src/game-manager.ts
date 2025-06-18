@@ -83,13 +83,10 @@ export class GameManager implements RuntimeModule, Listener {
     if (!this.game) {
       return;
     }
-    if (this._board.set(this.game.to_board_string(), this.game.get_legal_moves())) {
+
+    if (this._board.set(this.game.fen(), this.game.get_legal_moves())) {
       console.log(this.game.debug_string());
     }
-  }
-
-  public getName(): string {
-    return 'Game';
   }
 
   public get selectedPiece() {

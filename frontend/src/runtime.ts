@@ -5,7 +5,6 @@ import { MessageQueue } from './message-queue';
 import { Renderer } from './renderer';
 
 export interface RuntimeModule {
-  getName(): string;
   init(): boolean;
   tick(): void;
 }
@@ -41,7 +40,6 @@ class Runtime {
   public init(): boolean {
     for (const module of this.modules) {
       if (!module.init()) {
-        console.error(`Failed to initialize '${module.getName()}`);
         return false;
       }
     }

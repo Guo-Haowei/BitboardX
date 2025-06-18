@@ -1,32 +1,57 @@
 import { Listener, Message } from "./message-queue";
 import { runtime, RuntimeModule } from "./runtime";
+import { squareToFileRank } from "./utils";
+
+export interface Animation {
+    piece: string;
+    dstFile: number;
+    dstRank: number;
+    dy: number;
+    dx: number;
+    x: number;
+    y: number;
+    duration: number;
+    timeLeft: number;
+}
 
 export class AnimationManager implements RuntimeModule, Listener {
-    private counter: number;
-    private _playing: boolean;
+    private _animations: Animation[];
+    private lastTime: number;
 
     public constructor() {
-        this.counter = 0;
-        this._playing = false;
-    }
-
-    public getName(): string {
-        return 'AnimationManager';
+        this._animations = [];
+        this.lastTime = 0;
     }
 
     public init(): boolean {
-        // Initialization logic if needed
         runtime.messageQueue.subscribe(Message.MOVE, this);
+        this.lastTime = Date.now();
         return true;
     }
 
     public tick(): void {
-        if (this.counter > 0) {
-            this.counter--;
-            if (this.counter === 0) {
-                this._playing = false;
-                runtime.messageQueue.emit(`${Message.ANIMATION_DONE}:`);
+        const now = Date.now();
+        const delta = now - this.lastTime;
+        this.lastTime = now;
+
+        if (this._animations.length === 0) {
+            return;
+        }
+
+        const filtered = this._animations.filter(animation => {
+            animation.timeLeft -= delta;
+            if (animation.timeLeft <= 0) {
+                return false;
             }
+
+            animation.x += animation.dx * delta;
+            animation.y += animation.dy * delta;
+            return true;
+        });
+
+        this._animations = filtered;
+        if (this._animations.length === 0) {
+            runtime.messageQueue.emit(`${Message.ANIMATION_DONE}:`);
         }
     }
 
@@ -34,15 +59,44 @@ export class AnimationManager implements RuntimeModule, Listener {
         const [event, move] = message.split(':');
         switch (event) {
             case Message.MOVE: {
-                console.log(`AnimationManager: received move ${move}`);
-                this.counter = 10;
-                this._playing = true;
+                this.addAnimation(move.slice(0, 2), move.slice(2, 4));
             } break;
             default: break;
         }
     }
 
-    public get playing() {
-        return this._playing;
+    public get animations() {
+        return this._animations;
+    }
+
+    private addAnimation(src: string, dst: string) {
+        const [file, rank] = squareToFileRank(src);
+        const [dstFile, dstRank] = squareToFileRank(dst);
+        const idx = dstFile + dstRank * 8;
+        const piece = runtime.gameManager.board.board[idx];
+        console.log(`Adding animation for piece ${piece} from ${src} to ${dst}.`);
+
+        const dist = Math.sqrt((dstFile - file) ** 2 + (dstRank - rank) ** 2);
+        const duration = 300 * dist; // Duration in milliseconds
+        const timeLeft = duration;
+
+        const x = file;
+        const y = 7 - rank;
+        const dy = -(dstRank - rank) / duration;
+        const dx = (dstFile - file) / duration;
+
+        const animation: Animation = {
+            piece,
+            x,
+            y,
+            dy,
+            dx,
+            dstFile,
+            dstRank,
+            duration,
+            timeLeft
+        };
+
+        this._animations.push(animation);
     }
 };

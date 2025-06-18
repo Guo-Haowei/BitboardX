@@ -18,10 +18,6 @@ export class Display implements RuntimeModule {
     return this._canvas;
   }
 
-  public getName(): string {
-    return 'Display';
-  }
-
   public init(): boolean {
     return true;
   }

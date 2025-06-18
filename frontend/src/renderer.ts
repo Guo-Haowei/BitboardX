@@ -10,10 +10,6 @@ export class Renderer implements RuntimeModule {
     this.ctx = null;
   }
 
-  public getName(): string {
-    return 'Renderer';
-  }
-
   public init(): boolean {
     this.ctx = runtime.display.canvas.getContext('2d');
     if (!this.ctx) {
@@ -77,11 +73,28 @@ export class Renderer implements RuntimeModule {
       return;
     }
 
+    const animated = new Set<number>();
+
+    const { animations } = runtime.animationManager;
+    for (const animation of animations) {
+      const { piece, dstFile, dstRank } = animation;
+      const idx = dstFile + dstRank * BOARD_SIZE;
+      animated.add(idx);
+      const x = animation.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = animation.y * TILE_SIZE + TILE_SIZE / 2;
+      this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
+      this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
+    }
+
     for (let row = 0; row < BOARD_SIZE; ++row) {
       for (let col = 0; col < BOARD_SIZE; ++col) {
-        const c = board[row * BOARD_SIZE + col];
+        const idx = (7 - row) * BOARD_SIZE + col;
+        const c = board[idx];
         if (c === '.') {
           continue;
+        }
+        if (animated.has(idx)) {
+          continue; // Skip pieces that are currently animated
         }
         const piece = PIECE_SYMBOLS[c];
         const x = col * TILE_SIZE + TILE_SIZE / 2;
@@ -90,12 +103,5 @@ export class Renderer implements RuntimeModule {
         this.ctx.fillText(piece, x, y);
       }
     }
-
-    // const { selectedPiece } = runtime.game;
-    // if (selectedPiece) {
-    //   const { piece, x, y } = selectedPiece;
-    //   this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
-    //   this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
-    // }
   }
 }

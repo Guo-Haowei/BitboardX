@@ -69,8 +69,8 @@ impl WasmGame {
             return false;
         }
 
-        let name = self.internal.active_player().name();
-        console::log_1(&format!("Player {} => {}", name, mv).into());
+        // let name = self.internal.active_player().name();
+        // console::log_1(&format!("Player {} => {}", name, mv).into());
         true
     }
 
@@ -85,12 +85,12 @@ impl WasmGame {
         }
     }
 
-    pub fn debug_string(&self) -> String {
-        utils::debug_string(self.internal.pos())
+    pub fn fen(&self) -> String {
+        self.internal.fen()
     }
 
-    pub fn to_board_string(&self) -> String {
-        utils::to_board_string(self.internal.pos())
+    pub fn debug_string(&self) -> String {
+        utils::debug_string(self.internal.pos())
     }
 
     // @TODO: game status, running, draw, white wins, black wins
