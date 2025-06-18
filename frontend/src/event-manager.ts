@@ -1,5 +1,6 @@
 import { Point2D } from './utils';
 import { RuntimeModule, runtime } from './runtime';
+import { picker } from './picker';
 
 export interface Event {
   type: string;
@@ -10,6 +11,7 @@ export interface EventListener {
   handleEvent(event: Event): void;
 }
 
+// @TODO: depracate this interface
 export class EventManager implements RuntimeModule {
   private queue: Event[];
   private listeners: EventListener[];
@@ -21,14 +23,6 @@ export class EventManager implements RuntimeModule {
 
   public getName(): string {
     return 'EventManager';
-  }
-
-  public addListener(listener: EventListener): void {
-    this.listeners.push(listener);
-  }
-
-  public removeListener(listener: EventListener): void {
-    this.listeners = this.listeners.filter(l => l !== listener);
   }
 
   public init(): boolean {
@@ -54,35 +48,22 @@ export class EventManager implements RuntimeModule {
       queue.push({ type: 'restart', payload: null });
     });
 
-    canvas.addEventListener('mousedown', (e) => {
-      const { x, y } = getMousePosition(canvas, e);
-      queue.push({ type: 'mousedown', payload: { x, y } });
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-      const { x, y } = getMousePosition(canvas, e);
-      queue.push({ type: 'mousemove', payload: { x, y } });
-    });
-
     canvas.addEventListener('mouseup', (e) => {
       const { x, y } = getMousePosition(canvas, e);
       queue.push({ type: 'mouseup', payload: { x, y } });
+
+      picker.onMouseUp(x, y);
     });
 
     return true;
   }
 
   public tick(): void {
-    let event: Event | undefined = undefined;
-    while ((event = this.queue.shift()) !== undefined) {
-      for (const listener of this.listeners) {
-        listener.handleEvent(event);
-      }
-    }
-  }
-
-  public push(event: Event): void {
-    this.queue.push(event);
-    this.listeners.forEach(listener => listener.handleEvent(event));
+    // let event: Event | undefined = undefined;
+    // while ((event = this.queue.shift()) !== undefined) {
+    //   for (const listener of this.listeners) {
+    //     listener.handleEvent(event);
+    //   }
+    // }
   }
 }

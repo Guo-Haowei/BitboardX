@@ -1,6 +1,7 @@
 import { BOARD_SIZE, COLORS, PIECE_SYMBOLS, TILE_SIZE } from './constants';
-import { isLowerCase, fileRankToString } from './utils';
+import { isLowerCase, fileRankToSquare } from './utils';
 import { RuntimeModule, runtime } from './runtime';
+import { picker } from './picker';
 
 export class Renderer implements RuntimeModule {
   private ctx: CanvasRenderingContext2D | null;
@@ -27,7 +28,7 @@ export class Renderer implements RuntimeModule {
 
   public tick() {
     this.drawBoard();
-    this.drawPieces(runtime.game.board);
+    this.drawPieces(runtime.gameManager.board.board);
   }
 
   private drawBoard() {
@@ -35,7 +36,7 @@ export class Renderer implements RuntimeModule {
       return;
     }
 
-    const legalMoves = runtime.game.selectedPiece?.legalMoves;
+    const legalMoves = picker.moves;
 
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
@@ -44,7 +45,7 @@ export class Renderer implements RuntimeModule {
         this.ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
         if (legalMoves) {
-          const sq = fileRankToString(col, 7 - row);
+          const sq = fileRankToSquare(col, 7 - row);
           if (legalMoves.has(sq)) {
             const x = col * TILE_SIZE;
             const y = row * TILE_SIZE;
@@ -90,11 +91,11 @@ export class Renderer implements RuntimeModule {
       }
     }
 
-    const { selectedPiece } = runtime.game;
-    if (selectedPiece) {
-      const { piece, x, y } = selectedPiece;
-      this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
-      this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
-    }
+    // const { selectedPiece } = runtime.game;
+    // if (selectedPiece) {
+    //   const { piece, x, y } = selectedPiece;
+    //   this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
+    //   this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
+    // }
   }
 }

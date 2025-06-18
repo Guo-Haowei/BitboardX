@@ -13,7 +13,7 @@ export interface RuntimeModule {
 class Runtime {
   public display: Display;
   public renderer: Renderer;
-  public game: GameManager;
+  public gameManager: GameManager;
   public eventManager: EventManager;
   public animationManager: AnimationManager;
 
@@ -23,13 +23,13 @@ class Runtime {
     this.animationManager = new AnimationManager();
     this.display = new Display();
     this.renderer = new Renderer();
-    this.game = new GameManager();
+    this.gameManager = new GameManager();
     this.eventManager = new EventManager();
     this.modules = [
       this.animationManager,
       this.display,
       this.renderer,
-      this.game,
+      this.gameManager,
       this.eventManager,
     ];
   }

@@ -14,7 +14,7 @@ class EventMap {
 
 export const Message = new EventMap();
 
-const DEBUG = true;
+const DEBUG = false;
 
 export interface Listener {
     handleMessage(message: string): void;
