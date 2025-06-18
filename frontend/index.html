@@ -1,92 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta charset="UTF-8" />
-        <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
-        <title>Chess Engine</title>
-        <style>
-            body {
-                display: flex;
-                margin: 0;
-                height: 100vh;
-            }
 
-            #left-column {
-                flex: 3;
-                background-color: #f9f9f9;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                border-right: 1px solid #ccc;
-            }
+<head>
+    <meta charset="UTF-8" />
+    <meta charset="UTF-8" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
 
-            #right-column {
-                flex: 2;
-                padding: 20px;
-                background-color: #f0f0f0;
-                box-sizing: border-box;
-            }
+    <title>Chess Engine</title>
+    <style>
+        body {
+            display: flex;
+            margin: 0;
+            height: 100vh;
+        }
 
-            fieldset {
-                margin-bottom: 20px;
-            }
+        #left-column {
+            flex: 3;
+            background-color: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-right: 1px solid #ccc;
+        }
 
-            label {
-                margin-right: 10px;
-            }
+        #right-column {
+            flex: 2;
+            padding: 20px;
+            background-color: #f0f0f0;
+            box-sizing: border-box;
+        }
 
-            button {
-                margin-right: 10px;
-                margin-top: 10px;
-            }
+        fieldset {
+            margin-bottom: 20px;
+        }
 
-            input[type="text"] {
-                width: 100%;
-                padding: 6px;
-                margin-top: 10px;
-                box-sizing: border-box;
-            }
-        </style>
-    </head>
+        label {
+            margin-right: 10px;
+        }
 
-    <body>
-        <div id="left-column">
-            <!-- Canvas will be created programatically  -->
-        </div>
+        button {
+            margin-right: 10px;
+            margin-top: 10px;
+        }
 
-        <div id="right-column">
-            <h1>Chess Engine</h1>
-            <p></p>
+        input[type="text"] {
+            width: 100%;
+            padding: 6px;
+            margin-top: 10px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
 
-            <!-- <p></p>
+<body>
+    <div id="left-column">
+        <!-- Canvas will be created programatically  -->
+    </div>
+
+    <div id="right-column">
+        <h1>Chess Engine</h1>
+        <p></p>
+
+        <!-- <p></p>
             <button id="undoButton" disabled>Undo</button>
             <p></p>
             <button id="redoButton" disabled>Redo</button>
             <p></p> -->
 
-            <div class="player-section">
-                <fieldset>
-                    <legend>White</legend>
-                    <label> <input type="radio" name="player1" value="human" checked /> Human </label>
-                    <label> <input type="radio" name="player1" value="computer" /> Computer </label>
-                </fieldset>
-            </div>
-
-            <div class="player-section">
-                <fieldset>
-                    <legend>Black</legend>
-                    <label> <input type="radio" name="player2" value="human" /> Human </label>
-                    <label> <input type="radio" name="player2" value="computer" checked /> Computer </label>
-                </fieldset>
-            </div>
-
-            <input type="text" id="fenInput" style="width: 500px;" placeholder="please enter FEN here" />
-            <p></p>
-            <button id="fenButton">Go!</button>
-            <p></p>
+        <div class="player-section">
+            <fieldset>
+                <legend>White</legend>
+                <label> <input type="radio" name="player1" value="human" checked /> Human </label>
+                <label> <input type="radio" name="player1" value="computer" /> Computer </label>
+            </fieldset>
         </div>
 
-        <script type="module" src="./src/index.ts"></script>
-    </body>
+        <div class="player-section">
+            <fieldset>
+                <legend>Black</legend>
+                <label> <input type="radio" name="player2" value="human" /> Human </label>
+                <label> <input type="radio" name="player2" value="computer" checked /> Computer </label>
+            </fieldset>
+        </div>
+
+        <input type="text" id="fenInput" style="width: 500px;" placeholder="please enter FEN here" />
+        <p></p>
+        <button id="fenButton">Go!</button>
+        <p></p>
+    </div>
+
+    <img id="img-wP" src="/img/wP.svg" style="display:none" alt="White Pawn">
+    <img id="img-bP" src="/img/bP.svg" style="display:none" alt="Black Pawn">
+    <img id="img-wN" src="/img/wN.svg" style="display:none" alt="White Knight">
+    <img id="img-bN" src="/img/bN.svg" style="display:none" alt="Black Knight">
+    <img id="img-wB" src="/img/wB.svg" style="display:none" alt="White Bishop">
+    <img id="img-bB" src="/img/bB.svg" style="display:none" alt="Black Bishop">
+    <img id="img-wR" src="/img/wR.svg" style="display:none" alt="White Rook">
+    <img id="img-bR" src="/img/bR.svg" style="display:none" alt="Black Rook">
+    <img id="img-wQ" src="/img/wQ.svg" style="display:none" alt="White Queen">
+    <img id="img-bQ" src="/img/bQ.svg" style="display:none" alt="Black Queen">
+    <img id="img-wK" src="/img/wK.svg" style="display:none" alt="White King">
+    <img id="img-bK" src="/img/bK.svg" style="display:none" alt="Black King">
+
+    <script type="module" src="./src/main.ts"></script>
+</body>
+
 </html>

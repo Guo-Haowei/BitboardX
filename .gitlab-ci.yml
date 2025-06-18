@@ -1,6 +1,7 @@
 stages:
   - build
   - test
+  # - deploy
 
 build-wasm:
   stage: build
@@ -11,3 +12,11 @@ unit-test:
   stage: test
   script:
     - cargo test --release -- --nocapture --test-threads=1
+
+# deploy:
+#   stage: deploy
+#   script:
+#     - py ci-scripts/deploy.py
+#   artifacts:
+#     paths:
+#       - frontend/chess/
