@@ -32,8 +32,6 @@ class Picker {
       this._moves = moves;
       this._square = square;
       this._piece = board.board[file + rank * 8];
-      console.log(`board: ${board.board}`);
-      console.log(`Selected piece: ${this._piece} at square: ${this._square}`);
     } else {
       this.reset();
     }

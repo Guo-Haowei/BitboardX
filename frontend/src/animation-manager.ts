@@ -74,7 +74,6 @@ export class AnimationManager implements RuntimeModule, Listener {
         const [dstFile, dstRank] = squareToFileRank(dst);
         const idx = dstFile + dstRank * 8;
         const piece = runtime.gameManager.board.board[idx];
-        console.log(`Adding animation for piece ${piece} from ${src} to ${dst}.`);
 
         const dist = Math.sqrt((dstFile - file) ** 2 + (dstRank - rank) ** 2);
         const duration = 300 * dist; // Duration in milliseconds

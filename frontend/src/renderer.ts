@@ -3,6 +3,9 @@ import { isLowerCase, fileRankToSquare } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 import { picker } from './picker';
 
+const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
+const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
+
 export class Renderer implements RuntimeModule {
   private ctx: CanvasRenderingContext2D | null;
 
@@ -27,27 +30,31 @@ export class Renderer implements RuntimeModule {
     this.drawPieces(runtime.gameManager.board.board);
   }
 
+  private fillSquare(col: number, row: number, color: string) {
+    if (!this.ctx) {
+      return;
+    }
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+  }
+
   private drawBoard() {
     if (!this.ctx) {
       return;
     }
 
-    const legalMoves = picker.moves;
+    const { moves, square } = picker;
 
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
         const color = ((row + col) % 2 === 0 ? COLORS.light : COLORS.dark);
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        this.fillSquare(col, row, color);
 
-        if (legalMoves) {
-          const sq = fileRankToSquare(col, 7 - row);
-          if (legalMoves.has(sq)) {
-            const x = col * TILE_SIZE;
-            const y = row * TILE_SIZE;
-            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-            this.ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-          }
+        const sq = fileRankToSquare(col, 7 - row);
+        if (sq === square) {
+          this.fillSquare(col, row, GREEN_COLOR);
+        } else if (moves && moves.has(sq)) {
+          this.fillSquare(col, row, RED_COLOR);
         }
       }
     }
