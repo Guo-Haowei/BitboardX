@@ -50,7 +50,7 @@ pub enum MoveType {
 /// - `flag` (12–13): move type (e.g., castle, en passant, promotion)
 /// - `promo` (14–15): promotion piece (0 = knight, 1 = bishop, 2 = rook, 3 = queen)
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move(u16);
 
 impl Move {
@@ -84,10 +84,6 @@ impl Move {
         }
 
         Self(data)
-    }
-
-    pub fn equals(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 
     pub fn is_none(&self) -> bool {
@@ -167,6 +163,10 @@ impl MoveList {
 
     pub fn iter(&self) -> impl Iterator<Item = &Move> {
         self.moves.iter().take(self.count)
+    }
+
+    pub fn enumerate(&self) -> impl Iterator<Item = (usize, &Move)> {
+        self.moves.iter().take(self.count).enumerate()
     }
 
     pub fn len(&self) -> usize {

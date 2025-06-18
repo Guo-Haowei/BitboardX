@@ -14,7 +14,7 @@ export type SelectedPiece = {
 };
 
 export class Game implements EventListener, RuntimeModule {
-  private game: BitboardX.WasmGameState | null;
+  private game: BitboardX.WasmGame | null;
   private _selected: SelectedPiece | null;
   private canvas: HTMLCanvasElement | null;
   private _board: string;
@@ -74,7 +74,7 @@ export class Game implements EventListener, RuntimeModule {
 
   public init(): boolean {
     runtime.eventManager.addListener(this);
-    this.game = new BitboardX.WasmGameState();
+    this.game = new BitboardX.WasmGame();
     return this.restart();
   }
 
