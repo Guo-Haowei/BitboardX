@@ -6,11 +6,31 @@ import { picker } from './picker';
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
 const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
 
+function loadPieceImages() {
+  const pieces = new Map<string, HTMLImageElement>();
+  const pieceCodes = ['P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'];
+
+  pieceCodes.forEach(code => {
+    const color = isLowerCase(code) ? 'b' : 'w';
+    const id = `img-${color}${code.toUpperCase()}`;
+    console.log(`Loading image with id: ${id}`);
+    const img = document.getElementById(id) as HTMLImageElement;
+    console.log(`Loading image for piece: ${img}`);
+    pieces[code] = img;
+
+  });
+
+  return pieces;
+}
+
 export class Renderer implements RuntimeModule {
   private ctx: CanvasRenderingContext2D | null;
+  private images: Map<string, HTMLImageElement>;
 
   public constructor() {
     this.ctx = null;
+    // this.images = new Map<string, HTMLImageElement>();
+    this.images = loadPieceImages();
   }
 
   public init(): boolean {
@@ -22,6 +42,7 @@ export class Renderer implements RuntimeModule {
     this.ctx.font = '40px Arial';
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
+
     return true;
   }
 
@@ -75,6 +96,22 @@ export class Renderer implements RuntimeModule {
     }
   }
 
+  private drawPiece(piece: string, x: number, y: number) {
+    if (!this.ctx) {
+      return;
+    }
+
+    const img = this.images[piece];
+    if (img) {
+      const half = TILE_SIZE / 2;
+      this.ctx.drawImage(img, x - half, y - half, TILE_SIZE, TILE_SIZE);
+    } else {
+      this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
+      this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
+      // console.log(`Drawing piece ${piece} at (${x}, ${y})`);
+    }
+  }
+
   private drawPieces(board: string) {
     if (!this.ctx) {
       return;
@@ -89,25 +126,22 @@ export class Renderer implements RuntimeModule {
       animated.add(idx);
       const x = animation.x * TILE_SIZE + TILE_SIZE / 2;
       const y = animation.y * TILE_SIZE + TILE_SIZE / 2;
-      this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
-      this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
+      this.drawPiece(piece, x, y);
     }
 
     for (let row = 0; row < BOARD_SIZE; ++row) {
       for (let col = 0; col < BOARD_SIZE; ++col) {
         const idx = (7 - row) * BOARD_SIZE + col;
-        const c = board[idx];
-        if (c === '.') {
+        const piece = board[idx];
+        if (piece === '.') {
           continue;
         }
         if (animated.has(idx)) {
           continue; // Skip pieces that are currently animated
         }
-        const piece = PIECE_SYMBOLS[c];
         const x = col * TILE_SIZE + TILE_SIZE / 2;
         const y = row * TILE_SIZE + TILE_SIZE / 2;
-        this.ctx.fillStyle = isLowerCase(c) ? 'black' : 'white';
-        this.ctx.fillText(piece, x, y);
+        this.drawPiece(piece, x, y);
       }
     }
   }
