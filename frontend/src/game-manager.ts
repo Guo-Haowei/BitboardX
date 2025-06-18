@@ -8,8 +8,8 @@ export interface SelectedPiece {
   piece: string;
   x: number;
   y: number;
-  file: number; // from file
-  rank: number; // from rank
+  file: number;
+  rank: number;
 }
 
 
@@ -28,13 +28,13 @@ export class GameManager implements RuntimeModule, Listener {
     this._board = new Board();
   }
 
-  public newgame(): boolean {
+  public newgame(fen: string | undefined): boolean {
     if (!this.game) {
       console.error('Game not initialized. Cannot restart.');
       return false;
     }
 
-    const fen = (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
+    fen = fen || (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
     this.waitingForInput = false;
     try {
       const isPlayerHuman = (player: string) => {
@@ -67,16 +67,26 @@ export class GameManager implements RuntimeModule, Listener {
     const [eventType] = message.split(':');
     switch (eventType) {
       case Message.NEW_GAME: {
-        this.newgame();
+        this.newgame(undefined);
       } break;
       case Message.REQUEST_PLAYER_INPUT: {
-        this.waitingForInput = true;
+        this.onRequestPlayerInput();
       } break;
       case Message.ANIMATION_DONE: {
         runtime.messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
       } break;
       default: break;
     }
+  }
+
+  private onRequestPlayerInput() {
+    if (!this.game?.game_over()) {
+      this.waitingForInput = true;
+      return;
+    }
+
+    alert('Game over!');
+    this.newgame(DEFAULT_FEN);
   }
 
   private updateBoard() {
@@ -98,7 +108,7 @@ export class GameManager implements RuntimeModule, Listener {
     runtime.messageQueue.subscribe(Message.REQUEST_PLAYER_INPUT, this);
     runtime.messageQueue.subscribe(Message.ANIMATION_DONE, this);
     this.game = new BitboardX.WasmGame();
-    return this.newgame();
+    return this.newgame(undefined);
   }
 
   public tick() {
@@ -118,13 +128,6 @@ export class GameManager implements RuntimeModule, Listener {
           runtime.messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
         }
       }
-    }
-
-    // @TODO: better game result handling
-    if (this.game?.game_over()) {
-      alert('Game over!');
-      // this.restart();
-      return;
     }
   }
 
