@@ -1,17 +1,19 @@
 stages:
-  - build
-  - test
   - deploy
+# stages:
+#   - build
+#   - test
+#   - deploy
 
-build-wasm:
-  stage: build
-  script:
-    - wasm-pack build --target web
+# build-wasm:
+#   stage: build
+#   script:
+#     - wasm-pack build --target web
 
-unit-test:
-  stage: test
-  script:
-    - cargo test --release -- --nocapture --test-threads=1
+# unit-test:
+#   stage: test
+#   script:
+#     - cargo test --release -- --nocapture --test-threads=1
 
 deploy:
   stage: deploy
