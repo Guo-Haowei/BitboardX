@@ -1,5 +1,4 @@
 {
-  "eslint.useFlatConfig": true,
   "eslint.enable": true,
   "eslint.validate": [
     "javascript",
@@ -7,7 +6,8 @@
     "typescript",
     "typescriptreact"
   ],
-  "editor.codeActionsOnSave": {
-    // "source.fixAll.eslint": "always"
-  }
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": [
+    "source.fixAll.eslint"
+  ]
 }

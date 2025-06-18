@@ -25,50 +25,69 @@ struct Minimax {
 }
 
 impl Minimax {
-    pub fn alpha_beta(
+    fn alpha_beta_helper(
         &mut self,
         pos: &mut Position,
         depth: u8,
         mut alpha: i32,
         beta: i32,
-    ) -> (i32, Option<Move>) {
+    ) -> i32 {
         if depth == 0 {
-            return (eval::evaluate(pos), None);
+            return eval::evaluate(pos);
         }
 
         let move_list = move_gen::legal_moves(pos);
         if move_list.len() == 0 {
             if pos.is_in_check(pos.side_to_move) {
-                return (MIN, None);
+                return MIN;
             }
-            return (0, None); // draw
+            return 0; // draw
         }
 
         let move_list = sort_moves(pos, &move_list);
 
-        let mut best = MIN;
-        let mut final_move = None;
         for mv in move_list.iter() {
             let undo_state = pos.make_move(*mv);
-            let (eval, _) = self.alpha_beta(pos, depth - 1, -beta, -alpha);
-            let eval = -eval;
+            let score = -self.alpha_beta_helper(pos, depth - 1, -beta, -alpha);
             pos.unmake_move(*mv, &undo_state);
 
             self.node_evaluated += 1;
 
-            best = best.max(eval);
-
-            if eval >= alpha {
-                alpha = eval;
-                final_move = Some(*mv);
-            }
-
+            alpha = alpha.max(score);
             if alpha >= beta {
-                return (best, Some(*mv));
+                break; // beta cut-off
             }
         }
 
-        (best, final_move)
+        alpha
+    }
+
+    pub fn alpha_beta(&mut self, pos: &mut Position, depth: u8) -> Option<Move> {
+        debug_assert!(depth > 0);
+        let move_list = move_gen::legal_moves(pos);
+        if move_list.len() == 0 {
+            return None; // no legal moves
+        }
+
+        let mut alpha = MIN;
+        let mut final_move = None;
+
+        let move_list = sort_moves(pos, &move_list);
+
+        for mv in move_list.iter() {
+            let undo_state = pos.make_move(*mv);
+            let score = -self.alpha_beta_helper(pos, depth - 1, alpha, MAX);
+            pos.unmake_move(*mv, &undo_state);
+
+            self.node_evaluated += 1;
+
+            if score >= alpha {
+                alpha = score;
+                final_move = Some(*mv);
+            }
+        }
+
+        final_move
     }
 }
 
@@ -91,10 +110,8 @@ pub fn search(pos: &mut Position, depth: u8) -> Option<Move> {
     }
 
     let mut alpha_beta = Minimax { node_evaluated: 0 };
-
-    let (_, mv2) = alpha_beta.alpha_beta(pos, depth, MIN, MAX);
-
-    mv2
+    // @TODO: print stats
+    alpha_beta.alpha_beta(pos, depth)
 }
 
 #[cfg(test)]
@@ -151,8 +168,7 @@ mod tests {
         let mut pos = Position::from_fen(fen).unwrap();
         let depth = 3;
 
-        let mut minimax = Minimax { node_evaluated: 0 };
-        let (_, mv1) = minimax.alpha_beta(&mut pos, depth, MIN, MAX);
+        let mv1 = search(&mut pos, depth);
         let (_, mv2) = no_pruning(&mut pos, depth);
 
         let mv1 = mv1.unwrap();
