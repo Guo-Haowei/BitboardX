@@ -46,27 +46,33 @@ impl WasmGame {
         self.internal.set_black(create_player(is_black_human));
     }
 
-    pub fn tick(&mut self) {
+    pub fn get_move(&mut self) -> Option<String> {
         let fen = self.internal.fen();
-        let (action, name) = {
+        let action = {
             let player = self.internal.active_player();
             player.request_move();
-            (player.poll_move(fen), player.name().clone())
+            player.poll_move(fen)
         };
 
         match action {
-            PlayerAction::Pending => {}
-            PlayerAction::Ready(mv) => {
-                if self.internal.execute(&mv) {
-                    console::log_1(&format!("Player {} => {}", name, mv).into());
-                } else {
-                    // console::error_1(&format!("Invalid move by {}: {}", name, mv).into());
-                }
-            }
+            PlayerAction::Pending => None,
+            PlayerAction::Ready(mv) => Some(mv),
             PlayerAction::Error(err) => {
                 console::error_1(&format!("Player error: {}", err).into());
+                None
             }
         }
+    }
+
+    pub fn make_move(&mut self, mv: String) -> bool {
+        if !self.internal.execute(&mv) {
+            // console::error_1(&format!("Invalid move by {}: {}", name, mv).into());
+            return false;
+        }
+
+        let name = self.internal.active_player().name();
+        console::log_1(&format!("Player {} => {}", name, mv).into());
+        true
     }
 
     pub fn get_legal_moves(&self) -> Vec<String> {

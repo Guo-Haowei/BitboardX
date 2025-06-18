@@ -3,6 +3,7 @@ import { Event, EventListener } from './event-manager';
 import * as BitboardX from '../../pkg/bitboard_x';
 import { Point2D, fileRankToString } from './utils';
 import { RuntimeModule, runtime } from './runtime';
+import { messageQueue, Listener, Message } from './message-queue';
 
 export interface SelectedPiece {
   piece: string;
@@ -13,18 +14,72 @@ export interface SelectedPiece {
   legalMoves: Set<string>;
 }
 
-export class Game implements EventListener, RuntimeModule {
+export class GameManager implements EventListener, RuntimeModule, Listener {
   private game: BitboardX.WasmGame | null;
   private _selected: SelectedPiece | null;
   private canvas: HTMLCanvasElement | null;
   private _board: string;
+  private waitingForInput: boolean;
+
   private moveLookup = new Map<string, Set<string>>();
 
+  // @TODO: move board to a separate class
   public constructor() {
     this.game = null;
     this._selected = null;
     this.canvas = null;
     this._board = '';
+    this.waitingForInput = false;
+    messageQueue.subscribe(Message.NEW_GAME, this);
+    messageQueue.subscribe(Message.REQUEST_PLAYER_INPUT, this);
+    messageQueue.subscribe(Message.ANIMATION_DONE, this);
+  }
+
+  public newgame(fen: string): boolean {
+    if (!this.game) {
+      console.error('Game not initialized. Cannot restart.');
+      return false;
+    }
+
+    this.waitingForInput = false;
+
+    // const fen = (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
+    try {
+      const isPlayerHuman = (player: string) => {
+        const element = document.querySelector(`input[name="${player}"]:checked`);
+        if (element && element instanceof HTMLInputElement) {
+          return element.value === 'human';
+        }
+        return false;
+      };
+
+      this.game.reset_game(fen, isPlayerHuman('player1'), isPlayerHuman('player2'));
+      this.board = this.game.to_board_string();
+      this.canvas = runtime.display.canvas;
+
+      messageQueue.emit(Message.REQUEST_PLAYER_INPUT)
+      return true;
+    } catch (e) {
+
+      console.error(`Error parsing FEN '${fen}': ${e}`);
+      return false;
+    }
+  }
+
+  public handleMessage(message: string) {
+    const [eventType, ...payload] = message.split(':');
+    switch (eventType) {
+      case Message.NEW_GAME: {
+        this.newgame(payload[0]);
+      } break;
+      case Message.REQUEST_PLAYER_INPUT: {
+        this.waitingForInput = true;
+      } break;
+      case Message.ANIMATION_DONE: {
+        messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
+      } break;
+      default: break;
+    }
   }
 
   public get board() {
@@ -75,48 +130,33 @@ export class Game implements EventListener, RuntimeModule {
   public init(): boolean {
     runtime.eventManager.addListener(this);
     this.game = new BitboardX.WasmGame();
-    return this.restart();
+    return this.newgame(DEFAULT_FEN);
   }
 
   public tick() {
     if (!this.game || !this.board) {
       return;
     }
-    this.game.tick();
-    this.board = this.game.to_board_string();
+
+    if (this.waitingForInput) {
+      const move = this.game.get_move();
+      if (move) {
+        const isMoveValid = this.game.make_move(move);
+        if (isMoveValid) {
+          messageQueue.emit(`${Message.MOVE}:${move}`);
+          this.waitingForInput = false;
+          this.board = this.game.to_board_string();
+        } else {
+          messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
+        }
+      }
+    }
 
     // @TODO: better game result handling
     if (this.game?.game_over()) {
       alert('Game over!');
-      this.restart();
+      // this.restart();
       return;
-    }
-  }
-
-  public restart(): boolean {
-    if (!this.game) {
-      console.error('Game not initialized. Cannot restart.');
-      return false;
-    }
-
-    const fen = (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
-    try {
-      const isPlayerHuman = (player: string) => {
-        const element = document.querySelector(`input[name="${player}"]:checked`);
-        if (element && element instanceof HTMLInputElement) {
-          return element.value === 'human';
-        }
-        return false;
-      };
-
-      this.game.reset_game(fen, isPlayerHuman('player1'), isPlayerHuman('player2'));
-      this.board = this.game.to_board_string();
-      this.canvas = runtime.display.canvas;
-      return true;
-    } catch (e) {
-
-      console.error(`Error parsing FEN '${fen}': ${e}`);
-      return false;
     }
   }
 
@@ -146,6 +186,7 @@ export class Game implements EventListener, RuntimeModule {
     this._selected = { piece, ...event, rank, file, legalMoves };
   }
 
+  // @TODO: move all the picker logic to a separate class
   private onMouseMove(event: Point2D) {
     const { x, y } = event;
 
@@ -186,18 +227,6 @@ export class Game implements EventListener, RuntimeModule {
     this.game?.inject_move(move);
   }
 
-  private undo() {
-    if (this.game?.undo()) {
-      this.board = this.game.to_board_string();
-    }
-  }
-
-  private redo() {
-    if (this.game?.redo()) {
-      this.board = this.game.to_board_string();
-    }
-  }
-
   public handleEvent(event: Event): void {
     switch (event.type) {
       case 'mousedown':
@@ -209,17 +238,7 @@ export class Game implements EventListener, RuntimeModule {
       case 'mouseup':
         this.onMouseUp(event.payload as Point2D);
         break;
-      case 'undo':
-        this.undo();
-        break;
-      case 'redo':
-        this.redo();
-        break;
-      case 'restart':
-        this.restart();
-        break;
       default:
-
         console.warn(`Unhandled event type: ${event.type}`);
         break;
     }
