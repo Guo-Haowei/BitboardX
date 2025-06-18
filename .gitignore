@@ -5,6 +5,7 @@ node_modules/
 target/
 pkg/
 dist/
+frontend/chess/
 
 # user-specific files
 *.txt
