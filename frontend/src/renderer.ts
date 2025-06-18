@@ -48,8 +48,8 @@ export class Renderer implements RuntimeModule {
           if (legalMoves.has(sq)) {
             const x = col * TILE_SIZE;
             const y = row * TILE_SIZE;
-            this.ctx!.fillStyle = 'rgba(255, 0, 0, 0.5)';
-            this.ctx!.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            this.ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
           }
         }
       }

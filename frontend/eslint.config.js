@@ -5,10 +5,10 @@ import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   {
-    files: ["/**/*.{js,ts}"], plugins: { js }, extends: ["js/recommended"]
+    files: ["/**/*.ts"], plugins: { js }, extends: ["js/recommended"]
   },
   {
-    files: ["/**/*.{js,ts}"], languageOptions: { globals: globals.browser }
+    files: ["/**/*.ts"], languageOptions: { globals: globals.browser }
   },
   tseslint.configs.recommended,
   {

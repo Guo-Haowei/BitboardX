@@ -82,6 +82,7 @@ export class Game implements EventListener, RuntimeModule {
     this.game?.tick();
     this.board = this.game!.to_board_string();
 
+    // @TODO: better game result handling
     if (this.game?.game_over()) {
       alert('Game over!');
       this.restart();
