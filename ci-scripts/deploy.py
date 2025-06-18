@@ -24,8 +24,8 @@ def build_and_zip(project_dir):
         print(f'Build succeeded, but "{dist_path}" folder not found.')
         return
 
-    print(f'renaming "{dist_path}" to "{out_path}"')
-    os.rename(dist_path, out_path)
+    # print(f'renaming "{dist_path}" to "{out_path}"')
+    # os.rename(dist_path, out_path)
 
     print(f'Done!')
 

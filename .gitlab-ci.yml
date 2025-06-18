@@ -1,24 +1,22 @@
 stages:
-  - deploy
-# stages:
-#   - build
-#   - test
-#   - deploy
+  - build
+  - test
+  # - deploy
 
-# build-wasm:
-#   stage: build
-#   script:
-#     - wasm-pack build --target web
-
-# unit-test:
-#   stage: test
-#   script:
-#     - cargo test --release -- --nocapture --test-threads=1
-
-deploy:
-  stage: deploy
+build-wasm:
+  stage: build
   script:
-    - py ci-scripts/deploy.py
-  artifacts:
-    paths:
-      - frontend/chess/
+    - wasm-pack build --target web
+
+unit-test:
+  stage: test
+  script:
+    - cargo test --release -- --nocapture --test-threads=1
+
+# deploy:
+#   stage: deploy
+#   script:
+#     - py ci-scripts/deploy.py
+#   artifacts:
+#     paths:
+#       - frontend/chess/
