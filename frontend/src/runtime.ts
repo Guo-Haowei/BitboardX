@@ -37,7 +37,6 @@ class Runtime {
   public init(): boolean {
     for (const module of this.modules) {
       if (!module.init()) {
-        // eslint-disable-next-line no-console
         console.error(`Failed to initialize '${module.getName()}`);
         return false;
       }

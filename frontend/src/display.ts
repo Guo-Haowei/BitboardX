@@ -10,7 +10,7 @@ export class Display implements RuntimeModule {
     canvas.height = TILE_SIZE * (BOARD_SIZE + 1);
     canvas.tabIndex = 0;
     const container = document.getElementById('left-column');
-    container!.appendChild(canvas);
+    container?.appendChild(canvas);
     this._canvas = canvas;
   }
 
@@ -27,5 +27,6 @@ export class Display implements RuntimeModule {
   }
 
   public tick() {
+    // This method is intentionally left empty.
   }
 }

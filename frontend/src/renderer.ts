@@ -14,7 +14,7 @@ export class Renderer implements RuntimeModule {
   }
 
   public init(): boolean {
-    this.ctx = runtime.display.canvas.getContext('2d')!;
+    this.ctx = runtime.display.canvas.getContext('2d');
     if (!this.ctx) {
       return false;
     }
@@ -43,7 +43,7 @@ export class Renderer implements RuntimeModule {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
-        if (!!legalMoves) {
+        if (legalMoves) {
           const sq = fileRankToString(col, 7 - row);
           if (legalMoves.has(sq)) {
             const x = col * TILE_SIZE;

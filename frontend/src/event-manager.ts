@@ -1,13 +1,12 @@
 import { Point2D } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 
-export type Event = {
+export interface Event {
   type: string;
   payload: Point2D | string | null;
 };
 
 export interface EventListener {
-  // eslint-disable-next-line no-unused-vars
   handleEvent(event: Event): void;
 }
 
@@ -38,7 +37,7 @@ export class EventManager implements RuntimeModule {
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      return {x, y};
+      return { x, y };
     };
 
     const { queue } = this;
@@ -74,7 +73,7 @@ export class EventManager implements RuntimeModule {
   }
 
   public tick(): void {
-    let event : Event | undefined = undefined;
+    let event: Event | undefined = undefined;
     while ((event = this.queue.shift()) !== undefined) {
       for (const listener of this.listeners) {
         listener.handleEvent(event);
