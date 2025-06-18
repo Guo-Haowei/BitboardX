@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_alpha_beta_proning_correctness() {
-        let fen = "8/8/8/8/k1RbP2K/8/8/8 w - - 0 1";
+        let fen = "8/8/8/8/k1RbP2K/8/8/8 b - - 0 1";
         let mut pos = Position::from_fen(fen).unwrap();
         let depth = 3;
 
