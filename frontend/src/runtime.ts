@@ -1,7 +1,7 @@
 import { AnimationManager } from './animation-manager';
 import { Display } from './display';
-import { EventManager } from './event-manager';
 import { GameManager } from './game-manager';
+import { MessageQueue } from './message-queue';
 import { Renderer } from './renderer';
 
 export interface RuntimeModule {
@@ -14,23 +14,23 @@ class Runtime {
   public display: Display;
   public renderer: Renderer;
   public gameManager: GameManager;
-  public eventManager: EventManager;
+  public messageQueue: MessageQueue;
   public animationManager: AnimationManager;
 
   private modules: RuntimeModule[];
 
   public constructor() {
+    this.messageQueue = new MessageQueue();
     this.animationManager = new AnimationManager();
     this.display = new Display();
     this.renderer = new Renderer();
     this.gameManager = new GameManager();
-    this.eventManager = new EventManager();
     this.modules = [
       this.animationManager,
       this.display,
       this.renderer,
       this.gameManager,
-      this.eventManager,
+      this.messageQueue,
     ];
   }
 

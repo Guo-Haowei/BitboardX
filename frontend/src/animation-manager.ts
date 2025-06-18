@@ -1,12 +1,13 @@
-import { Listener, Message, messageQueue } from "./message-queue";
-import { RuntimeModule } from "./runtime";
+import { Listener, Message } from "./message-queue";
+import { runtime, RuntimeModule } from "./runtime";
 
 export class AnimationManager implements RuntimeModule, Listener {
-    private counter = 0;
+    private counter: number;
+    private _playing: boolean;
 
     public constructor() {
-        // Subscribe to the 'move' event to handle animations
-        messageQueue.subscribe(Message.MOVE, this);
+        this.counter = 0;
+        this._playing = false;
     }
 
     public getName(): string {
@@ -15,6 +16,7 @@ export class AnimationManager implements RuntimeModule, Listener {
 
     public init(): boolean {
         // Initialization logic if needed
+        runtime.messageQueue.subscribe(Message.MOVE, this);
         return true;
     }
 
@@ -22,16 +24,25 @@ export class AnimationManager implements RuntimeModule, Listener {
         if (this.counter > 0) {
             this.counter--;
             if (this.counter === 0) {
-                messageQueue.emit(`${Message.ANIMATION_DONE}:`);
+                this._playing = false;
+                runtime.messageQueue.emit(`${Message.ANIMATION_DONE}:`);
             }
         }
     }
 
     public handleMessage(message: string): void {
-        const [event, ...payload] = message.split(':');
+        const [event, move] = message.split(':');
         switch (event) {
-            case Message.MOVE: this.counter = 10; break;
+            case Message.MOVE: {
+                console.log(`AnimationManager: received move ${move}`);
+                this.counter = 10;
+                this._playing = true;
+            } break;
             default: break;
         }
+    }
+
+    public get playing() {
+        return this._playing;
     }
 };

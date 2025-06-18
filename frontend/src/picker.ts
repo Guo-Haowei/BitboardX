@@ -32,6 +32,8 @@ class Picker {
             this._moves = moves;
             this._square = square;
             this._piece = board.board[file + rank * 8];
+            console.log(`board: ${board.board}`);
+            console.log(`Selected piece: ${this._piece} at square: ${this._square}`);
         } else {
             this.reset();
         }
@@ -40,13 +42,14 @@ class Picker {
     private sendMove(dst: string) {
         const src = this._square;
         const dstRank = parseInt(dst[1], 10);
-        let promo = '';
-        let is_promo = dstRank === 8 && this._piece === 'P';
-        is_promo = is_promo || (dstRank === 1 && this._piece === 'p');
-        if (is_promo) {
-            promo = prompt("Enter what piece to promote: ") || '';
+        const white_promo = (dstRank === 8) && (this._piece === 'P');
+        const black_promo = (dstRank === 1) && (this._piece === 'p');
+        if (white_promo || black_promo) {
+            console.log(`Promoting ${this._piece} at ${src} to a different piece.`);
+            console.log(`Dest is is ${white_promo ? 'white' : 'black'} at rank ${dstRank}.`);
+            console.log(`moving from ${src} to ${dst}.`);
         }
-
+        const promo = (white_promo || black_promo) ? (prompt("Enter what piece to promote: ") || '') : '';
         const move = `${src}${dst}${promo}`;
         runtime.gameManager.injectMove(move);
 

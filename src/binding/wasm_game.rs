@@ -27,7 +27,6 @@ impl WasmGame {
     }
 
     pub fn reset_game(&mut self, fen: String, is_white_human: bool, is_black_human: bool) {
-        console::log_1(&format!("Resetting game with FEN: {}", fen).into());
         let game = match GameState::from_fen(fen.as_str()) {
             Ok(game) => game,
             Err(err) => {

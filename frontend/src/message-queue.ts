@@ -1,8 +1,5 @@
-/// GameManager receives gamestart, then request input from the players
-/// Players send their moves to GameManager
-/// AnimationManager receives the moves from GameManager, start to animate
-/// and emits animation:done event
-/// GameManager receives animation:done event, requests the next input from the players
+import { RuntimeModule, runtime } from "./runtime";
+import { picker } from './picker';
 
 class EventMap {
     public readonly NEW_GAME = 'newgame';
@@ -14,14 +11,14 @@ class EventMap {
 
 export const Message = new EventMap();
 
-// const DEBUG = false;
-const DEBUG = true;
+const DEBUG = false;
+// const DEBUG = true;
 
 export interface Listener {
     handleMessage(message: string): void;
 };
 
-class MessageQueue {
+export class MessageQueue implements RuntimeModule {
     private queue: string[];
     private listeners: Map<string, Listener[]>;
 
@@ -32,6 +29,35 @@ class MessageQueue {
             const event = (Message as object)[key];
             this.listeners.set(event, []);
         }
+    }
+
+    public init(): boolean {
+        const canvas = runtime.display.canvas;
+        const getMousePosition = (canvas: HTMLCanvasElement, e: MouseEvent) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            return { x, y };
+        };
+
+        document.getElementById('fenButton')?.addEventListener('click', () => {
+            this.emit(Message.NEW_GAME);
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            const { x, y } = getMousePosition(canvas, e);
+            picker.onMouseUp(x, y);
+        });
+
+        return true;
+    }
+
+    public getName(): string {
+        return 'EventManager';
+    }
+
+    public tick(): void {
+        this.flush();
     }
 
     public subscribe(event: string, listener: Listener): void {
@@ -77,5 +103,3 @@ class MessageQueue {
         }
     }
 };
-
-export const messageQueue = new MessageQueue();

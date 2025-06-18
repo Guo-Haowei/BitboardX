@@ -1,7 +1,7 @@
 import { DEFAULT_FEN } from './constants';
 import * as BitboardX from '../../pkg/bitboard_x';
 import { RuntimeModule, runtime } from './runtime';
-import { messageQueue, Listener, Message } from './message-queue';
+import { Listener, Message } from './message-queue';
 import { Board } from './board';
 
 export interface SelectedPiece {
@@ -26,9 +26,6 @@ export class GameManager implements RuntimeModule, Listener {
     this.canvas = null;
     this.waitingForInput = false;
     this._board = new Board();
-    messageQueue.subscribe(Message.NEW_GAME, this);
-    messageQueue.subscribe(Message.REQUEST_PLAYER_INPUT, this);
-    messageQueue.subscribe(Message.ANIMATION_DONE, this);
   }
 
   public newgame(): boolean {
@@ -39,7 +36,6 @@ export class GameManager implements RuntimeModule, Listener {
 
     const fen = (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
     this.waitingForInput = false;
-    console.log(`Starting new game with FEN: ${fen}`);
     try {
       const isPlayerHuman = (player: string) => {
         const element = document.querySelector(`input[name="${player}"]:checked`);
@@ -49,11 +45,13 @@ export class GameManager implements RuntimeModule, Listener {
         return false;
       };
 
+      console.log(`Starting a new game >>>>>>`);
+
       this.canvas = runtime.display.canvas;
       this.game.reset_game(fen, isPlayerHuman('player1'), isPlayerHuman('player2'));
       this.updateBoard();
 
-      messageQueue.emit(Message.REQUEST_PLAYER_INPUT)
+      runtime.messageQueue.emit(Message.REQUEST_PLAYER_INPUT)
       return true;
     } catch (e) {
       console.error(`Error parsing FEN '${fen}': ${e}`);
@@ -75,7 +73,7 @@ export class GameManager implements RuntimeModule, Listener {
         this.waitingForInput = true;
       } break;
       case Message.ANIMATION_DONE: {
-        messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
+        runtime.messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
       } break;
       default: break;
     }
@@ -99,6 +97,9 @@ export class GameManager implements RuntimeModule, Listener {
   }
 
   public init(): boolean {
+    runtime.messageQueue.subscribe(Message.NEW_GAME, this);
+    runtime.messageQueue.subscribe(Message.REQUEST_PLAYER_INPUT, this);
+    runtime.messageQueue.subscribe(Message.ANIMATION_DONE, this);
     this.game = new BitboardX.WasmGame();
     return this.newgame();
   }
@@ -113,11 +114,11 @@ export class GameManager implements RuntimeModule, Listener {
       if (move) {
         const isMoveValid = this.game.make_move(move);
         if (isMoveValid) {
-          messageQueue.emit(`${Message.MOVE}:${move}`);
+          runtime.messageQueue.emit(`${Message.MOVE}:${move}`);
           this.waitingForInput = false;
           this.updateBoard();
         } else {
-          messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
+          runtime.messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
         }
       }
     }
