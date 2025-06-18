@@ -31,15 +31,15 @@ export class GameManager implements RuntimeModule, Listener {
     messageQueue.subscribe(Message.ANIMATION_DONE, this);
   }
 
-  public newgame(fen: string): boolean {
+  public newgame(): boolean {
     if (!this.game) {
       console.error('Game not initialized. Cannot restart.');
       return false;
     }
 
+    const fen = (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
     this.waitingForInput = false;
-
-    // const fen = (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
+    console.log(`Starting new game with FEN: ${fen}`);
     try {
       const isPlayerHuman = (player: string) => {
         const element = document.querySelector(`input[name="${player}"]:checked`);
@@ -56,7 +56,6 @@ export class GameManager implements RuntimeModule, Listener {
       messageQueue.emit(Message.REQUEST_PLAYER_INPUT)
       return true;
     } catch (e) {
-
       console.error(`Error parsing FEN '${fen}': ${e}`);
       return false;
     }
@@ -67,10 +66,10 @@ export class GameManager implements RuntimeModule, Listener {
   }
 
   public handleMessage(message: string) {
-    const [eventType, ...payload] = message.split(':');
+    const [eventType] = message.split(':');
     switch (eventType) {
       case Message.NEW_GAME: {
-        this.newgame(payload[0]);
+        this.newgame();
       } break;
       case Message.REQUEST_PLAYER_INPUT: {
         this.waitingForInput = true;
@@ -101,7 +100,7 @@ export class GameManager implements RuntimeModule, Listener {
 
   public init(): boolean {
     this.game = new BitboardX.WasmGame();
-    return this.newgame(DEFAULT_FEN);
+    return this.newgame();
   }
 
   public tick() {

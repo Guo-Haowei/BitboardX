@@ -13,7 +13,6 @@ function tick() {
 async function run() {
   await init();
 
-
   console.log(`Running ${name()}`);
 
   if (runtime.init()) {

@@ -14,7 +14,8 @@ class EventMap {
 
 export const Message = new EventMap();
 
-const DEBUG = false;
+// const DEBUG = false;
+const DEBUG = true;
 
 export interface Listener {
     handleMessage(message: string): void;
@@ -35,7 +36,7 @@ class MessageQueue {
 
     public subscribe(event: string, listener: Listener): void {
         if (!this.listeners.has(event)) {
-            console.error(`Event '${event}' is not supported.`);
+            console.error(`event '${event}' is not supported.`);
             return;
         }
         const listeners = this.listeners.get(event);
@@ -63,7 +64,11 @@ class MessageQueue {
             }
             const event = message.split(':')[0];
             const listeners = this.listeners.get(event);
-            listeners?.forEach((listener) => {
+            if (!listeners) {
+                console.error(`MessageQueue: no listeners found for event '${event}'`);
+                continue;
+            }
+            listeners.forEach((listener) => {
                 if (DEBUG) {
                     console.log(`<<< handling message: ${message} by listener: ${listener.constructor.name}`);
                 }

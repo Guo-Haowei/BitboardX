@@ -1,26 +1,9 @@
-import { Point2D } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 import { picker } from './picker';
-
-export interface Event {
-  type: string;
-  payload: Point2D | string | null;
-};
-
-export interface EventListener {
-  handleEvent(event: Event): void;
-}
+import { Message, messageQueue } from './message-queue';
 
 // @TODO: depracate this interface
 export class EventManager implements RuntimeModule {
-  private queue: Event[];
-  private listeners: EventListener[];
-
-  public constructor() {
-    this.queue = [];
-    this.listeners = [];
-  }
-
   public getName(): string {
     return 'EventManager';
   }
@@ -34,24 +17,12 @@ export class EventManager implements RuntimeModule {
       return { x, y };
     };
 
-    const { queue } = this;
-
-    document.getElementById('undoButton')?.addEventListener('click', () => {
-      queue.push({ type: 'undo', payload: null });
-    });
-
-    document.getElementById('redoButton')?.addEventListener('click', () => {
-      queue.push({ type: 'redo', payload: null });
-    });
-
     document.getElementById('fenButton')?.addEventListener('click', () => {
-      queue.push({ type: 'restart', payload: null });
+      messageQueue.emit(Message.NEW_GAME);
     });
 
     canvas.addEventListener('mouseup', (e) => {
       const { x, y } = getMousePosition(canvas, e);
-      queue.push({ type: 'mouseup', payload: { x, y } });
-
       picker.onMouseUp(x, y);
     });
 
