@@ -13,11 +13,8 @@ function loadPieceImages() {
   pieceCodes.forEach(code => {
     const color = isLowerCase(code) ? 'b' : 'w';
     const id = `img-${color}${code.toUpperCase()}`;
-    console.log(`Loading image with id: ${id}`);
     const img = document.getElementById(id) as HTMLImageElement;
-    console.log(`Loading image for piece: ${img}`);
     pieces[code] = img;
-
   });
 
   return pieces;
@@ -29,7 +26,6 @@ export class Renderer implements RuntimeModule {
 
   public constructor() {
     this.ctx = null;
-    // this.images = new Map<string, HTMLImageElement>();
     this.images = loadPieceImages();
   }
 
