@@ -1,12 +1,6 @@
 stages:
-  - build
   - test
   - deploy
-
-build-wasm:
-  stage: build
-  script:
-    - wasm-pack build --target web
 
 unit-test:
   stage: test
@@ -16,6 +10,7 @@ unit-test:
 deploy:
   stage: deploy
   script:
+    - wasm-pack build --target web
     - cd frontend
     - npm install
     - npm run build

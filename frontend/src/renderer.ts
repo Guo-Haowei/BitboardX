@@ -1,4 +1,4 @@
-import { BOARD_SIZE, COLORS, PIECE_SYMBOLS, TILE_SIZE } from './constants';
+import { BOARD_SIZE, COLORS, PIECE_SYMBOLS } from './constants';
 import { isLowerCase, fileRankToSquare } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 import { picker } from './picker';
@@ -18,6 +18,10 @@ function loadPieceImages() {
   });
 
   return pieces;
+}
+
+function getTileSize() {
+  return runtime.display.tileSize;
 }
 
 export class Renderer implements RuntimeModule {
@@ -51,8 +55,9 @@ export class Renderer implements RuntimeModule {
     if (!this.ctx) {
       return;
     }
+    const tileSize = getTileSize();
     this.ctx.fillStyle = color;
-    this.ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    this.ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
   }
 
   private drawBoard() {
@@ -61,6 +66,7 @@ export class Renderer implements RuntimeModule {
     }
 
     const { moves, square } = picker;
+    const tileSize = getTileSize();
 
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
@@ -79,15 +85,15 @@ export class Renderer implements RuntimeModule {
     // draw file labels
     this.ctx.fillStyle = 'black';
     for (let file = 0; file < BOARD_SIZE; ++file) {
-      const x = file * TILE_SIZE + TILE_SIZE / 2;
-      const y = BOARD_SIZE * TILE_SIZE + TILE_SIZE / 2;
+      const x = file * tileSize + tileSize / 2;
+      const y = BOARD_SIZE * tileSize + tileSize / 2;
       this.ctx.fillText(String.fromCharCode(97 + file).toString(), x, y);
     }
 
     // draw rank labels
     for (let row = 0; row < BOARD_SIZE; row++) {
-      const x = BOARD_SIZE * TILE_SIZE + TILE_SIZE / 2;
-      const y = row * TILE_SIZE + TILE_SIZE / 2;
+      const x = BOARD_SIZE * tileSize + tileSize / 2;
+      const y = row * tileSize + tileSize / 2;
       this.ctx.fillText((8 - row).toString(), x, y);
     }
   }
@@ -97,10 +103,11 @@ export class Renderer implements RuntimeModule {
       return;
     }
 
+    const tileSize = getTileSize();
     const img = this.images[piece];
     if (img) {
-      const half = TILE_SIZE / 2;
-      this.ctx.drawImage(img, x - half, y - half, TILE_SIZE, TILE_SIZE);
+      const half = tileSize / 2;
+      this.ctx.drawImage(img, x - half, y - half, tileSize, tileSize);
     } else {
       this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
       this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
@@ -114,14 +121,15 @@ export class Renderer implements RuntimeModule {
     }
 
     const animated = new Set<number>();
+    const tileSize = getTileSize();
 
     const { animations } = runtime.animationManager;
     for (const animation of animations) {
       const { piece, dstFile, dstRank } = animation;
       const idx = dstFile + dstRank * BOARD_SIZE;
       animated.add(idx);
-      const x = animation.x * TILE_SIZE + TILE_SIZE / 2;
-      const y = animation.y * TILE_SIZE + TILE_SIZE / 2;
+      const x = animation.x * tileSize + tileSize / 2;
+      const y = animation.y * tileSize + tileSize / 2;
       this.drawPiece(piece, x, y);
     }
 
@@ -135,8 +143,8 @@ export class Renderer implements RuntimeModule {
         if (animated.has(idx)) {
           continue; // Skip pieces that are currently animated
         }
-        const x = col * TILE_SIZE + TILE_SIZE / 2;
-        const y = row * TILE_SIZE + TILE_SIZE / 2;
+        const x = col * tileSize + tileSize / 2;
+        const y = row * tileSize + tileSize / 2;
         this.drawPiece(piece, x, y);
       }
     }

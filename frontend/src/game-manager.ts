@@ -34,13 +34,13 @@ export class GameManager implements RuntimeModule, Listener {
       return false;
     }
 
-    fen = fen || (document.getElementById('fenInput') as HTMLInputElement).value || DEFAULT_FEN;
+    fen = fen || (document.getElementById('fenInput') as HTMLInputElement)?.value || DEFAULT_FEN;
     this.waitingForInput = false;
     try {
-      const isPlayerHuman = (player: string) => {
+      const isAiPlayer = (player: string) => {
         const element = document.querySelector(`input[name="${player}"]:checked`);
         if (element && element instanceof HTMLInputElement) {
-          return element.value === 'human';
+          return element.value === 'computer';
         }
         return false;
       };
@@ -48,7 +48,7 @@ export class GameManager implements RuntimeModule, Listener {
       console.log(`Starting a new game >>>>>>`);
 
       this.canvas = runtime.display.canvas;
-      this.game.reset_game(fen, isPlayerHuman('player1'), isPlayerHuman('player2'));
+      this.game.reset_game(fen, !isAiPlayer('player1'), !isAiPlayer('player2'));
       this.updateBoard();
 
       runtime.messageQueue.emit(Message.REQUEST_PLAYER_INPUT)
