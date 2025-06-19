@@ -17,6 +17,7 @@ deploy:
   stage: deploy
   script:
     - cd frontend
+    - npm install
     - npm run build
   artifacts:
     paths:
