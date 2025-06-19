@@ -185,7 +185,7 @@ const EG_KING_TABLE: [i32; 64] = [
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::core::types::Square;
+    use crate::core::types::{Color, Piece, PieceType, Square};
 
     #[test]
     fn test_mirror_square() {
@@ -193,5 +193,30 @@ mod test {
         assert_eq!(mirror_square(Square::H8.as_u8()), Square::H1.as_u8());
         assert_eq!(mirror_square(Square::D5.as_u8()), Square::D4.as_u8());
         assert_eq!(mirror_square(Square::B2.as_u8()), Square::B7.as_u8());
+    }
+
+    #[test]
+    fn test_pesto_tables() {
+        // table should be symmetric for white and black pieces
+        for i in 0u8..PieceType::COUNT as u8 {
+            let piece_type = PieceType(i);
+            let wp = Piece::get_piece(Color::WHITE, piece_type);
+            let bp = Piece::get_piece(Color::BLACK, piece_type);
+
+            for idx in 0..8 {
+                let r1 = idx;
+                let r2 = 7 - idx;
+                for f in 0..8 {
+                    let sq1 = r1 * 8 + f;
+                    let sq2 = r2 * 8 + f;
+                    let mg = MG_TABLE[wp.as_usize()][sq1];
+                    let eg = EG_TABLE[wp.as_usize()][sq1];
+                    assert_eq!(mg, MG_TABLE[bp.as_usize()][sq2],);
+                    assert_eq!(eg, EG_TABLE[bp.as_usize()][sq2],);
+                    assert_eq!(mg, MG_PIECE_VALUE[i as usize] + MG_PIECE_TABLES[i as usize][sq1]);
+                    assert_eq!(eg, EG_PIECE_VALUE[i as usize] + EG_PIECE_TABLES[i as usize][sq1]);
+                }
+            }
+        }
     }
 }
