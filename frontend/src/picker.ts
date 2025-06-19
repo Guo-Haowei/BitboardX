@@ -1,6 +1,5 @@
 import { runtime } from './runtime';
 import { fileRankToSquare } from './utils';
-import { TILE_SIZE } from './constants';
 
 class Picker {
   private _square: string;
@@ -18,8 +17,9 @@ class Picker {
   }
 
   public onMouseUp(x: number, y: number): void {
-    const file = Math.floor(x / TILE_SIZE);
-    const rank = 7 - Math.floor(y / TILE_SIZE);
+    const tileSize = runtime.display.tileSize;
+    const file = Math.floor(x / tileSize);
+    const rank = 7 - Math.floor(y / tileSize);
     const square = fileRankToSquare(file, rank);
     const { board } = runtime.gameManager;
     if (this._moves && this._moves.has(square)) {

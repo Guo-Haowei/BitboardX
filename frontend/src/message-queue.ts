@@ -44,9 +44,14 @@ export class MessageQueue implements RuntimeModule {
       this.emit(Message.NEW_GAME);
     });
 
-    canvas.addEventListener('mouseup', (e) => {
+    canvas.addEventListener('mousedown', (e) => {
       const { x, y } = getMousePosition(canvas, e);
+      console.log(`Mouse down at (${x}, ${y})`);
       picker.onMouseUp(x, y);
+    });
+
+    window.addEventListener('resize', () => {
+      runtime.display.onResize();
     });
 
     return true;

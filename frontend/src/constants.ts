@@ -1,6 +1,4 @@
 export const BOARD_SIZE = 8;
-export const TILE_SIZE = 80;
-
 export const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 export const COLORS: Record<string, string> = {
