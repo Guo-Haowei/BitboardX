@@ -2,6 +2,7 @@
 pub mod ai;
 pub mod core;
 pub mod game;
+pub mod uci;
 
 // #[cfg(target_arch = "wasm32")]
 pub mod binding;

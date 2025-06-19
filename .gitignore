@@ -7,5 +7,9 @@ pkg/
 dist/
 frontend/chess/
 
+# build artifacts
+*.exe
+
 # user-specific files
 *.txt
+out.pgn
