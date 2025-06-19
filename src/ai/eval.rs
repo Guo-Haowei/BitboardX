@@ -27,14 +27,55 @@ fn count_material(pos: &Position, color: Color) -> i32 {
     score
 }
 
+fn evaluate_material(pos: &Position) -> i32 {
+    count_material(pos, Color::WHITE) - count_material(pos, Color::BLACK)
+}
+
+fn mirror_square(sq: Square) -> u8 {
+    sq.as_u8() ^ 56
+}
+
+fn evaluate_piece_square_tables(_pos: &Position) -> i32 {
+    use super::psts::PIECE_SQUARE_TABLES;
+
+    fn white_square(sq: Square) -> u8 {
+        sq.as_u8()
+    }
+    const SQ2IDX: [fn(Square) -> u8; 2] = [white_square, mirror_square];
+
+    let mut score = 0;
+    for color in [Color::WHITE, Color::BLACK] {
+        for i in 0..PieceType::COUNT {
+            let piece_type = PieceType(i);
+            let piece = Piece::get_piece(color, piece_type);
+            let bitboard = _pos.bitboards[piece.as_usize()];
+            for sq in bitboard.iter() {
+                let idx = SQ2IDX[color.as_usize()](sq) as usize;
+                let pst_value = PIECE_SQUARE_TABLES[piece_type.0 as usize][idx];
+                score += pst_value;
+            }
+        }
+    }
+
+    score
+}
+
+fn evaluate_king_safety(_pos: &Position) -> i32 {
+    // Placeholder for king safety evaluation
+    0
+}
+
+// @TODO: Implement pawn structure, mobility, rook activity, bishop pair, etc.
+
 pub fn evaluate(pos: &Position) -> i32 {
     debug_assert!(pos.side_to_move == Color::WHITE || pos.side_to_move == Color::BLACK);
-    let score = count_material(pos, Color::WHITE) - count_material(pos, Color::BLACK);
-    match pos.side_to_move {
-        Color::WHITE => score,
-        Color::BLACK => -score, // return score in favor of the side to move
-        _ => panic!("Invalid side to move"),
-    }
+    let mut score = 0;
+
+    score += evaluate_material(pos);
+    score += evaluate_piece_square_tables(pos);
+    score += evaluate_king_safety(pos);
+
+    if pos.side_to_move == Color::WHITE { score } else { -score }
 }
 
 pub fn move_score_guess(pos: &Position, mv: Move) -> i32 {
@@ -89,5 +130,13 @@ mod test {
 
         let score = evaluate(&pos);
         assert_eq!(score, BISHOP_SCORE - ROOK_SCORE - PAWN_SCORE);
+    }
+
+    #[test]
+    fn test_mirror_square() {
+        assert_eq!(mirror_square(Square::A1), Square::A8.as_u8());
+        assert_eq!(mirror_square(Square::H8), Square::H1.as_u8());
+        assert_eq!(mirror_square(Square::D5), Square::D4.as_u8());
+        assert_eq!(mirror_square(Square::B2), Square::B7.as_u8());
     }
 }
