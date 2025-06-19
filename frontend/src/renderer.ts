@@ -47,8 +47,14 @@ export class Renderer implements RuntimeModule {
   }
 
   public tick() {
-    this.drawBoard();
-    this.drawPieces(runtime.gameManager.board.board);
+    const canvas = runtime.display.canvas;
+    const { ctx } = this;
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      ctx.font = `${runtime.display.tileSize / 2}px Arial`
+      this.drawBoard();
+      this.drawPieces(runtime.gameManager.board.board);
+    }
   }
 
   private fillSquare(col: number, row: number, color: string) {
@@ -61,7 +67,8 @@ export class Renderer implements RuntimeModule {
   }
 
   private drawBoard() {
-    if (!this.ctx) {
+    const { ctx } = this;
+    if (!ctx) {
       return;
     }
 
@@ -83,18 +90,18 @@ export class Renderer implements RuntimeModule {
     }
 
     // draw file labels
-    this.ctx.fillStyle = 'black';
+    ctx.fillStyle = 'black';
     for (let file = 0; file < BOARD_SIZE; ++file) {
       const x = file * tileSize + tileSize / 2;
       const y = BOARD_SIZE * tileSize + tileSize / 2;
-      this.ctx.fillText(String.fromCharCode(97 + file).toString(), x, y);
+      ctx.fillText(String.fromCharCode(97 + file).toString(), x, y);
     }
 
     // draw rank labels
     for (let row = 0; row < BOARD_SIZE; row++) {
       const x = BOARD_SIZE * tileSize + tileSize / 2;
       const y = row * tileSize + tileSize / 2;
-      this.ctx.fillText((8 - row).toString(), x, y);
+      ctx.fillText((8 - row).toString(), x, y);
     }
   }
 

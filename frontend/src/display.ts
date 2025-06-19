@@ -6,11 +6,10 @@ export class Display implements RuntimeModule {
   private _tileSize = 0;
 
   public constructor() {
-    const canvas = document.createElement('canvas');
+    const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
     this._canvas = canvas;
-    canvas.id = 'chessCanvas';
-    const container = document.getElementById('left-column');
-    container?.appendChild(canvas);
+    // const container = document.getElementById('left-column');
+    // container?.appendChild(canvas);
     canvas.tabIndex = 0;
     canvas.style.margin = '20px auto';
 
