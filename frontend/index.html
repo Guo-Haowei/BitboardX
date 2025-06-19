@@ -49,6 +49,22 @@
             margin-top: 10px;
             box-sizing: border-box;
         }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            #left-column,
+            #right-column {
+                flex: 1;
+            }
+
+            #left-column {
+                border-right: none;
+                border-bottom: 1px solid #ccc;
+            }
+        }
     </style>
 </head>
 
