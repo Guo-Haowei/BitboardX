@@ -10,7 +10,7 @@ fn main() -> Result<()> {
     let mut stdout = io::stdout();
     let mut uci = UCI::new();
     let mut rl = DefaultEditor::new()?;
-    let _ = rl.load_history("history.txt").is_err();
+    // let _ = rl.load_history("history.txt").is_err();
 
     loop {
         let readline = rl.readline(">> ");
@@ -46,6 +46,6 @@ fn main() -> Result<()> {
         }
     }
 
-    rl.save_history("history.txt")?;
+    // rl.save_history("history.txt")?;
     Ok(())
 }

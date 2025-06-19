@@ -12,3 +12,4 @@ frontend/chess/
 
 # user-specific files
 *.txt
+out.pgn
