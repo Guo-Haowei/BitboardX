@@ -1,3 +1,4 @@
+use crate::ai;
 use crate::core::{move_gen, name, position::Position, utils};
 use std::io::{self, Write};
 
@@ -76,13 +77,8 @@ impl UCI {
         }
     }
 
-    pub fn command_go(&mut self, _out: &mut io::Stdout, args: &str) {
+    pub fn command_go(&mut self, out: &mut io::Stdout, args: &str) {
         let parts: Vec<&str> = args.split_whitespace().collect();
-
-        if parts.is_empty() {
-            eprintln!("Error: No go command provided"); // @TODO: usage
-            return;
-        }
 
         match parts.as_slice() {
             ["perft", p1, _rest @ ..] => {
@@ -95,11 +91,11 @@ impl UCI {
                 };
                 perft_test(&mut self.pos, depth, depth);
             }
-            _ => {
-                eprintln!("Error: Invalid go command");
-                return;
-            }
+            _ => {}
         }
+
+        let mv = ai::search(&mut self.pos, 4).unwrap();
+        writeln!(out, "bestmove {}", mv.to_string()).unwrap();
     }
 
     pub fn command_d(&self, out: &mut io::Stdout) {
