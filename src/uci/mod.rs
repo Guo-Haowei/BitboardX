@@ -94,7 +94,7 @@ impl UCI {
             _ => {}
         }
 
-        let mv = ai::search(&mut self.pos, 4).unwrap();
+        let mv = ai::find_best_move(&mut self.pos, 4).unwrap();
         writeln!(out, "bestmove {}", mv.to_string()).unwrap();
     }
 
