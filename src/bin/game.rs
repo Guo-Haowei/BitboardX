@@ -60,11 +60,10 @@ fn main() {
                     continue;
                 }
                 PlayerAction::Ready(mv) => {
-                    if game.execute(&mv) {
+                    if game.execute(&mv).is_some() {
                         break;
-                    } else {
-                        println!("Invalid move: {}", mv);
                     }
+                    println!("Invalid move: {}", mv);
                 }
                 PlayerAction::Error(err) => {
                     println!("Error occurred: {}", err);
