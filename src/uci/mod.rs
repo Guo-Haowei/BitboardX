@@ -3,13 +3,12 @@ use crate::engine::Engine;
 use std::io::{self, Write};
 
 pub struct UCI {
-    pos: Position,
     engine: Engine,
 }
 
 impl UCI {
     pub fn new() -> Self {
-        Self { pos: Position::new(), engine: Engine::new() }
+        Self { engine: Engine::new() }
     }
 
     pub fn shutdown(&mut self) {}
@@ -21,7 +20,9 @@ impl UCI {
     }
 
     pub fn command_ucinewgame(&mut self, _out: &mut io::Stdout) {
-        self.pos = Position::new();
+        self.engine = Engine::new();
+
+        // self.pos = Position::new();
         // writeln!(out, "ucinewgame").unwrap();
     }
 
@@ -39,14 +40,14 @@ impl UCI {
 
         match parts.as_slice() {
             ["startpos", _rest @ ..] => {
-                self.pos = Position::new();
+                self.engine.set_position(Position::new());
                 parts.remove(0);
             }
             ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => {
                 let result = [*p1, *p2, *p3, *p4, *p5, *p6].join(" ");
                 match Position::from_fen(result.as_str()) {
                     Ok(pos) => {
-                        self.pos = pos;
+                        self.engine.set_position(pos);
                         parts.drain(0..=6); // remove the FEN parts
                     }
                     Err(err) => {
@@ -65,7 +66,7 @@ impl UCI {
             match parts.as_slice() {
                 ["moves", moves @ ..] => {
                     for move_str in moves {
-                        if !self.pos.apply_move_str(move_str) {
+                        if !self.engine.make_move(move_str) {
                             eprintln!("Error: Invalid move '{}'", move_str);
                             break;
                         }
@@ -90,7 +91,8 @@ impl UCI {
                         return;
                     }
                 };
-                perft_test(&mut self.pos, depth, depth);
+                panic!("Perft test is not implemented yet");
+                // perft_test(&mut self.engine.pos, depth, depth);
             }
             _ => {}
         }
@@ -100,7 +102,8 @@ impl UCI {
     }
 
     pub fn command_d(&self, out: &mut io::Stdout) {
-        writeln!(out, "{}", utils::debug_string(&self.pos)).unwrap();
+        panic!("Perft test is not implemented yet");
+        // writeln!(out, "{}", utils::debug_string(&self.engine.pos)).unwrap();
     }
 }
 

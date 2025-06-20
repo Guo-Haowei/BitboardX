@@ -74,7 +74,10 @@ impl GameState {
             return None;
         }
 
-        let (src, dst, promtion) = mv.unwrap();
+        let mv = mv.unwrap();
+        let src = mv.src_sq();
+        let dst = mv.dst_sq();
+        let promtion = mv.get_promotion();
         let legal_moves = move_gen::legal_moves(&self.pos);
         for mv in legal_moves.iter() {
             if mv.src_sq() == src && mv.dst_sq() == dst && mv.get_promotion() == promtion {

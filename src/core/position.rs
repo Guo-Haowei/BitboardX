@@ -1,7 +1,6 @@
 use crate::core::move_gen;
 
 use super::types::*;
-use super::utils::parse_move;
 
 mod internal;
 mod utils;
@@ -98,11 +97,11 @@ pub struct Position {
     pub checkers: [CheckerList; Color::COUNT],
 }
 
-const DEFAULT_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
 impl Position {
+    pub const DEFAULT_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
     pub fn new() -> Self {
-        Self::from_fen(DEFAULT_FEN).unwrap()
+        Self::from_fen(Self::DEFAULT_FEN).unwrap()
     }
 
     pub fn from_fen(fen: &str) -> Result<Self, &'static str> {
@@ -251,26 +250,6 @@ impl Position {
 
     pub fn unmake_move(&mut self, mv: Move, undo_state: &UndoState) {
         internal::unmake_move(self, mv, undo_state)
-    }
-
-    /// @TODO: get rid of this method
-    pub fn apply_move_str(&mut self, move_str: &str) -> bool {
-        let mv = parse_move(move_str);
-        if mv.is_none() {
-            return false;
-        }
-
-        let (from, to, promotion) = mv.unwrap();
-
-        let legal_moves = move_gen::legal_moves(&self);
-        for mv in legal_moves.iter() {
-            if mv.src_sq() == from && mv.dst_sq() == to && mv.get_promotion() == promotion {
-                self.make_move(mv.clone());
-                return true;
-            }
-        }
-
-        return false;
     }
 }
 

@@ -1,5 +1,7 @@
 use crate::core::{move_gen, position::Position, types::*};
+use crate::engine::book::*;
 use crate::engine::{Engine, eval};
+use crate::logger;
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
@@ -144,6 +146,20 @@ pub fn find_best_move(engine: &mut Engine, depth: u8) -> Option<Move> {
     if move_list.len() == 0 {
         return None; // no legal moves
     }
+
+    // @TODO: add ply optimization, if there are more than 20 plys, it's unlikely to find a book move
+    // if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.last_hash) {
+    //     for mv in move_list.iter() {
+    //         if mv.src_sq() == book_mv.src_sq()
+    //             && mv.dst_sq() == book_mv.dst_sq()
+    //             && mv.get_promotion() == book_mv.get_promotion()
+    //         {
+    //             logger::log(format!("Using book move: {}", mv.to_string()));
+    //             return Some(mv.clone());
+    //         }
+    //     }
+    //     panic!("Should not happen, book move not found in legal moves");
+    // }
 
     let mut alpha_beta = Minimax { node_evaluated: 0 };
     // @TODO: print stats

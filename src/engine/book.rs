@@ -1,24 +1,17 @@
 use std::collections::HashMap;
 
-use crate::core::types::{CastlingType, File, PieceType, Rank, Square};
+use crate::core::types::{File, Move, MoveType, PieceType, Rank, Square};
+use crate::core::zobrist::Zobrist;
+use crate::logger;
 
 static BOOK_DATA: &[u8] = include_bytes!("./gm2600.bin");
 
 pub struct BookEntry {
-    key: u64,      // 8 bytes
     raw_move: u16, // 2 bytes
     weight: u16,   // 2 bytes
 }
 
 impl BookEntry {
-    pub fn new(key: u64, raw_move: u16, weight: u16) -> Self {
-        Self { key, raw_move, weight }
-    }
-
-    pub fn key(&self) -> u64 {
-        self.key
-    }
-
     pub fn src_sq(&self) -> Square {
         let rank = (self.raw_move >> 9) & 0x0007; // bits 9-11
         let file = (self.raw_move >> 6) & 0x0007; // bits 6-8
@@ -33,33 +26,50 @@ impl BookEntry {
         Square::make(File(file as u8), Rank(rank as u8))
     }
 
-    pub fn castling(&self) -> CastlingType {
-        match self.raw_move {
-            0x0107 => CastlingType::WhiteKingSide,  // e1g1
-            0x0f3f => CastlingType::WhiteQueenSide, // e1c1
-            0x0100 => CastlingType::BlackKingSide,  // e8g8
-            0x0f38 => CastlingType::BlackQueenSide, // e8c8
-            _ => CastlingType::None,
-        }
-    }
-
     pub fn weight(&self) -> u16 {
         self.weight
     }
 
-    pub fn get_promo_piece(&self) -> PieceType {
+    pub fn get_promotion(&self) -> Option<PieceType> {
         let val = (self.raw_move >> 12) & 0x0007;
         match val {
-            0 => PieceType::NONE,
-            1..=4 => PieceType(val as u8),
+            0 => None,
+            1..=4 => Some(PieceType(val as u8)),
             _ => panic!("Invalid promotion piece value: {}", val),
+        }
+    }
+
+    pub fn to_move(&self) -> Move {
+        const WHITE_KING_SIDE: u16 = 0x0107; // e1g1
+        const WHITE_QUEEN_SIDE: u16 = 0x0f3f; // e1c1
+        const BLACK_KING_SIDE: u16 = 0x0100; // e8g8
+        const BLACK_QUEEN_SIDE: u16 = 0x0f38; // e8c8
+
+        match self.raw_move {
+            WHITE_KING_SIDE => Move::new(Square::E1, Square::G1, MoveType::Castling, None),
+            WHITE_QUEEN_SIDE => Move::new(Square::E1, Square::C1, MoveType::Castling, None),
+            BLACK_KING_SIDE => Move::new(Square::E8, Square::G8, MoveType::Castling, None),
+            BLACK_QUEEN_SIDE => Move::new(Square::E8, Square::C8, MoveType::Castling, None),
+            _ => {
+                let promotion = self.get_promotion();
+                let src = self.src_sq();
+                let dst = self.dst_sq();
+                // this is a little bit hacky here,
+                // because it's hard to tell if it's a en passant move or not
+                Move::new(
+                    src,
+                    dst,
+                    if promotion.is_none() { MoveType::Normal } else { MoveType::Promotion },
+                    promotion,
+                )
+            }
         }
     }
 }
 
 // Maybe we can use fixed size array for list of moves
 pub struct Book {
-    pub map: HashMap<u64, Vec<BookEntry>>,
+    pub map: HashMap<Zobrist, Vec<BookEntry>>,
 }
 
 impl Book {
@@ -95,13 +105,23 @@ impl Book {
             offset += 4;
 
             // Create a BookEntry
-            let entry = BookEntry { key, raw_move, weight };
-            self.map.entry(key).or_insert(Vec::new()).push(entry);
+            let entry = BookEntry { raw_move, weight };
+            self.map.entry(Zobrist(key)).or_insert(Vec::new()).push(entry);
         }
 
-        println!("Loaded {} book entries", self.map.len());
+        logger::log(format!("Loaded {} book entries", self.map.len()));
 
         Ok(())
+    }
+
+    pub fn get_move(&self, hash: Zobrist) -> Option<Move> {
+        if let Some(entries) = self.map.get(&hash) {
+            // @TODO: sort entries by weight and return the best one
+            assert!(!entries.is_empty(), "No entries found for hash: {:?}", hash);
+            return Some(entries[0].to_move());
+        }
+
+        None
     }
 }
 
