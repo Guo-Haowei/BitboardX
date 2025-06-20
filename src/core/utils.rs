@@ -1,6 +1,21 @@
 use super::position::Position;
 use crate::core::types::*;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub fn random() -> f32 {
+    use rand::Rng;
+    let mut rng = rand::rng();
+    let num = rng.random();
+    debug_assert!(num <= 1.0, "Random number out of bounds: {}", num);
+    num
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn random() -> f32 {
+    use web_sys::js_sys::Math;
+    Math::random() as f32
+}
+
 fn parse_move_impl(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
     let len = input.len();
     match len {
