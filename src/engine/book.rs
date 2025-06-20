@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::core::types::{File, Move, MoveType, PieceType, Rank, Square};
 use crate::core::utils::*;
 use crate::core::zobrist::Zobrist;
+use crate::logger;
 
 static BOOK_DATA: &[u8] = include_bytes!("./gm2600.bin");
 
@@ -132,23 +133,31 @@ impl Book {
 
     pub fn get_move(&self, hash: Zobrist) -> Option<Move> {
         if let Some(entries) = self.map.get(&hash) {
+            assert!(!entries.moves.is_empty(), "No entries found for hash: {:?}", hash);
             let rand = random();
-            let mut idx = 0;
             let mut random_weight = (rand * entries.total_weight as f32) as i16;
-            for entry in &entries.moves {
-                random_weight -= entry.weight as i16;
+            random_weight = random_weight.min(entries.total_weight as i16); // Ensure non-negative
+            let mut entry: Option<&BookEntry> = None;
+            for e in &entries.moves {
+                random_weight -= e.weight as i16;
                 if random_weight <= 0 {
+                    entry = Some(e);
                     break;
                 }
-
-                idx += 1;
             }
-            debug_assert!(idx < entries.moves.len(), "Index out of bounds: {}", idx);
+            debug_assert!(entry.is_some());
 
-            let entry = &entries.moves[idx];
+            let entry = entry.unwrap();
             let mv = entry.to_move();
-
-            assert!(!entries.moves.is_empty(), "No entries found for hash: {:?}", hash);
+            logger::log(
+                format!(
+                    "[DEBUG] -- found book move: {} (weight: {}/{})",
+                    mv.to_string(),
+                    entry.weight,
+                    entries.total_weight
+                )
+                .to_string(),
+            );
             return Some(mv);
         }
 
