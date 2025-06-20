@@ -1,7 +1,7 @@
 use super::position::Position;
 use crate::core::types::*;
 
-pub fn parse_move(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
+fn parse_move_impl(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
     let len = input.len();
     match len {
         4 | 5 => {
@@ -31,6 +31,14 @@ pub fn parse_move(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
         }
         _ => return None,
     }
+}
+
+pub fn parse_move(input: &str) -> Option<Move> {
+    if let Some((src, dst, promotion)) = parse_move_impl(input) {
+        return Some(Move::new(src, dst, MoveType::Normal, promotion));
+    }
+
+    None
 }
 
 pub fn debug_string(pos: &Position) -> String {
@@ -96,14 +104,17 @@ mod test {
 
     #[test]
     fn test_parse_move() {
-        assert_eq!(parse_move("e2e4"), Some((Square::E2, Square::E4, None)));
-        assert_eq!(parse_move("a7a8"), Some((Square::A7, Square::A8, None)));
-        assert_eq!(parse_move("h1h2"), Some((Square::H1, Square::H2, None)));
-        assert_eq!(parse_move("d4d5"), Some((Square::D4, Square::D5, None)));
-        assert_eq!(parse_move("d7d8q"), Some((Square::D7, Square::D8, Some(PieceType::QUEEN))));
-        assert_eq!(parse_move("z1z2"), None);
-        assert_eq!(parse_move("e9e4"), None);
-        assert_eq!(parse_move("e2e"), None);
+        assert_eq!(parse_move_impl("e2e4"), Some((Square::E2, Square::E4, None)));
+        assert_eq!(parse_move_impl("a7a8"), Some((Square::A7, Square::A8, None)));
+        assert_eq!(parse_move_impl("h1h2"), Some((Square::H1, Square::H2, None)));
+        assert_eq!(parse_move_impl("d4d5"), Some((Square::D4, Square::D5, None)));
+        assert_eq!(
+            parse_move_impl("d7d8q"),
+            Some((Square::D7, Square::D8, Some(PieceType::QUEEN)))
+        );
+        assert_eq!(parse_move_impl("z1z2"), None);
+        assert_eq!(parse_move_impl("e9e4"), None);
+        assert_eq!(parse_move_impl("e2e"), None);
     }
 
     #[test]

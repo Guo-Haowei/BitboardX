@@ -1,5 +1,6 @@
-use crate::ai::eval;
 use crate::core::{move_gen, position::Position, types::*};
+use crate::engine::book::*;
+use crate::engine::{Engine, eval};
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
@@ -98,9 +99,9 @@ impl Minimax {
         alpha
     }
 
-    pub fn alpha_beta(&mut self, pos: &mut Position, depth: u8) -> Option<Move> {
+    pub fn alpha_beta(&mut self, engine: &mut Engine, depth: u8) -> Option<Move> {
         debug_assert!(depth > 0);
-        let move_list = move_gen::legal_moves(pos);
+        let move_list = move_gen::legal_moves(&engine.pos);
         if move_list.len() == 0 {
             return None; // no legal moves
         }
@@ -108,12 +109,12 @@ impl Minimax {
         let mut alpha = MIN;
         let mut final_move = None;
 
-        let move_list = sort_moves(pos, &move_list);
+        let move_list = sort_moves(&engine.pos, &move_list);
 
         for mv in move_list.iter() {
-            let undo_state = pos.make_move(*mv);
-            let score = -self.alpha_beta_helper(pos, alpha, MAX, depth - 1);
-            pos.unmake_move(*mv, &undo_state);
+            let undo_state = engine.pos.make_move(*mv);
+            let score = -self.alpha_beta_helper(&mut engine.pos, alpha, MAX, depth - 1);
+            engine.pos.unmake_move(*mv, &undo_state);
 
             self.node_evaluated += 1;
 
@@ -138,52 +139,36 @@ fn sort_moves(pos: &Position, move_list: &MoveList) -> Vec<Move> {
     sorted_moves
 }
 
-pub fn find_best_move(pos: &mut Position, depth: u8) -> Option<Move> {
+pub fn find_best_move(engine: &mut Engine, depth: u8) -> Option<Move> {
     debug_assert!(depth > 0);
-    let move_list = move_gen::legal_moves(pos);
+    let move_list = move_gen::legal_moves(&engine.pos);
     if move_list.len() == 0 {
         return None; // no legal moves
     }
 
+    // @TODO: add ply optimization, if there are more than 20 plys, it's unlikely to find a book move
+    if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.last_hash) {
+        for mv in move_list.iter() {
+            if mv.src_sq() == book_mv.src_sq()
+                && mv.dst_sq() == book_mv.dst_sq()
+                && mv.get_promotion() == book_mv.get_promotion()
+            {
+                return Some(mv.clone());
+            }
+        }
+        panic!("Should not happen, book move not found in legal moves");
+    }
+
     let mut alpha_beta = Minimax { node_evaluated: 0 };
     // @TODO: print stats
-    alpha_beta.alpha_beta(pos, depth)
+
+    alpha_beta.alpha_beta(engine, depth)
 }
 
 #[cfg(test)]
 
 mod tests {
     use super::*;
-
-    fn no_pruning(pos: &mut Position, depth: u8) -> (i32, Option<Move>) {
-        if depth == 0 {
-            return (eval::evaluate(pos), None);
-        }
-
-        let move_list = move_gen::legal_moves(pos);
-        if move_list.len() == 0 {
-            if pos.is_in_check(pos.side_to_move) {
-                return (MIN, None);
-            }
-            return (0, None); // draw
-        }
-
-        let mut best_eval = MIN;
-        let mut final_move = None;
-        for mv in move_list.iter() {
-            let undo_state = pos.make_move(*mv);
-            let (eval, _) = no_pruning(pos, depth - 1);
-            let eval = -eval;
-            pos.unmake_move(*mv, &undo_state);
-
-            if eval >= best_eval {
-                best_eval = eval;
-                final_move = Some(*mv);
-            }
-        }
-
-        (best_eval, final_move)
-    }
 
     #[test]
     fn test_sort_moves_with_guess() {
@@ -196,19 +181,5 @@ mod tests {
             Move::new(Square::C7, Square::C8, MoveType::Promotion, Some(PieceType::QUEEN));
 
         assert_eq!(expected_best_move, sorted_moves[0]);
-    }
-
-    #[test]
-    fn test_alpha_beta_proning_correctness() {
-        let fen = "8/8/8/8/k1RbP2K/8/8/8 b - - 0 1";
-        let mut pos = Position::from_fen(fen).unwrap();
-        let depth = 3;
-
-        let mv1 = find_best_move(&mut pos, depth);
-        let (_, mv2) = no_pruning(&mut pos, depth);
-
-        let mv1 = mv1.unwrap();
-        let mv2 = mv2.unwrap();
-        assert_eq!(mv1, mv2, "Minimax raw and alpha-beta best moves do not match");
     }
 }

@@ -48,28 +48,28 @@ fn main() {
         }
 
         loop {
-            let action = {
-                let fen = game.fen();
-                let active_player = game.active_player();
-                active_player.request_move();
-                active_player.poll_move(fen)
-            };
+            // let action = {
+            //     let fen = game.fen();
+            //     let active_player = game.active_player();
+            //     active_player.request_move();
+            //     active_player.poll_move(fen)
+            // };
 
-            match action {
-                PlayerAction::Pending => {
-                    continue;
-                }
-                PlayerAction::Ready(mv) => {
-                    if game.execute(&mv).is_some() {
-                        break;
-                    }
-                    println!("Invalid move: {}", mv);
-                }
-                PlayerAction::Error(err) => {
-                    println!("Error occurred: {}", err);
-                    break 'mainloop;
-                }
-            }
+            // match action {
+            //     PlayerAction::Pending => {
+            //         continue;
+            //     }
+            //     PlayerAction::Ready(mv) => {
+            //         if game.execute(&mv).is_some() {
+            //             break;
+            //         }
+            //         println!("Invalid move: {}", mv);
+            //     }
+            //     PlayerAction::Error(err) => {
+            //         println!("Error occurred: {}", err);
+            //         break 'mainloop;
+            //     }
+            // }
         }
     }
 }

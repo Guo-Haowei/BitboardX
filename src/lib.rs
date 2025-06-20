@@ -1,8 +1,7 @@
 // wasm-pack build --target web
-pub mod ai;
 pub mod core;
+pub mod engine;
 pub mod game;
-pub mod uci;
 
 // #[cfg(target_arch = "wasm32")]
 pub mod binding;
@@ -35,7 +34,7 @@ pub mod logger {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            println!("{}", message);
+            eprintln!("{}", message);
         }
     }
 }
