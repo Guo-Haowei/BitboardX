@@ -26,20 +26,27 @@ struct Minimax {
 impl Minimax {
     // @TODO: quiescence search
     /// Quiescence Search: only search captures when depth = 0
-    fn quiescence_search(&mut self, pos: &mut Position, mut alpha: i32, beta: i32) -> i32 {
+    fn quiescence_search(
+        &mut self,
+        pos: &mut Position,
+        mut alpha: i32,
+        beta: i32,
+        depth: u8,
+    ) -> i32 {
         let eval = eval::evaluate(pos);
 
-        if eval >= beta {
+        if eval >= beta || depth == 0 {
             return beta;
         }
 
         alpha = alpha.max(eval);
 
-        let moves = move_gen::capture_moves(pos);
+        let move_list = move_gen::capture_moves(pos);
+        let move_list = sort_moves(pos, &move_list);
 
-        for mv in moves.iter() {
+        for mv in move_list.iter() {
             let undo_state = pos.make_move(*mv);
-            let score = -self.quiescence_search(pos, -beta, -alpha);
+            let score = -self.quiescence_search(pos, -beta, -alpha, depth - 1);
             pos.unmake_move(*mv, &undo_state);
 
             self.node_evaluated += 1;
@@ -56,12 +63,13 @@ impl Minimax {
     fn alpha_beta_helper(
         &mut self,
         pos: &mut Position,
-        depth: u8,
         mut alpha: i32,
         beta: i32,
+        depth: u8,
     ) -> i32 {
         if depth == 0 {
-            return self.quiescence_search(pos, alpha, beta);
+            // use a hard code depth of 4 for quiescence search
+            return self.quiescence_search(pos, alpha, beta, 4);
         }
 
         let move_list = move_gen::legal_moves(pos);
@@ -76,7 +84,7 @@ impl Minimax {
 
         for mv in move_list.iter() {
             let undo_state = pos.make_move(*mv);
-            let score = -self.alpha_beta_helper(pos, depth - 1, -beta, -alpha);
+            let score = -self.alpha_beta_helper(pos, -beta, -alpha, depth - 1);
             pos.unmake_move(*mv, &undo_state);
 
             self.node_evaluated += 1;
@@ -104,7 +112,7 @@ impl Minimax {
 
         for mv in move_list.iter() {
             let undo_state = pos.make_move(*mv);
-            let score = -self.alpha_beta_helper(pos, depth - 1, alpha, MAX);
+            let score = -self.alpha_beta_helper(pos, alpha, MAX, depth - 1);
             pos.unmake_move(*mv, &undo_state);
 
             self.node_evaluated += 1;
