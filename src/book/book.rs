@@ -55,17 +55,7 @@ impl BookEntry {
     }
 }
 
-/*
-
-    get_promo_piece() {
-        return (this.raw_move >> 12) & 0x0007
-    }
-
-    // Polyglot uses its own convention for castling: provide
-    // accessor methods for finding out which type of castling
-    // is encoded in current move.
-
-*/
+pub struct Book {}
 
 pub fn load(data: &[u8]) -> Result<(), String> {
     if data.is_empty() {
@@ -139,7 +129,8 @@ pub fn load(data: &[u8]) -> Result<(), String> {
         }
 
         println!(
-            "** entry: from {:?} to {:?}, weight: {}, learn: {}",
+            "** pos: {}, entry: from {:?} to {:?}, weight: {}, learn: {}",
+            entry.key(),
             entry.src_sq().to_string(),
             entry.dst_sq().to_string(),
             entry.weight(),
