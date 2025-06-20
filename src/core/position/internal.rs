@@ -24,13 +24,17 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
     debug_assert!(pos.side_to_move == mover_color, "Trying to move a piece of the wrong color");
 
     // Copy undo state before making changes to the position
-    let undo_state = UndoState {
-        castling: pos.castling_rights,
-        en_passant: pos.en_passant,
-        halfmove_clock: pos.halfmove_clock,
-        fullmove_number: pos.fullmove_number,
-        captured_piece: dst_piece,
-    };
+    let undo_state = UndoState::new(
+        pos.castling_rights,
+        pos.en_passant,
+        pos.halfmove_clock,
+        pos.fullmove_number,
+        dst_piece,
+        pos.occupancies,
+        pos.attack_mask,
+        pos.pin_map,
+        pos.checkers,
+    );
 
     // check if the move will change the castling rights
     let castling_rights =
@@ -113,6 +117,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
 
     // -------------- Update Board End --------------
 
+    pos.side_to_move = pos.side_to_move.opponent();
     pos.castling_rights = castling_rights;
     pos.en_passant = en_passant_sq;
     pos.fullmove_number += if mover_color == Color::WHITE { 0 } else { 1 };
@@ -123,7 +128,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
         pos.halfmove_clock += 1; // increment halfmove clock for a pawn move
     }
 
-    post_move(pos);
+    update_cache(pos);
 
     undo_state
 }
@@ -175,18 +180,21 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
         _ => {}
     }
 
-    post_move(pos);
+    // flip the side to move
+    pos.side_to_move = pos.side_to_move.opponent();
 
     // Restore from the undo state
-    pos.castling_rights = undo_state.castling;
+    pos.castling_rights = undo_state.castling_rights;
     pos.en_passant = undo_state.en_passant;
     pos.halfmove_clock = undo_state.halfmove_clock;
     pos.fullmove_number = undo_state.fullmove_number;
+    pos.occupancies = undo_state.occupancies;
+    pos.attack_mask = undo_state.attack_mask;
+    pos.pin_map = undo_state.pin_map;
+    pos.checkers = undo_state.checkers;
 }
 
-pub fn post_move(pos: &mut Position) {
-    pos.side_to_move = pos.side_to_move.opponent();
-
+pub fn update_cache(pos: &mut Position) {
     // update occupancies
     pos.occupancies[Color::WHITE.as_usize()] = pos.bitboards[Piece::W_PAWN.as_usize()]
         | pos.bitboards[Piece::W_KNIGHT.as_usize()]
