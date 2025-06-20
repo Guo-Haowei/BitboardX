@@ -2,34 +2,31 @@ use std::collections::HashMap;
 
 use crate::core::types::{File, Move, MoveType, PieceType, Rank, Square};
 use crate::core::zobrist::Zobrist;
+use crate::logger;
 
 static BOOK_DATA: &[u8] = include_bytes!("./gm2600.bin");
 
-pub struct BookEntry {
+struct BookEntry {
     raw_move: u16, // 2 bytes
     weight: u16,   // 2 bytes
 }
 
 impl BookEntry {
-    pub fn src_sq(&self) -> Square {
+    fn src_sq(&self) -> Square {
         let rank = (self.raw_move >> 9) & 0x0007; // bits 9-11
         let file = (self.raw_move >> 6) & 0x0007; // bits 6-8
 
         Square::make(File(file as u8), Rank(rank as u8))
     }
 
-    pub fn dst_sq(&self) -> Square {
+    fn dst_sq(&self) -> Square {
         let rank = (self.raw_move >> 3) & 0x0007; // bits 3-5
         let file = self.raw_move & 0x0007; // bits 0-2
 
         Square::make(File(file as u8), Rank(rank as u8))
     }
 
-    pub fn weight(&self) -> u16 {
-        self.weight
-    }
-
-    pub fn get_promotion(&self) -> Option<PieceType> {
+    fn get_promotion(&self) -> Option<PieceType> {
         let val = (self.raw_move >> 12) & 0x0007;
         match val {
             0 => None,
@@ -38,7 +35,7 @@ impl BookEntry {
         }
     }
 
-    pub fn to_move(&self) -> Move {
+    fn to_move(&self) -> Move {
         const WHITE_KING_SIDE: u16 = 0x0107; // e1g1
         const WHITE_QUEEN_SIDE: u16 = 0x0f3f; // e1c1
         const BLACK_KING_SIDE: u16 = 0x0100; // e8g8
@@ -67,8 +64,26 @@ impl BookEntry {
 }
 
 // Maybe we can use fixed size array for list of moves
+struct MoveList {
+    moves: Vec<BookEntry>,
+    total_weight: u32,
+}
+
+impl MoveList {
+    fn new() -> Self {
+        Self { moves: Vec::new(), total_weight: 0 }
+    }
+
+    fn post_load(&mut self) {
+        // Sort moves by weight in descending order
+        self.moves.sort_by_key(|entry| -i32::from(entry.weight));
+        // Calculate total weight for weighted random selection
+        self.total_weight = self.moves.iter().map(|entry| entry.weight as u32).sum();
+    }
+}
+
 pub struct Book {
-    pub map: HashMap<Zobrist, Vec<BookEntry>>,
+    map: HashMap<Zobrist, MoveList>,
 }
 
 impl Book {
@@ -105,7 +120,11 @@ impl Book {
 
             // Create a BookEntry
             let entry = BookEntry { raw_move, weight };
-            self.map.entry(Zobrist(key)).or_insert(Vec::new()).push(entry);
+            self.map.entry(Zobrist(key)).or_insert(MoveList::new()).moves.push(entry);
+        }
+
+        for move_list in self.map.values_mut() {
+            move_list.post_load();
         }
 
         Ok(())
@@ -114,8 +133,24 @@ impl Book {
     pub fn get_move(&self, hash: Zobrist) -> Option<Move> {
         if let Some(entries) = self.map.get(&hash) {
             // @TODO: sort entries by weight and return the best one
-            assert!(!entries.is_empty(), "No entries found for hash: {:?}", hash);
-            return Some(entries[0].to_move());
+            for entry in &entries.moves {
+                let message = format!(
+                    "[DEBUG] -- book entry: {}, weight: {}, zobrist: '{:?}'",
+                    entry.to_move().to_string(),
+                    entry.weight,
+                    hash
+                );
+                logger::log(message.to_string());
+            }
+
+            assert!(!entries.moves.is_empty(), "No entries found for hash: {:?}", hash);
+            let mv = entries.moves[0].to_move();
+
+            let message =
+                format!("[DEBUG] -- found book move: {}, zobrist: '{:?}'", mv.to_string(), hash);
+
+            logger::log(message.to_string());
+            return Some(mv);
         }
 
         None

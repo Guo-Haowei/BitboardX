@@ -1,7 +1,6 @@
 use crate::core::{move_gen, position::Position, types::*};
 use crate::engine::book::*;
 use crate::engine::{Engine, eval};
-use crate::logger;
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
@@ -154,12 +153,6 @@ pub fn find_best_move(engine: &mut Engine, depth: u8) -> Option<Move> {
                 && mv.dst_sq() == book_mv.dst_sq()
                 && mv.get_promotion() == book_mv.get_promotion()
             {
-                let message = format!(
-                    "[DEBUG] -- found book move: {}, for position: '{}'",
-                    mv.to_string(),
-                    engine.pos.fen(),
-                );
-                logger::log(message.to_string());
                 return Some(mv.clone());
             }
         }
