@@ -56,7 +56,7 @@ export class AnimationManager implements RuntimeModule, Listener {
         }
     }
 
-    private addCaslingAnimation(src: string, dst: string) {
+    private addCastlingAnimation(src: string, dst: string) {
         if (src === 'e1') {
             if (dst === 'g1') {
                 this.addAnimation('h1', 'f1'); // Rook moves from h1 to f1
@@ -81,7 +81,7 @@ export class AnimationManager implements RuntimeModule, Listener {
                     const dst = lastMove.dst_sq();
                     this.addAnimation(src, dst);
                     if (lastMove.is_castling()) {
-                        this.addCaslingAnimation(src, dst);
+                        this.addCastlingAnimation(src, dst);
                     }
                 }
             } break;
