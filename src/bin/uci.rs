@@ -1,12 +1,12 @@
 use rustyline::{DefaultEditor, Result};
 
-use bitboard_x::core::name;
+use bitboard_x::engine::Engine;
 use bitboard_x::uci::UCI;
 
 fn main() -> Result<()> {
     use std::io::{self};
 
-    eprintln!("{}", name());
+    eprintln!("{}", Engine::name());
     let mut stdout = io::stdout();
     let mut uci = UCI::new();
     let mut rl = DefaultEditor::new()?;

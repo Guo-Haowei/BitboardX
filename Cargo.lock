@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "colored",
  "console_error_panic_hook",
+ "once_cell",
  "paste",
  "pretty_assertions",
  "rustyline",

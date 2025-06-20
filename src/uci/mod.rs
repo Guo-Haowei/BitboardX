@@ -1,20 +1,21 @@
-use crate::ai;
-use crate::core::{move_gen, name, position::Position, utils};
+use crate::core::{move_gen, position::Position, utils};
+use crate::engine::Engine;
 use std::io::{self, Write};
 
 pub struct UCI {
     pos: Position,
+    engine: Engine,
 }
 
 impl UCI {
     pub fn new() -> Self {
-        Self { pos: Position::new() }
+        Self { pos: Position::new(), engine: Engine::new() }
     }
 
     pub fn shutdown(&mut self) {}
 
     pub fn command_uci(&self, out: &mut io::Stdout) {
-        writeln!(out, "id name {}", name()).unwrap();
+        writeln!(out, "id name {}", Engine::name()).unwrap();
         writeln!(out, "id author haguo").unwrap();
         writeln!(out, "uciok").unwrap();
     }
@@ -94,7 +95,7 @@ impl UCI {
             _ => {}
         }
 
-        let mv = ai::find_best_move(&mut self.pos, 4).unwrap();
+        let mv = self.engine.best_move(4).unwrap();
         writeln!(out, "bestmove {}", mv.to_string()).unwrap();
     }
 
