@@ -1,4 +1,4 @@
-use crate::core::{move_gen, position::Position, utils};
+use crate::core::position::Position;
 use crate::engine::Engine;
 use std::io::{self, Write};
 
@@ -91,45 +91,16 @@ impl UCI {
                         return;
                     }
                 };
-                panic!("Perft test is not implemented yet");
-                // perft_test(&mut self.engine.pos, depth, depth);
+                self.engine.uci_go_perft(out, depth, depth);
             }
-            _ => {}
+            _ => {
+                let mv = self.engine.best_move(4).unwrap();
+                writeln!(out, "bestmove {}", mv.to_string()).unwrap();
+            }
         }
-
-        let mv = self.engine.best_move(4).unwrap();
-        writeln!(out, "bestmove {}", mv.to_string()).unwrap();
     }
 
     pub fn command_d(&self, out: &mut io::Stdout) {
-        panic!("Perft test is not implemented yet");
-        // writeln!(out, "{}", utils::debug_string(&self.engine.pos)).unwrap();
+        self.engine.uci_cmd_d(out);
     }
-}
-
-fn perft_test(pos: &mut Position, depth: u8, max_depth: u8) -> u64 {
-    if depth == 0 {
-        return 1;
-    }
-
-    let move_list = move_gen::legal_moves(pos);
-
-    let mut nodes = 0u64;
-    let should_print = depth == max_depth;
-    for mv in move_list.iter() {
-        let undo_state = pos.make_move(mv.clone());
-        let count = perft_test(pos, depth - 1, max_depth);
-        nodes += count;
-        pos.unmake_move(mv.clone(), &undo_state);
-
-        if should_print {
-            eprintln!("{}: {}", mv.to_string(), count);
-        }
-    }
-
-    if should_print {
-        eprintln!("\nNodes searched: {}", nodes);
-    }
-
-    nodes
 }

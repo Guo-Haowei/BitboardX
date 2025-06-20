@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::{self, Write};
 
 use crate::core::{move_gen, utils, zobrist};
 use crate::core::{position::Position, types::Move, zobrist::Zobrist};
@@ -35,6 +36,10 @@ impl Engine {
         history.insert(last_hash, 1);
 
         Ok(Self { pos, history, last_hash })
+    }
+
+    pub fn best_move(&mut self, depth: u8) -> Option<Move> {
+        search::find_best_move(self, depth)
     }
 
     pub fn set_position(&mut self, pos: Position) {
@@ -76,7 +81,34 @@ impl Engine {
         *self.history.entry(zobrist).or_insert(0) += 1;
     }
 
-    pub fn best_move(&mut self, depth: u8) -> Option<Move> {
-        search::find_best_move(self, depth)
+    pub fn uci_go_perft(&mut self, out: &mut io::Stdout, depth: u8, max_depth: u8) -> u64 {
+        if depth == 0 {
+            return 1;
+        }
+
+        let move_list = move_gen::legal_moves(&self.pos);
+
+        let mut nodes = 0u64;
+        let should_print = depth == max_depth;
+        for mv in move_list.iter() {
+            let undo_state = self.pos.make_move(mv.clone());
+            let count = self.uci_go_perft(out, depth - 1, max_depth);
+            nodes += count;
+            self.pos.unmake_move(mv.clone(), &undo_state);
+
+            if should_print {
+                writeln!(out, "{}: {}", mv.to_string(), count).unwrap();
+            }
+        }
+
+        if should_print {
+            writeln!(out, "\nNodes searched: {}", nodes).unwrap();
+        }
+
+        nodes
+    }
+
+    pub fn uci_cmd_d(&self, out: &mut io::Stdout) {
+        writeln!(out, "{}", utils::debug_string(&self.pos)).unwrap();
     }
 }
