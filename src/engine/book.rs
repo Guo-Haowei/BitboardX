@@ -38,8 +38,8 @@ impl BookEntry {
 
     fn to_move(&self) -> Move {
         const WHITE_KING_SIDE: u16 = 0x0107; // e1g1
-        const WHITE_QUEEN_SIDE: u16 = 0x0f3f; // e1c1
-        const BLACK_KING_SIDE: u16 = 0x0100; // e8g8
+        const WHITE_QUEEN_SIDE: u16 = 0x0100; // e1c1
+        const BLACK_KING_SIDE: u16 = 0x0f3f; // e8g8
         const BLACK_QUEEN_SIDE: u16 = 0x0f38; // e8c8
 
         match self.raw_move {
@@ -145,7 +145,7 @@ impl Book {
                     break;
                 }
             }
-            debug_assert!(entry.is_some());
+            assert!(entry.is_some());
 
             let entry = entry.unwrap();
             let mv = entry.to_move();

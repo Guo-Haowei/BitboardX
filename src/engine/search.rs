@@ -139,6 +139,8 @@ pub fn find_best_move(engine: &mut Engine, depth: u8) -> Option<Move> {
                 return Some(mv.clone());
             }
         }
+        logger::log(format!("book move is: {:?}", book_mv.to_string()));
+        logger::log(format!("FEN: {:?}", engine.pos.fen()));
         panic!("Should not happen, book move not found in legal moves");
     }
 

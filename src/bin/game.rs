@@ -29,10 +29,11 @@ fn main() {
         env::set_var("RUST_BACKTRACE", "1");
     };
 
-    let fen = "7k/2P5/1P6/8/8/8/8/K7 w - - 0 1";
-    let mut game = GameState::from_fen(fen).unwrap();
+    // let fen = "7k/2P5/1P6/8/8/8/8/K7 w - - 0 1";
+    let mut game = GameState::new();
 
     let player: Box<dyn Player> = Box::new(AiPlayer::new());
+    // let player = Box::new(ConsolePlayer);
     game.set_white(player);
 
     let player: Box<dyn Player> = Box::new(AiPlayer::new());
@@ -48,28 +49,28 @@ fn main() {
         }
 
         loop {
-            // let action = {
-            //     let fen = game.fen();
-            //     let active_player = game.active_player();
-            //     active_player.request_move();
-            //     active_player.poll_move(fen)
-            // };
+            let action = {
+                let commands = game.pos_and_moves.clone();
+                let active_player = game.active_player();
+                active_player.request_move();
+                active_player.poll_move(&commands)
+            };
 
-            // match action {
-            //     PlayerAction::Pending => {
-            //         continue;
-            //     }
-            //     PlayerAction::Ready(mv) => {
-            //         if game.execute(&mv).is_some() {
-            //             break;
-            //         }
-            //         println!("Invalid move: {}", mv);
-            //     }
-            //     PlayerAction::Error(err) => {
-            //         println!("Error occurred: {}", err);
-            //         break 'mainloop;
-            //     }
-            // }
+            match action {
+                PlayerAction::Pending => {
+                    continue;
+                }
+                PlayerAction::Ready(mv) => {
+                    if game.execute(&mv).is_some() {
+                        break;
+                    }
+                    println!("Invalid move: {}", mv);
+                }
+                PlayerAction::Error(err) => {
+                    println!("Error occurred: {}", err);
+                    break 'mainloop;
+                }
+            }
         }
     }
 }

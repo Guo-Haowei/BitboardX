@@ -15,7 +15,7 @@ impl Player for ConsolePlayer {
         io::stdout().flush().unwrap();
     }
 
-    fn poll_move(&mut self, _fen: &String) -> PlayerAction {
+    fn poll_move(&mut self, _: &String) -> PlayerAction {
         let mut input = String::new();
 
         match io::stdin().read_line(&mut input) {

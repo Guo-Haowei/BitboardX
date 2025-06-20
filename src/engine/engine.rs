@@ -9,7 +9,7 @@ use crate::logger;
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 1;
-const VERSION_PATCH: u32 = 3;
+const VERSION_PATCH: u32 = 4;
 
 pub struct Engine {
     pub(super) pos: Position,
@@ -46,7 +46,6 @@ impl Engine {
     pub fn set_position(&mut self, pos: Position) {
         let zobrist = pos.zobrist();
         self.pos = pos;
-
         self.repetition_table.clear();
         self.repetition_table.insert(zobrist, 1);
         self.last_hash = zobrist;
@@ -120,8 +119,7 @@ impl Engine {
     }
 
     pub fn uci_cmd_ucinewgame<W: Write>(&mut self, _: &mut W) {
-        eprintln!("UCI command 'ucinewgame' is not implemented yet");
-        // panic!("UCI command 'ucinewgame' is not implemented yet");
+        self.set_position(Position::new());
     }
 
     pub fn uci_cmd_uci<W: Write>(&self, writer: &mut W) {
