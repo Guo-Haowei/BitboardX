@@ -1,32 +1,40 @@
 import { RuntimeModule, runtime } from "./runtime";
 import { picker } from './picker';
-
-class EventMap {
-  public readonly NEW_GAME = 'newgame';
-  public readonly GAME_OVER = 'gameover';
-  public readonly REQUEST_PLAYER_INPUT = 'request-player-input';
-  public readonly MOVE = 'move';
-  public readonly ANIMATION_DONE = 'animation-done';
-};
-
-export const Message = new EventMap();
+import { WasmMove } from '../../pkg/bitboard_x';
 
 const DEBUG = false;
 // const DEBUG = true;
 
+class EventMap {
+  public readonly NEW_GAME = 'newgame';
+  public readonly GAME_OVER = 'gameover';
+  public readonly REQUEST_INPUT = 'request-input';
+  public readonly MOVE = 'move';
+  public readonly ANIMATION_DONE = 'animation-done';
+};
+
+export type Payload = WasmMove;
+
+export const EVENT_MAP = new EventMap();
+
+interface Message {
+  event: string;
+  payload?: Payload;
+};
+
 export interface Listener {
-  handleMessage(message: string): void;
+  handleMessage(event: string, payload?: Payload): void;
 };
 
 export class MessageQueue implements RuntimeModule {
-  private queue: string[];
+  private queue: Message[];
   private listeners: Map<string, Listener[]>;
 
   constructor() {
     this.queue = [];
     this.listeners = new Map<string, Listener[]>();
-    for (const key of Object.keys(Message)) {
-      const event = (Message as object)[key];
+    for (const key of Object.keys(EVENT_MAP)) {
+      const event = (EVENT_MAP as object)[key];
       this.listeners.set(event, []);
     }
   }
@@ -41,7 +49,7 @@ export class MessageQueue implements RuntimeModule {
     };
 
     document.getElementById('fenButton')?.addEventListener('click', () => {
-      this.emit(Message.NEW_GAME);
+      this.emit({ event: EVENT_MAP.NEW_GAME });
     });
 
     canvas.addEventListener('mousedown', (e) => {
@@ -74,11 +82,11 @@ export class MessageQueue implements RuntimeModule {
     }
   }
 
-  public emit(message: string): void {
+  public emit(msg: Message) {
     if (DEBUG) {
-      console.log(`>>> emitting message ${message}`);
+      console.log(`>>> emitting message ${msg.event} with payload: ${msg.payload}`);
     }
-    this.queue.push(message);
+    this.queue.push(msg);
   }
 
   public flush(): void {
@@ -89,7 +97,7 @@ export class MessageQueue implements RuntimeModule {
         console.error('MessageQueue: flush called with empty queue');
         break;
       }
-      const event = message.split(':')[0];
+      const { event, payload } = message;
       const listeners = this.listeners.get(event);
       if (!listeners) {
         console.error(`MessageQueue: no listeners found for event '${event}'`);
@@ -99,7 +107,7 @@ export class MessageQueue implements RuntimeModule {
         if (DEBUG) {
           console.log(`<<< handling message: ${message} by listener: ${listener.constructor.name}`);
         }
-        listener.handleMessage(message);
+        listener.handleMessage(event, payload);
       });
     }
   }

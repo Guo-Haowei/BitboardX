@@ -88,8 +88,8 @@ named_test!(perft_initial_position, {
         197281u64,
         4865609u64,
         119060324u64,
-        3195901860u64, // depth 7
-                       // 84998978956u64, // depth 8
+        3195901860u64,  // depth 7
+        84998978956u64, // depth 8
     ];
 
     let depth = DEFAULT_DEPTH.min(tests.len() as u8 - 1);
@@ -152,7 +152,7 @@ named_test!(test_position6, {
         164075551u64,
         6923051137u64,
         287188994746u64,
-        // 11923589843526u64,
+        11923589843526u64, // depth 8
     ];
 
     // depth 7 takes too long

@@ -2,9 +2,37 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use crate::{
-    core::utils,
+    core::{types::*, utils},
     game::{player::GuiPlayer, *},
 };
+
+#[wasm_bindgen]
+pub struct WasmMove {
+    mv: Option<Move>,
+}
+
+#[wasm_bindgen]
+impl WasmMove {
+    pub fn is_none(&self) -> bool {
+        self.mv.is_none()
+    }
+
+    pub fn src_sq(&self) -> String {
+        assert!(self.mv.is_some());
+        self.mv.unwrap().src_sq().to_string()
+    }
+
+    pub fn dst_sq(&self) -> String {
+        assert!(self.mv.is_some());
+        self.mv.unwrap().dst_sq().to_string()
+    }
+
+    pub fn is_castling(&self) -> bool {
+        assert!(self.mv.is_some());
+        let mv = self.mv.as_ref().unwrap();
+        mv.get_type() == MoveType::Castling
+    }
+}
 
 #[wasm_bindgen]
 pub struct WasmGame {
@@ -63,15 +91,10 @@ impl WasmGame {
         }
     }
 
-    pub fn make_move(&mut self, mv: String) -> bool {
-        if !self.internal.execute(&mv) {
-            // console::error_1(&format!("Invalid move by {}: {}", name, mv).into());
-            return false;
-        }
+    pub fn make_move(&mut self, mv: String) -> WasmMove {
+        let mv = self.internal.execute(&mv);
 
-        // let name = self.internal.active_player().name();
-        // console::log_1(&format!("Player {} => {}", name, mv).into());
-        true
+        WasmMove { mv: mv }
     }
 
     pub fn get_legal_moves(&self) -> Vec<String> {

@@ -24,15 +24,52 @@ struct Minimax {
 }
 
 impl Minimax {
+    // @TODO: quiescence search
+    /// Quiescence Search: only search captures when depth = 0
+    fn quiescence_search(
+        &mut self,
+        pos: &mut Position,
+        mut alpha: i32,
+        beta: i32,
+        depth: u8,
+    ) -> i32 {
+        let eval = eval::evaluate(pos);
+
+        if eval >= beta || depth == 0 {
+            return beta;
+        }
+
+        alpha = alpha.max(eval);
+
+        let move_list = move_gen::capture_moves(pos);
+        let move_list = sort_moves(pos, &move_list);
+
+        for mv in move_list.iter() {
+            let undo_state = pos.make_move(*mv);
+            let score = -self.quiescence_search(pos, -beta, -alpha, depth - 1);
+            pos.unmake_move(*mv, &undo_state);
+
+            self.node_evaluated += 1;
+
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                break; // beta cut-off
+            }
+        }
+
+        alpha
+    }
+
     fn alpha_beta_helper(
         &mut self,
         pos: &mut Position,
-        depth: u8,
         mut alpha: i32,
         beta: i32,
+        depth: u8,
     ) -> i32 {
         if depth == 0 {
-            return eval::evaluate(pos);
+            // use a hard code depth of 4 for quiescence search
+            return self.quiescence_search(pos, alpha, beta, 4);
         }
 
         let move_list = move_gen::legal_moves(pos);
@@ -47,7 +84,7 @@ impl Minimax {
 
         for mv in move_list.iter() {
             let undo_state = pos.make_move(*mv);
-            let score = -self.alpha_beta_helper(pos, depth - 1, -beta, -alpha);
+            let score = -self.alpha_beta_helper(pos, -beta, -alpha, depth - 1);
             pos.unmake_move(*mv, &undo_state);
 
             self.node_evaluated += 1;
@@ -75,7 +112,7 @@ impl Minimax {
 
         for mv in move_list.iter() {
             let undo_state = pos.make_move(*mv);
-            let score = -self.alpha_beta_helper(pos, depth - 1, alpha, MAX);
+            let score = -self.alpha_beta_helper(pos, alpha, MAX, depth - 1);
             pos.unmake_move(*mv, &undo_state);
 
             self.node_evaluated += 1;
@@ -101,7 +138,7 @@ fn sort_moves(pos: &Position, move_list: &MoveList) -> Vec<Move> {
     sorted_moves
 }
 
-pub fn search(pos: &mut Position, depth: u8) -> Option<Move> {
+pub fn find_best_move(pos: &mut Position, depth: u8) -> Option<Move> {
     debug_assert!(depth > 0);
     let move_list = move_gen::legal_moves(pos);
     if move_list.len() == 0 {
@@ -167,7 +204,7 @@ mod tests {
         let mut pos = Position::from_fen(fen).unwrap();
         let depth = 3;
 
-        let mv1 = search(&mut pos, depth);
+        let mv1 = find_best_move(&mut pos, depth);
         let (_, mv2) = no_pruning(&mut pos, depth);
 
         let mv1 = mv1.unwrap();

@@ -1,7 +1,7 @@
 import { DEFAULT_FEN } from './constants';
-import * as BitboardX from '../../pkg/bitboard_x';
+import { WasmGame } from '../../pkg/bitboard_x';
 import { RuntimeModule, runtime } from './runtime';
-import { Listener, Message } from './message-queue';
+import { Listener, EVENT_MAP } from './message-queue';
 import { Board } from './board';
 
 export interface SelectedPiece {
@@ -12,20 +12,25 @@ export interface SelectedPiece {
   rank: number;
 }
 
-
 export class GameManager implements RuntimeModule, Listener {
-  private game: BitboardX.WasmGame | null;
-  private _selected: SelectedPiece | null;
-  private canvas: HTMLCanvasElement | null;
-  private _board: Board;
+  private game: WasmGame | null;
   private waitingForInput: boolean;
+  private _selected: SelectedPiece | null;
+  private _board: Board;
 
   public constructor() {
     this.game = null;
     this._selected = null;
-    this.canvas = null;
     this.waitingForInput = false;
     this._board = new Board();
+  }
+
+  public init(): boolean {
+    runtime.messageQueue.subscribe(EVENT_MAP.NEW_GAME, this);
+    runtime.messageQueue.subscribe(EVENT_MAP.REQUEST_INPUT, this);
+    runtime.messageQueue.subscribe(EVENT_MAP.ANIMATION_DONE, this);
+    this.game = new WasmGame();
+    return this.newgame(undefined);
   }
 
   public newgame(fen: string | undefined): boolean {
@@ -47,11 +52,10 @@ export class GameManager implements RuntimeModule, Listener {
 
       console.log(`Starting a new game >>>>>>`);
 
-      this.canvas = runtime.display.canvas;
       this.game.reset_game(fen, !isAiPlayer('player1'), !isAiPlayer('player2'));
       this.updateBoard();
 
-      runtime.messageQueue.emit(Message.REQUEST_PLAYER_INPUT)
+      runtime.messageQueue.emit({ event: EVENT_MAP.REQUEST_INPUT })
       return true;
     } catch (e) {
       console.error(`Error parsing FEN '${fen}': ${e}`);
@@ -63,17 +67,16 @@ export class GameManager implements RuntimeModule, Listener {
     return this._board;
   }
 
-  public handleMessage(message: string) {
-    const [eventType] = message.split(':');
-    switch (eventType) {
-      case Message.NEW_GAME: {
+  public handleMessage(event: string) {
+    switch (event) {
+      case EVENT_MAP.NEW_GAME: {
         this.newgame(undefined);
       } break;
-      case Message.REQUEST_PLAYER_INPUT: {
+      case EVENT_MAP.REQUEST_INPUT: {
         this.onRequestPlayerInput();
       } break;
-      case Message.ANIMATION_DONE: {
-        runtime.messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
+      case EVENT_MAP.ANIMATION_DONE: {
+        runtime.messageQueue.emit({ event: EVENT_MAP.REQUEST_INPUT });
       } break;
       default: break;
     }
@@ -103,14 +106,6 @@ export class GameManager implements RuntimeModule, Listener {
     return this._selected;
   }
 
-  public init(): boolean {
-    runtime.messageQueue.subscribe(Message.NEW_GAME, this);
-    runtime.messageQueue.subscribe(Message.REQUEST_PLAYER_INPUT, this);
-    runtime.messageQueue.subscribe(Message.ANIMATION_DONE, this);
-    this.game = new BitboardX.WasmGame();
-    return this.newgame(undefined);
-  }
-
   public tick() {
     if (!this.game || !this._board) {
       return;
@@ -119,13 +114,13 @@ export class GameManager implements RuntimeModule, Listener {
     if (this.waitingForInput) {
       const move = this.game.get_move();
       if (move) {
-        const isMoveValid = this.game.make_move(move);
-        if (isMoveValid) {
-          runtime.messageQueue.emit(`${Message.MOVE}:${move}`);
+        const wasmMove = this.game.make_move(move);
+        if (wasmMove && !wasmMove.is_none()) {
+          runtime.messageQueue.emit({ event: EVENT_MAP.MOVE, payload: wasmMove });
           this.waitingForInput = false;
           this.updateBoard();
         } else {
-          runtime.messageQueue.emit(Message.REQUEST_PLAYER_INPUT);
+          runtime.messageQueue.emit({ event: EVENT_MAP.REQUEST_INPUT });
         }
       }
     }

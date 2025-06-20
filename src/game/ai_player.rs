@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use super::player::{Player, PlayerAction};
-use crate::ai::search;
+use crate::ai::find_best_move;
 use crate::core::position::Position;
 
 pub struct AiPlayer;
@@ -17,7 +17,7 @@ impl Player for AiPlayer {
         match Position::from_fen(fen.as_str()) {
             Ok(pos) => {
                 let mut pos = pos;
-                let mv = search(&mut pos, 4).unwrap();
+                let mv = find_best_move(&mut pos, 4).unwrap();
                 let mv = mv.to_string();
 
                 PlayerAction::Ready(mv)

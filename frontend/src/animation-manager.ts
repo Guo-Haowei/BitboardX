@@ -1,6 +1,7 @@
-import { Listener, Message } from "./message-queue";
+import { Listener, EVENT_MAP, Payload } from "./message-queue";
 import { runtime, RuntimeModule } from "./runtime";
 import { squareToFileRank } from "./utils";
+import { WasmMove } from '../../pkg/bitboard_x';
 
 export interface Animation {
     piece: string;
@@ -24,7 +25,7 @@ export class AnimationManager implements RuntimeModule, Listener {
     }
 
     public init(): boolean {
-        runtime.messageQueue.subscribe(Message.MOVE, this);
+        runtime.messageQueue.subscribe(EVENT_MAP.MOVE, this);
         this.lastTime = Date.now();
         return true;
     }
@@ -51,15 +52,38 @@ export class AnimationManager implements RuntimeModule, Listener {
 
         this._animations = filtered;
         if (this._animations.length === 0) {
-            runtime.messageQueue.emit(`${Message.ANIMATION_DONE}:`);
+            runtime.messageQueue.emit({ event: EVENT_MAP.ANIMATION_DONE });
         }
     }
 
-    public handleMessage(message: string): void {
-        const [event, move] = message.split(':');
+    private addCaslingAnimation(src: string, dst: string) {
+        if (src === 'e1') {
+            if (dst === 'g1') {
+                this.addAnimation('h1', 'f1'); // Rook moves from h1 to f1
+            } else if (dst === 'c1') {
+                this.addAnimation('a1', 'd1'); // Rook moves from a1 to d1
+            }
+        } else if (src === 'e8') {
+            if (dst === 'g8') {
+                this.addAnimation('h8', 'f8'); // Rook moves from h8 to f8
+            } else if (dst === 'c8') {
+                this.addAnimation('a8', 'd8'); // Rook moves from a8 to d8
+            }
+        }
+    }
+
+    public handleMessage(event: string, payload?: Payload): void {
         switch (event) {
-            case Message.MOVE: {
-                this.addAnimation(move.slice(0, 2), move.slice(2, 4));
+            case EVENT_MAP.MOVE: {
+                const lastMove = payload as WasmMove;
+                if (lastMove) {
+                    const src = lastMove.src_sq();
+                    const dst = lastMove.dst_sq();
+                    this.addAnimation(src, dst);
+                    if (lastMove.is_castling()) {
+                        this.addCaslingAnimation(src, dst);
+                    }
+                }
             } break;
             default: break;
         }
@@ -74,6 +98,8 @@ export class AnimationManager implements RuntimeModule, Listener {
         const [dstFile, dstRank] = squareToFileRank(dst);
         const idx = dstFile + dstRank * 8;
         const piece = runtime.gameManager.board.board[idx];
+
+        // @TODO: if castling, we need to animate the rook as well
 
         const dist = Math.sqrt((dstFile - file) ** 2 + (dstRank - rank) ** 2);
         const duration = 300 * dist; // Duration in milliseconds

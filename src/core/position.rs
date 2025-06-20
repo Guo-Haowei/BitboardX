@@ -38,13 +38,46 @@ impl CheckerList {
     }
 }
 
+// @TODO store in undo state
+
 #[derive(Clone, Copy)]
 pub struct UndoState {
-    pub castling: u8,
+    pub castling_rights: u8,
     pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
     pub captured_piece: Piece,
+    // @TODO: store more data here if needed
+    pub occupancies: [BitBoard; 3],
+    pub attack_mask: [BitBoard; Color::COUNT],
+    pub pin_map: [BitBoard; Color::COUNT],
+    pub checkers: [CheckerList; Color::COUNT],
+}
+
+impl UndoState {
+    pub fn new(
+        castling: u8,
+        en_passant: Option<Square>,
+        halfmove_clock: u32,
+        fullmove_number: u32,
+        captured_piece: Piece,
+        occupancies: [BitBoard; 3],
+        attack_mask: [BitBoard; Color::COUNT],
+        pin_map: [BitBoard; Color::COUNT],
+        checkers: [CheckerList; Color::COUNT],
+    ) -> Self {
+        Self {
+            castling_rights: castling,
+            en_passant,
+            halfmove_clock,
+            fullmove_number,
+            captured_piece,
+            occupancies,
+            attack_mask,
+            pin_map,
+            checkers,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -58,7 +91,7 @@ pub struct Position {
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
 
-    /// Data can be computed from the FEN state.
+    /// Data to save in undo state
     pub occupancies: [BitBoard; 3],
     pub attack_mask: [BitBoard; Color::COUNT],
     pub pin_map: [BitBoard; Color::COUNT],
@@ -80,7 +113,7 @@ impl Position {
 
         let bitboards = utils::parse_board(parts[0])?;
         let side_to_move = match Color::parse(parts[1]) {
-            Some(color) => color.opponent(),
+            Some(color) => color,
             None => return Err("Invalid side to move in FEN"),
         };
         let castling = utils::parse_castling(parts[2])?;
@@ -106,7 +139,7 @@ impl Position {
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
         };
-        internal::post_move(&mut pos);
+        internal::update_cache(&mut pos);
 
         Ok(pos)
     }

@@ -2,9 +2,13 @@ import { BOARD_SIZE, COLORS, PIECE_SYMBOLS } from './constants';
 import { isLowerCase, fileRankToSquare } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 import { picker } from './picker';
+import { Listener, EVENT_MAP, Payload } from './message-queue';
+import { WasmMove } from '../../pkg/bitboard_x';
 
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
 const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
+const YELLOW_COLOR_1 = 'rgba(150, 150, 0, 0.5)';
+const YELLOW_COLOR_2 = 'rgba(200, 200, 0, 0.5)';
 
 function loadPieceImages() {
   const pieces = new Map<string, HTMLImageElement>();
@@ -24,16 +28,20 @@ function getTileSize() {
   return runtime.display.tileSize;
 }
 
-export class Renderer implements RuntimeModule {
+export class Renderer implements RuntimeModule, Listener {
   private ctx: CanvasRenderingContext2D | null;
   private images: Map<string, HTMLImageElement>;
+  private lastMove: WasmMove | null;
 
   public constructor() {
     this.ctx = null;
     this.images = loadPieceImages();
+    this.lastMove = null;
   }
 
   public init(): boolean {
+    runtime.messageQueue.subscribe('move', this);
+
     this.ctx = runtime.display.canvas.getContext('2d');
     if (!this.ctx) {
       return false;
@@ -44,6 +52,15 @@ export class Renderer implements RuntimeModule {
     this.ctx.textBaseline = 'middle';
 
     return true;
+  }
+
+  public handleMessage(event: string, payload?: Payload) {
+    switch (event) {
+      case EVENT_MAP.MOVE: {
+        this.lastMove = payload as WasmMove || null;
+      } break;
+      default: break;
+    }
   }
 
   public tick() {
@@ -85,6 +102,15 @@ export class Renderer implements RuntimeModule {
           this.fillSquare(col, row, GREEN_COLOR);
         } else if (moves && moves.has(sq)) {
           this.fillSquare(col, row, RED_COLOR);
+        }
+        if (this.lastMove) {
+          const src = this.lastMove.src_sq();
+          const dst = this.lastMove.dst_sq();
+          if (sq === src) {
+            this.fillSquare(col, row, YELLOW_COLOR_1);
+          } else if (sq === dst) {
+            this.fillSquare(col, row, YELLOW_COLOR_2);
+          }
         }
       }
     }

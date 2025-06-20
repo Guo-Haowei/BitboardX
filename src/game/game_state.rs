@@ -68,10 +68,10 @@ impl GameState {
         &mut *self.players[side_to_move]
     }
 
-    pub fn execute(&mut self, mv: &String) -> bool {
+    pub fn execute(&mut self, mv: &String) -> Option<Move> {
         let mv = utils::parse_move(mv.as_str());
         if mv.is_none() {
-            return false;
+            return None;
         }
 
         let (src, dst, promtion) = mv.unwrap();
@@ -84,10 +84,11 @@ impl GameState {
 
                 self.undo_stack.push((mv, undo_state));
                 self.redo_stack.clear();
-                return true;
+                return Some(mv);
             }
         }
-        return false;
+
+        None
     }
 
     pub fn game_over(&self) -> bool {
