@@ -1,7 +1,6 @@
 use std::any::Any;
 
 use super::player::{Player, PlayerAction};
-use crate::core::position::Position;
 use crate::engine::Engine;
 
 pub struct AiPlayer {
@@ -15,17 +14,17 @@ impl Player for AiPlayer {
 
     fn request_move(&mut self) {}
 
-    fn poll_move(&mut self, fen: String) -> PlayerAction {
-        match Position::from_fen(fen.as_str()) {
-            Ok(pos) => {
-                self.engine.set_position(pos);
-                let mv = self.engine.best_move(4).unwrap();
-                let mv = mv.to_string();
+    fn poll_move(&mut self, cmd: &String) -> PlayerAction {
+        use std::io::{self};
 
-                PlayerAction::Ready(mv)
-            }
-            Err(_) => PlayerAction::Error("Invalid FEN string".to_string()),
-        }
+        let out = &mut io::sink();
+
+        self.engine.handle_uci_cmd(out, &cmd.as_str());
+
+        let mv = self.engine.best_move(4).unwrap();
+        let mv = mv.to_string();
+
+        PlayerAction::Ready(mv)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::core::types::{File, Move, MoveType, PieceType, Rank, Square};
 use crate::core::zobrist::Zobrist;
-use crate::logger;
 
 static BOOK_DATA: &[u8] = include_bytes!("./gm2600.bin");
 

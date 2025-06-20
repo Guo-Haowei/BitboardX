@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{self, Write};
+use std::io::Write;
 
 use crate::core::{move_gen, utils, zobrist};
 use crate::core::{position::Position, types::Move, zobrist::Zobrist};
@@ -83,18 +83,18 @@ impl Engine {
     }
 
     /// The following methods are for UCI commands
-    pub fn handle_uci_cmd(&mut self, out: &mut io::Stdout, input: &str) -> bool {
+    pub fn handle_uci_cmd<W: Write>(&mut self, writer: &mut W, input: &str) -> bool {
         let mut parts = input.splitn(2, ' ');
         let cmd = parts.next().unwrap();
         let args = parts.next().unwrap_or("");
 
         match cmd {
-            "uci" => self.uci_cmd_uci(out),
-            "ucinewgame" => self.uci_cmd_ucinewgame(out),
-            "isready" => self.uci_cmd_isready(out),
-            "position" => self.uci_cmd_position(out, args),
-            "go" => self.uci_cmd_go(out, args),
-            "d" => self.uci_cmd_d(out),
+            "uci" => self.uci_cmd_uci(writer),
+            "ucinewgame" => self.uci_cmd_ucinewgame(writer),
+            "isready" => self.uci_cmd_isready(writer),
+            "position" => self.uci_cmd_position(writer, args),
+            "go" => self.uci_cmd_go(writer, args),
+            "d" => self.uci_cmd_d(writer),
             "q" | "quit" => {
                 // @TODO: shutdown
                 return false;
@@ -110,25 +110,25 @@ impl Engine {
         true
     }
 
-    pub fn uci_cmd_isready(&self, out: &mut io::Stdout) {
-        writeln!(out, "readyok").unwrap();
+    pub fn uci_cmd_isready<W: Write>(&self, writer: &mut W) {
+        writeln!(writer, "readyok").unwrap();
     }
 
-    pub fn uci_cmd_ucinewgame(&mut self, _out: &mut io::Stdout) {
+    pub fn uci_cmd_ucinewgame<W: Write>(&mut self, _: &mut W) {
         panic!("UCI command 'ucinewgame' is not implemented yet");
     }
 
-    pub fn uci_cmd_uci(&self, out: &mut io::Stdout) {
-        writeln!(out, "id name {}", Engine::name()).unwrap();
-        writeln!(out, "id author haguo").unwrap();
-        writeln!(out, "uciok").unwrap();
+    pub fn uci_cmd_uci<W: Write>(&self, writer: &mut W) {
+        writeln!(writer, "id name {}", Engine::name()).unwrap();
+        writeln!(writer, "id author haguo").unwrap();
+        writeln!(writer, "uciok").unwrap();
     }
 
-    pub fn uci_cmd_d(&self, out: &mut io::Stdout) {
-        writeln!(out, "{}", utils::debug_string(&self.pos)).unwrap();
+    pub fn uci_cmd_d<W: Write>(&self, writer: &mut W) {
+        writeln!(writer, "{}", utils::debug_string(&self.pos)).unwrap();
     }
 
-    pub fn uci_cmd_position(&mut self, _out: &mut io::Stdout, args: &str) {
+    pub fn uci_cmd_position<W: Write>(&mut self, _: &mut W, args: &str) {
         let mut parts: Vec<&str> = args.split_whitespace().collect();
 
         if parts.is_empty() {
@@ -180,7 +180,7 @@ impl Engine {
         }
     }
 
-    pub fn uci_cmd_go(&mut self, out: &mut io::Stdout, args: &str) {
+    pub fn uci_cmd_go<W: Write>(&mut self, writer: &mut W, args: &str) {
         let parts: Vec<&str> = args.split_whitespace().collect();
 
         match parts.as_slice() {
@@ -192,16 +192,16 @@ impl Engine {
                         return;
                     }
                 };
-                self.uci_cmd_go_perft(out, depth, depth);
+                self.uci_cmd_go_perft(writer, depth, depth);
             }
             _ => {
                 let mv = self.best_move(4).unwrap();
-                writeln!(out, "bestmove {}", mv.to_string()).unwrap();
+                writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
         }
     }
 
-    fn uci_cmd_go_perft(&mut self, out: &mut io::Stdout, depth: u8, max_depth: u8) -> u64 {
+    fn uci_cmd_go_perft<W: Write>(&mut self, writer: &mut W, depth: u8, max_depth: u8) -> u64 {
         if depth == 0 {
             return 1;
         }
@@ -212,17 +212,17 @@ impl Engine {
         let should_print = depth == max_depth;
         for mv in move_list.iter() {
             let undo_state = self.pos.make_move(mv.clone());
-            let count = self.uci_cmd_go_perft(out, depth - 1, max_depth);
+            let count = self.uci_cmd_go_perft(writer, depth - 1, max_depth);
             nodes += count;
             self.pos.unmake_move(mv.clone(), &undo_state);
 
             if should_print {
-                writeln!(out, "{}: {}", mv.to_string(), count).unwrap();
+                writeln!(writer, "{}: {}", mv.to_string(), count).unwrap();
             }
         }
 
         if should_print {
-            writeln!(out, "\nNodes searched: {}", nodes).unwrap();
+            writeln!(writer, "\nNodes searched: {}", nodes).unwrap();
         }
 
         nodes

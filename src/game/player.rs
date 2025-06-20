@@ -9,7 +9,7 @@ pub enum PlayerAction {
 pub trait Player: Any {
     fn name(&self) -> String;
     fn request_move(&mut self);
-    fn poll_move(&mut self, fen: String) -> PlayerAction;
+    fn poll_move(&mut self, fen: &String) -> PlayerAction;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -23,7 +23,7 @@ impl Player for NullPlayer {
 
     fn request_move(&mut self) {}
 
-    fn poll_move(&mut self, _fen: String) -> PlayerAction {
+    fn poll_move(&mut self, _fen: &String) -> PlayerAction {
         panic!("NullPlayer does not support moves");
     }
 
@@ -45,7 +45,7 @@ impl Player for GuiPlayer {
         // GUI-specific logic to request a move
     }
 
-    fn poll_move(&mut self, _fen: String) -> PlayerAction {
+    fn poll_move(&mut self, _fen: &String) -> PlayerAction {
         if let Some(mv) = self.buffered_move.take() {
             return PlayerAction::Ready(mv);
         }

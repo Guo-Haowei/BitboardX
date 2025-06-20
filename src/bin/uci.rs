@@ -1,6 +1,6 @@
 use rustyline::{DefaultEditor, Result};
 
-use bitboard_x::engine::{self, Engine};
+use bitboard_x::engine::Engine;
 
 fn main() -> Result<()> {
     use std::io::{self};
