@@ -4,6 +4,7 @@ use std::io::{self, Write};
 use crate::core::{move_gen, utils, zobrist};
 use crate::core::{position::Position, types::Move, zobrist::Zobrist};
 use crate::engine::search;
+use crate::logger;
 
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
@@ -81,7 +82,126 @@ impl Engine {
         *self.history.entry(zobrist).or_insert(0) += 1;
     }
 
-    pub fn uci_go_perft(&mut self, out: &mut io::Stdout, depth: u8, max_depth: u8) -> u64 {
+    /// The following methods are for UCI commands
+    pub fn handle_uci_cmd(&mut self, out: &mut io::Stdout, input: &str) -> bool {
+        let mut parts = input.splitn(2, ' ');
+        let cmd = parts.next().unwrap();
+        let args = parts.next().unwrap_or("");
+
+        match cmd {
+            "uci" => self.uci_cmd_uci(out),
+            "ucinewgame" => self.uci_cmd_ucinewgame(out),
+            "isready" => self.uci_cmd_isready(out),
+            "position" => self.uci_cmd_position(out, args),
+            "go" => self.uci_cmd_go(out, args),
+            "d" => self.uci_cmd_d(out),
+            "q" | "quit" => {
+                // @TODO: shutdown
+                return false;
+            }
+            _ => {
+                logger::log(
+                    format!("Unknown command: '{}'. Type help for more information.", input)
+                        .to_string(),
+                );
+            }
+        }
+
+        true
+    }
+
+    pub fn uci_cmd_isready(&self, out: &mut io::Stdout) {
+        writeln!(out, "readyok").unwrap();
+    }
+
+    pub fn uci_cmd_ucinewgame(&mut self, _out: &mut io::Stdout) {
+        panic!("UCI command 'ucinewgame' is not implemented yet");
+    }
+
+    pub fn uci_cmd_uci(&self, out: &mut io::Stdout) {
+        writeln!(out, "id name {}", Engine::name()).unwrap();
+        writeln!(out, "id author haguo").unwrap();
+        writeln!(out, "uciok").unwrap();
+    }
+
+    pub fn uci_cmd_d(&self, out: &mut io::Stdout) {
+        writeln!(out, "{}", utils::debug_string(&self.pos)).unwrap();
+    }
+
+    pub fn uci_cmd_position(&mut self, _out: &mut io::Stdout, args: &str) {
+        let mut parts: Vec<&str> = args.split_whitespace().collect();
+
+        if parts.is_empty() {
+            logger::log("Error: position command requires arguments".to_string());
+            return;
+        }
+
+        match parts.as_slice() {
+            ["startpos", _rest @ ..] => {
+                self.set_position(Position::new());
+                parts.remove(0);
+            }
+            ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => {
+                let result = [*p1, *p2, *p3, *p4, *p5, *p6].join(" ");
+                match Position::from_fen(result.as_str()) {
+                    Ok(pos) => {
+                        self.set_position(pos);
+                        parts.drain(0..=6); // remove the FEN parts
+                    }
+                    Err(err) => {
+                        logger::log(format!("Error: {}", err));
+                        return;
+                    }
+                }
+            }
+            _ => {
+                logger::log("Error: Invalid position command".to_string());
+                return;
+            }
+        }
+
+        if !parts.is_empty() {
+            match parts.as_slice() {
+                ["moves", moves @ ..] => {
+                    for move_str in moves {
+                        if !self.make_move(move_str) {
+                            logger::log(format!("Error: Invalid move '{}'", move_str));
+                            break;
+                        }
+                    }
+                }
+                _ => {
+                    logger::log(format!(
+                        "Warning: Unrecognized position command parts: {:?}",
+                        parts
+                    ));
+                }
+            }
+        }
+    }
+
+    pub fn uci_cmd_go(&mut self, out: &mut io::Stdout, args: &str) {
+        let parts: Vec<&str> = args.split_whitespace().collect();
+
+        match parts.as_slice() {
+            ["perft", p1, _rest @ ..] => {
+                let depth: u8 = match p1.parse() {
+                    Ok(d) if d <= 8 => d,
+                    _ => {
+                        eprintln!("Error: Invalid depth '{}'. Must be between 0 and 8.", p1);
+                        return;
+                    }
+                };
+                self.uci_cmd_go_perft(out, depth, depth);
+            }
+            _ => {
+                let mv = self.best_move(4).unwrap();
+                writeln!(out, "bestmove {}", mv.to_string()).unwrap();
+            }
+        }
+    }
+
+    fn uci_cmd_go_perft(&mut self, out: &mut io::Stdout, depth: u8, max_depth: u8) -> u64 {
         if depth == 0 {
             return 1;
         }
@@ -92,7 +212,7 @@ impl Engine {
         let should_print = depth == max_depth;
         for mv in move_list.iter() {
             let undo_state = self.pos.make_move(mv.clone());
-            let count = self.uci_go_perft(out, depth - 1, max_depth);
+            let count = self.uci_cmd_go_perft(out, depth - 1, max_depth);
             nodes += count;
             self.pos.unmake_move(mv.clone(), &undo_state);
 
@@ -106,9 +226,5 @@ impl Engine {
         }
 
         nodes
-    }
-
-    pub fn uci_cmd_d(&self, out: &mut io::Stdout) {
-        writeln!(out, "{}", utils::debug_string(&self.pos)).unwrap();
     }
 }

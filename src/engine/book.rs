@@ -109,8 +109,6 @@ impl Book {
             self.map.entry(Zobrist(key)).or_insert(Vec::new()).push(entry);
         }
 
-        logger::log(format!("Loaded {} book entries", self.map.len()));
-
         Ok(())
     }
 

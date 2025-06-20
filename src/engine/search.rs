@@ -154,7 +154,12 @@ pub fn find_best_move(engine: &mut Engine, depth: u8) -> Option<Move> {
                 && mv.dst_sq() == book_mv.dst_sq()
                 && mv.get_promotion() == book_mv.get_promotion()
             {
-                logger::log(format!("Using book move: {}", mv.to_string()));
+                let message = format!(
+                    "[DEBUG] -- found book move: {}, for position: '{}'",
+                    mv.to_string(),
+                    engine.pos.fen(),
+                );
+                logger::log(message.to_string());
                 return Some(mv.clone());
             }
         }
