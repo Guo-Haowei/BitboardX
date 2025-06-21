@@ -6,7 +6,7 @@ use crate::engine::book::*;
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
 
-const DRAW_PENALTY: i32 = 50;
+const DRAW_PENALTY: i32 = MIN + 1000;
 
 pub struct Searcher {
     evaluation_count: u64,
@@ -47,14 +47,6 @@ impl Searcher {
     }
 
     fn evaluate(&mut self, pos: &Position) -> i32 {
-        // @TODO: wrap in cfg!
-        // let mut moves = String::new();
-        // for mv in self.move_sequence.iter() {
-        //     moves.push_str(&mv.to_string());
-        //     moves.push_str(&" -> ");
-        // }
-        // log::trace!("Move sequence: {}", moves);
-
         use crate::engine::eval;
         self.evaluation_count += 1;
         eval::evaluate(pos)
@@ -109,8 +101,14 @@ impl Searcher {
         let repetition = engine.repetition_count(key);
         if repetition >= 2 {
             debug_assert!(repetition == 2); // if we make this move, it will be a draw
-            log::debug!("Repetition detected: {}", engine.pos.fen());
-            return -DRAW_PENALTY; // draw
+            // treat as loss to avoid threefold repetition for now
+            return DRAW_PENALTY; // draw
+        }
+
+        // force it to a number that's smaller than actual 100 plys
+        if engine.pos.halfmove_clock > 80 {
+            // 50-move rule check
+            return DRAW_PENALTY; // draw
         }
 
         let move_list = move_gen::legal_moves(&engine.pos);
@@ -119,7 +117,7 @@ impl Searcher {
             return if engine.pos.is_in_check() {
                 MIN
             } else {
-                -DRAW_PENALTY
+                DRAW_PENALTY
                 // stalemate
             };
         }

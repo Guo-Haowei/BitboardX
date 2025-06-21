@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::core::{move_gen, position::Position, types::Move, zobrist::Zobrist};
+use crate::core::{move_gen, position::Position, types::Move, zobrist::ZobristHash};
 use crate::engine::searcher;
 use crate::utils;
 
@@ -12,8 +12,8 @@ const VERSION_PATCH: u32 = 5;
 
 pub struct Engine {
     pub(super) pos: Position,
-    pub(super) repetition_table: HashMap<Zobrist, u32>, // for threefold detection
-    pub(super) last_hash: Zobrist,
+    pub(super) repetition_table: HashMap<ZobristHash, u32>, // for threefold detection
+    pub(super) last_hash: ZobristHash,
 }
 
 impl Engine {
@@ -73,7 +73,7 @@ impl Engine {
         return false;
     }
 
-    pub fn repetition_count(&self, key: Zobrist) -> u32 {
+    pub fn repetition_count(&self, key: ZobristHash) -> u32 {
         let val = self.repetition_table.get(&key).unwrap_or(&0);
         *val
     }

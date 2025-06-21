@@ -56,7 +56,7 @@ pub struct Move(u16);
 impl Move {
     const SQUARE_MASK: u16 = 0b111111; // 6 bits for square (0-63)
 
-    pub fn none() -> Self {
+    pub fn null() -> Self {
         Self(0)
     }
 
@@ -103,6 +103,10 @@ impl Move {
         unsafe { std::mem::transmute::<u8, MoveType>(bits as u8) }
     }
 
+    pub fn is_null(&self) -> bool {
+        self.0 == 0
+    }
+
     pub fn get_promotion(&self) -> Option<PieceType> {
         if self.get_type() == MoveType::Promotion {
             let promo_bits = ((self.0 >> 14) & 0b11) + 1;
@@ -145,7 +149,7 @@ pub struct MoveList {
 
 impl MoveList {
     pub fn new() -> Self {
-        Self { moves: [Move::none(); 256], count: 0 }
+        Self { moves: [Move::null(); 256], count: 0 }
     }
 
     pub fn add(&mut self, mv: Move) {
