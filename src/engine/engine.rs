@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::Write;
 
 use crate::core::{move_gen, position::Position, types::Move, zobrist::Zobrist};
-use crate::engine::search;
+use crate::engine::searcher;
 use crate::utils;
 
 const NAME: &str = "BitboardX";
@@ -39,7 +39,8 @@ impl Engine {
     }
 
     pub fn best_move(&mut self, depth: u8) -> Option<Move> {
-        search::find_best_move(self, depth)
+        let mut searcher = searcher::Searcher::new();
+        searcher.find_best_move(self, depth)
     }
 
     pub fn set_position(&mut self, pos: Position) {
