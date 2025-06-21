@@ -1,9 +1,9 @@
 use rustyline::{DefaultEditor, Result};
-
-use bitboard_x::engine::Engine;
-
 fn main() -> Result<()> {
+    use bitboard_x::engine::Engine;
+    use bitboard_x::utils::*;
     use std::io::{self};
+    logger::init_logger();
 
     eprintln!("{}", Engine::name());
     let mut stdout = io::stdout();

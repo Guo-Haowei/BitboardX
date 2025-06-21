@@ -1,16 +1,15 @@
-fn get_executable_name() -> String {
-    use std::env;
-    env::current_exe()
-        .ok()
-        .and_then(|path| path.file_stem().map(|os_str| os_str.to_string_lossy().into_owned()))
-        .unwrap_or_else(|| "unknown".to_string())
-}
-
-#[ctor::ctor]
-fn init_logging() {
+pub fn init_logger() {
     use chrono::Local;
     use fern::Dispatch;
     use log::LevelFilter;
+
+    fn get_executable_name() -> String {
+        use std::env;
+        env::current_exe()
+            .ok()
+            .and_then(|path| path.file_stem().map(|os_str| os_str.to_string_lossy().into_owned()))
+            .unwrap_or_else(|| "unknown".to_string())
+    }
 
     let executable_name = get_executable_name();
     let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();

@@ -2,11 +2,12 @@ use crate::core::position::{Position, UndoState};
 use crate::core::{move_gen, types::*};
 use crate::engine::Engine;
 use crate::engine::book::*;
+use crate::engine::eval::Evaluation;
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
 
-const DRAW_PENALTY: i32 = -1000;
+const DRAW_PENALTY: i32 = -50;
 
 pub struct Searcher {
     evaluation_count: u64,
@@ -47,9 +48,10 @@ impl Searcher {
     }
 
     fn evaluate(&mut self, pos: &Position) -> i32 {
-        use crate::engine::eval;
         self.evaluation_count += 1;
-        eval::evaluate(pos)
+
+        let mut eval = Evaluation::new();
+        eval.evaluate_position(pos)
     }
 
     // @TODO: quiescence search

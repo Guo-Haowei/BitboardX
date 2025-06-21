@@ -1,3 +1,4 @@
+use super::piece_square_table::*;
 use crate::core::{position::Position, types::*};
 
 const PIECE_VALUES: [i32; 6] = [
@@ -9,53 +10,200 @@ const PIECE_VALUES: [i32; 6] = [
     40000, // King
 ];
 
-fn evaluate_material(pos: &Position, color: Color) -> i32 {
-    // exclude king from material evaluation
-    let mut score = 0;
-    for i in 0..PieceType::KING.0 {
-        let piece = Piece::get_piece(color, PieceType(i));
-        score += PIECE_VALUES[i as usize] * pos.bitboards[piece.as_usize()].count() as i32;
-    }
-
-    score
+struct EvaluationData {
+    material_score: i32,
+    mop_up_score: i32, // score for endgame material
+    piece_square_score: i32,
+    pawn_score: i32,
+    pawn_shield_score: i32,
 }
 
-fn evaluate_pst(pos: &Position, color: Color) -> i32 {
-    let mut score = 0;
-
-    for i in 0..PieceType::COUNT {
-        let piece = Piece::get_piece(color, PieceType(i));
-        let bitboard = pos.bitboards[piece.as_usize()];
-        for sq in bitboard.iter() {
-            score += PST_TABLE[piece.as_usize()][sq.as_u8() as usize];
+impl EvaluationData {
+    pub fn new() -> Self {
+        EvaluationData {
+            material_score: 0,
+            mop_up_score: 0,
+            piece_square_score: 0,
+            pawn_score: 0,
+            pawn_shield_score: 0,
         }
     }
 
-    score
+    pub fn sum(&self) -> i32 {
+        self.material_score
+            + self.mop_up_score
+            + self.piece_square_score
+            + self.pawn_score
+            + self.pawn_shield_score
+    }
 }
 
-// @TODO: Implement pawn structure, mobility, rook activity, bishop pair, etc.
-fn evaluate_king_safety(_pos: &Position) -> i32 {
-    // Placeholder for king safety evaluation
-    0
+struct MaterialInfo {
+    pub material_score: i32,
+    pub _num_pawns: i32,
+    pub _num_knights: i32,
+    pub _num_bishops: i32,
+    pub _num_queens: i32,
+    pub _num_rooks: i32,
+    pub _my_pawns: BitBoard,
+    pub _enemy_pawns: BitBoard,
+    pub endgame_t: f32, // Transition from midgame to endgame (0->1)
+}
+
+impl MaterialInfo {
+    fn new(
+        num_pawns: i32,
+        num_knights: i32,
+        num_bishops: i32,
+        num_queens: i32,
+        num_rooks: i32,
+        my_pawns: BitBoard,
+        enemy_pawns: BitBoard,
+    ) -> Self {
+        let mut material_score = 0;
+        material_score += num_pawns * PAWN_VALUE;
+        material_score += num_knights * KNIGHT_VALUE;
+        material_score += num_bishops * BISHOP_VALUE;
+        material_score += num_rooks * ROOK_VALUE;
+        material_score += num_queens * QUEEN_VALUE;
+
+        // Endgame Transition (0->1)
+        const QUEEN_ENDGAME_WEIGHT: i32 = 45;
+        const ROOK_ENDGAME_WEIGHT: i32 = 20;
+        const BISHOP_ENDGAME_WEIGHT: i32 = 10;
+        const KNIGHT_ENDGAME_WEIGHT: i32 = 10;
+
+        const ENDGAME_START_WEIGHT: i32 = 2 * ROOK_ENDGAME_WEIGHT
+            + 2 * BISHOP_ENDGAME_WEIGHT
+            + 2 * KNIGHT_ENDGAME_WEIGHT
+            + QUEEN_ENDGAME_WEIGHT;
+        let endgame_weight_sum = num_queens * QUEEN_ENDGAME_WEIGHT
+            + num_rooks * ROOK_ENDGAME_WEIGHT
+            + num_bishops * BISHOP_ENDGAME_WEIGHT
+            + num_knights * KNIGHT_ENDGAME_WEIGHT;
+
+        let endgame_t = 1.0 - (endgame_weight_sum as f32 / ENDGAME_START_WEIGHT as f32).min(1.0);
+
+        MaterialInfo {
+            material_score,
+            _num_pawns: num_pawns,
+            _num_knights: num_knights,
+            _num_bishops: num_bishops,
+            _num_queens: num_queens,
+            _num_rooks: num_rooks,
+            _my_pawns: my_pawns,
+            _enemy_pawns: enemy_pawns,
+            endgame_t,
+        }
+    }
+}
+
+const PAWN_VALUE: i32 = 100;
+const KNIGHT_VALUE: i32 = 300;
+const BISHOP_VALUE: i32 = 320;
+const ROOK_VALUE: i32 = 500;
+const QUEEN_VALUE: i32 = 900;
+
+// const PASSED_PAWN_BONUSES: [i32; 7] = [0, 120, 80, 50, 30, 15, 15];
+// const ISOLATED_PAWN_PENALTY_BY_COUNT: [i32; 9] = [0, -10, -25, -50, -75, -75, -75, -75, -75];
+// const KING_PAWN_SHIELD_SCORES: [i32; 6] = [4, 7, 4, 3, 6, 3];
+
+// const ENDGAME_MATERIAL_START: i32 = ROOK_VALUE * 2 + BISHOP_VALUE + KNIGHT_VALUE;
+
+pub struct Evaluation {
+    white_score: EvaluationData,
+    black_score: EvaluationData,
+}
+
+impl Evaluation {
+    pub fn new() -> Self {
+        Evaluation { white_score: EvaluationData::new(), black_score: EvaluationData::new() }
+    }
+
+    pub fn evaluate_position(&mut self, pos: &Position) -> i32 {
+        let white_material = self.get_material_info(pos, Color::WHITE);
+        let black_material = self.get_material_info(pos, Color::BLACK);
+
+        // Score based on material left on the board
+        self.white_score.material_score = white_material.material_score;
+        self.black_score.material_score = black_material.material_score;
+
+        // Score based on piece-square tables
+        self.white_score.piece_square_score =
+            self.evaluate_piece_square_table(pos, Color::WHITE, white_material.endgame_t);
+        self.black_score.piece_square_score =
+            self.evaluate_piece_square_table(pos, Color::BLACK, black_material.endgame_t);
+
+        // Push the king to edge of the board in endgame
+
+        // Evaluate pawns (passed, isolated, sheild)
+
+        let perspective = if pos.side_to_move == Color::WHITE { 1 } else { -1 };
+        let score = self.white_score.sum() - self.black_score.sum();
+
+        // eprintln!(
+        //     "Evaluation: {} (White: {}, Black: {})",
+        //     score,
+        //     self.white_score.sum(),
+        //     self.black_score.sum()
+        // );
+
+        score * perspective
+    }
+
+    fn get_material_info(&self, pos: &Position, color: Color) -> MaterialInfo {
+        let pawn = Piece::get_piece(color, PieceType::PAWN);
+        let knight = Piece::get_piece(color, PieceType::KNIGHT);
+        let bishop = Piece::get_piece(color, PieceType::BISHOP);
+        let rook = Piece::get_piece(color, PieceType::ROOK);
+        let queen = Piece::get_piece(color, PieceType::QUEEN);
+
+        let my_pawns = pos.bitboards[pawn.as_usize()];
+        let enemy_pawns = Piece::get_piece(color.opponent(), PieceType::PAWN);
+        let enemy_pawns = pos.bitboards[enemy_pawns.as_usize()];
+
+        let num_pawns = my_pawns.count() as i32;
+        let num_knights = pos.bitboards[knight.as_usize()].count() as i32;
+        let num_bishops = pos.bitboards[bishop.as_usize()].count() as i32;
+        let num_rooks = pos.bitboards[rook.as_usize()].count() as i32;
+        let num_queens = pos.bitboards[queen.as_usize()].count() as i32;
+
+        MaterialInfo::new(
+            num_pawns,
+            num_knights,
+            num_bishops,
+            num_queens,
+            num_rooks,
+            my_pawns,
+            enemy_pawns,
+        )
+    }
+
+    fn evaluate_piece_square_table(&self, pos: &Position, color: Color, endgame_t: f32) -> i32 {
+        let mut value = 0;
+        value += evaluate_table(pos, &KNIGHT_TABLES, PieceType::KNIGHT, color);
+        value += evaluate_table(pos, &BISHOP_TABLES, PieceType::BISHOP, color);
+        value += evaluate_table(pos, &ROOK_TABLES, PieceType::ROOK, color);
+        value += evaluate_table(pos, &QUEEN_TABLES, PieceType::QUEEN, color);
+
+        let pawn_early = evaluate_table(pos, &PAWN_START_TABLES, PieceType::PAWN, color);
+        let pawn_late = evaluate_table(pos, &PAWN_END_TABLES, PieceType::PAWN, color);
+        value += (pawn_early as f32 * (1.0 - endgame_t)) as i32;
+        value += (pawn_late as f32 * endgame_t) as i32;
+
+        let king_early = evaluate_table(pos, &KING_START_TABLES, PieceType::KING, color);
+        let king_late = evaluate_table(pos, &KING_END_TABLES, PieceType::KING, color);
+        value += (king_early as f32 * (1.0 - endgame_t)) as i32;
+        value += (king_late as f32 * endgame_t) as i32;
+
+        value
+    }
 }
 
 // for simplicity, we use mid-game piece value table
 fn get_piece_value(piece_type: PieceType) -> i32 {
     assert!(piece_type != PieceType::NONE, "Piece must not be NONE");
     PIECE_VALUES[piece_type.as_u8() as usize]
-}
-
-pub fn evaluate(pos: &Position) -> i32 {
-    debug_assert!(pos.side_to_move == Color::WHITE || pos.side_to_move == Color::BLACK);
-    let mut score = 0;
-
-    score += evaluate_material(pos, Color::WHITE) - evaluate_material(pos, Color::BLACK);
-    score += evaluate_pst(pos, Color::WHITE) - evaluate_pst(pos, Color::BLACK);
-
-    score += evaluate_king_safety(pos);
-
-    if pos.side_to_move == Color::WHITE { score } else { -score }
 }
 
 pub fn move_score_guess(pos: &Position, mv: Move) -> i32 {
@@ -92,130 +240,4 @@ pub fn move_score_guess(pos: &Position, mv: Move) -> i32 {
     }
 
     guess
-}
-
-const fn flip_table(input: &[i32; 64]) -> [i32; 64] {
-    let mut output = [0; 64];
-    let mut sq = 0;
-    while sq < 64 {
-        let mirror = 56 ^ sq;
-        output[sq] = input[mirror];
-        sq += 1
-    }
-    output
-}
-
-#[rustfmt::skip]
-const PST_WHITE_PAWN: [i32; 64] =
-   [ 0,  0,  0,  0,  0,  0,  0,  0,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  3,  5,  5,  3,  0, -5,
-    -5,  0,  5, 10, 10,  5,  0, -5,
-    -5,  0,  3,  5,  5,  3,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-     0,  0,  0,  0,  0,  0,  0,  0 ];
-
-#[rustfmt::skip]
-const PST_WHITE_KNIGHT: [i32; 64] =
-   [ -31, -29, -27, -25, -25, -27, -29, -31,
-      -9,  -6,  -2,   0,   0,  -2,  -6,  -9,
-      -7,  -2,  19,  19,  19,  19,  -2,  -7,
-      -5,  10,  23,  28,  28,  23,  10,  -5,
-      -5,  12,  25,  32,  32,  25,  12,  -5,
-      -7,  10,  23,  29,  29,  23,  10,  -7,
-      -9,   4,  14,  20,  20,  14,   4,  -9,
-     -41, -29, -27, -15, -15, -27, -29, -41 ];
-
-#[rustfmt::skip]
-const PST_WHITE_BISHOP: [i32; 64] =
-    [-15, -15, -15, -15, -15, -15, -15, -15,
-      0,   4,   4,   4,   4,   4,   4,   0,
-      0,   4,   8,   8,   8,   8,   4,   0,
-      0,   4,   8,  12,  12,   8,   4,   0,
-      0,   4,   8,  12,  12,   8,   4,   0,
-      0,   4,   8,   8,   8,   8,   4,   0,
-      0,   4,   4,   4,   4,   4,   4,   0,
-      0,   0,   0,   0,   0,   0,   0,   0 ];
-
-// Rook will be evaluated using open files and ranks, so we use a placeholder table
-#[rustfmt::skip]
-const PST_WHITE_ROOK: [i32; 64] = [
-     32,  42,  32,  51, 63,  9,  31,  43,
-     27,  32,  58,  62, 80, 67,  26,  44,
-     -5,  19,  26,  36, 17, 45,  61,  16,
-    -24, -11,   7,  26, 24, 35,  -8, -20,
-    -36, -26, -12,  -1,  9, -7,   6, -23,
-    -45, -25, -16, -17,  3,  0,  -5, -33,
-    -44, -16, -20,  -9, -1, 11,  -6, -71,
-    -19, -13,   1,  17, 16,  7, -37, -26 ];
-
-#[rustfmt::skip]
-const PST_WHITE_QUEEN: [i32; 64] = [
-      0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   4,   4,   4,   4,   0,   0,
-      0,   4,   4,   6,   6,   4,   4,   0,
-      0,   4,   6,   8,   8,   6,   4,   0,
-      0,   4,   6,   8,   8,   6,   4,   0,
-      0,   4,   4,   6,   6,   4,   4,   0,
-      0,   0,   4,   4,   4,   4,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0 ];
-
-#[rustfmt::skip]
-const PST_WHITE_KING: [i32; 64] = [
-    -65,  23,  16, -15, -56, -34,   2,  13,
-     29,  -1, -20,  -7,  -8,  -4, -38, -29,
-     -9,  24,   2, -16, -20,   6,  22, -22,
-    -17, -20, -12, -27, -30, -25, -14, -36,
-    -49,  -1, -27, -39, -46, -44, -33, -51,
-    -14, -14, -22, -46, -44, -30, -15, -27,
-      1,   7,  -8, -64, -43, -16,   9,   8,
-    -15,  36,  12, -54,   8, -28,  24,  14 ];
-
-const PST_BLACK_PAWN: [i32; 64] = flip_table(&PST_WHITE_PAWN);
-const PST_BLACK_KNIGHT: [i32; 64] = flip_table(&PST_WHITE_KNIGHT);
-const PST_BLACK_BISHOP: [i32; 64] = flip_table(&PST_WHITE_BISHOP);
-const PST_BLACK_ROOK: [i32; 64] = flip_table(&PST_WHITE_ROOK);
-const PST_BLACK_QUEEN: [i32; 64] = flip_table(&PST_WHITE_QUEEN);
-const PST_BLACK_KING: [i32; 64] = flip_table(&PST_WHITE_KING);
-
-#[allow(dead_code)]
-const PST_TABLE: [[i32; 64]; Piece::COUNT] = [
-    PST_WHITE_PAWN,
-    PST_WHITE_KNIGHT,
-    PST_WHITE_BISHOP,
-    PST_WHITE_ROOK,
-    PST_WHITE_QUEEN,
-    PST_WHITE_KING,
-    PST_BLACK_PAWN,
-    PST_BLACK_KNIGHT,
-    PST_BLACK_BISHOP,
-    PST_BLACK_ROOK,
-    PST_BLACK_QUEEN,
-    PST_BLACK_KING,
-];
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    fn test_table(table1: &[i32; 64], table2: &[i32; 64]) {
-        for f in 0..8 {
-            for r in 0..8 {
-                let r1 = r;
-                let r2 = 7 - r;
-                assert_eq!(table1[f + r1 * 8 as usize], table2[f + r2 * 8 as usize]);
-            }
-        }
-    }
-
-    #[test]
-    fn test_pst() {
-        test_table(&PST_BLACK_KNIGHT, &PST_WHITE_KNIGHT);
-        test_table(&PST_WHITE_PAWN, &PST_BLACK_PAWN);
-        test_table(&PST_WHITE_BISHOP, &PST_BLACK_BISHOP);
-        test_table(&PST_WHITE_ROOK, &PST_BLACK_ROOK);
-        test_table(&PST_WHITE_QUEEN, &PST_BLACK_QUEEN);
-        test_table(&PST_WHITE_KING, &PST_BLACK_KING);
-    }
 }

@@ -21,7 +21,7 @@ named_test!(find_mate_in_two, {
 });
 
 named_test!(find_mate_in_three, {
-    const SEARCH_DEPTH: u8 = 3;
+    const SEARCH_DEPTH: u8 = 5;
     let fen = "Q4bk1/p2b1r2/7p/1pp5/4P1pq/2NP2P1/PPn3P1/1RB2RK1 b - - 0 1";
     let mut engine = Engine::from_fen(fen).unwrap();
     let mv = engine.best_move(SEARCH_DEPTH).unwrap();
