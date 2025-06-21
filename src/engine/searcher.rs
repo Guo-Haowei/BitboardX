@@ -2,16 +2,17 @@ use crate::core::position::{Position, UndoState};
 use crate::core::{move_gen, types::*};
 use crate::engine::Engine;
 use crate::engine::book::*;
+use crate::engine::eval::Evaluation;
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
 
-const DRAW_PENALTY: i32 = 50;
+const DRAW_PENALTY: i32 = -50;
+const MATE_PENALTY: i32 = -40000;
 
 pub struct Searcher {
     evaluation_count: u64,
-
-    move_sequence: Vec<Move>,
+    // @TODO: cutoff move history
 }
 
 fn sort_moves(pos: &Position, move_list: &MoveList) -> Vec<Move> {
@@ -30,34 +31,25 @@ fn sort_moves(pos: &Position, move_list: &MoveList) -> Vec<Move> {
 
 impl Searcher {
     pub fn new() -> Self {
-        Self { evaluation_count: 0, move_sequence: Vec::new() }
+        Self { evaluation_count: 0 }
     }
 
     fn make_move(&mut self, pos: &mut Position, mv: &Move) -> UndoState {
         let mv = mv.clone();
         let undo_state = pos.make_move(mv);
-        self.move_sequence.push(mv);
         undo_state
     }
 
     fn unmake_move(&mut self, pos: &mut Position, mv: &Move, undo_state: &UndoState) {
         let mv = mv.clone();
         pos.unmake_move(mv, undo_state);
-        self.move_sequence.pop();
     }
 
     fn evaluate(&mut self, pos: &Position) -> i32 {
-        // @TODO: wrap in cfg!
-        // let mut moves = String::new();
-        // for mv in self.move_sequence.iter() {
-        //     moves.push_str(&mv.to_string());
-        //     moves.push_str(&" -> ");
-        // }
-        // log::trace!("Move sequence: {}", moves);
-
-        use crate::engine::eval;
         self.evaluation_count += 1;
-        eval::evaluate(pos)
+
+        let mut eval = Evaluation::new();
+        eval.evaluate_position(pos)
     }
 
     // @TODO: quiescence search
@@ -97,34 +89,36 @@ impl Searcher {
         alpha
     }
 
-    fn alpha_beta_helper(
+    fn negamax(
         &mut self,
         engine: &mut Engine,
+        max_ply: u8,
+        ply_remaining: u8,
         mut alpha: i32,
         beta: i32,
-        depth: u8,
     ) -> i32 {
         let key = engine.pos.zobrist();
-        // threefold repetition check
+        // threefold draw
         let repetition = engine.repetition_count(key);
         if repetition >= 2 {
             debug_assert!(repetition == 2); // if we make this move, it will be a draw
             log::debug!("Repetition detected: {}", engine.pos.fen());
-            return -DRAW_PENALTY; // draw
+            return DRAW_PENALTY;
+        }
+
+        // 50-move rule draw
+        if engine.pos.halfmove_clock >= 100 {
+            log::debug!("50-move rule draw detected: {}", engine.pos.fen());
+            return DRAW_PENALTY;
         }
 
         let move_list = move_gen::legal_moves(&engine.pos);
 
         if move_list.len() == 0 {
-            return if engine.pos.is_in_check() {
-                MIN
-            } else {
-                -DRAW_PENALTY
-                // stalemate
-            };
+            return if engine.pos.is_in_check() { MATE_PENALTY } else { DRAW_PENALTY };
         }
 
-        if depth == 0 {
+        if ply_remaining == 0 {
             // use a hard code depth of 4 for quiescence search
             return self.evaluate(&engine.pos);
         }
@@ -134,7 +128,7 @@ impl Searcher {
         for mv in move_list.iter() {
             let undo_state = self.make_move(&mut engine.pos, mv);
 
-            let score = -self.alpha_beta_helper(engine, -beta, -alpha, depth - 1);
+            let score = -self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
 
             self.unmake_move(&mut engine.pos, mv, &undo_state);
 
@@ -145,33 +139,6 @@ impl Searcher {
         }
 
         alpha
-    }
-
-    fn negamax(&mut self, engine: &mut Engine, depth: u8) -> Option<Move> {
-        debug_assert!(depth > 0);
-        let move_list = move_gen::legal_moves(&engine.pos);
-        if move_list.len() == 0 {
-            return None; // no legal moves
-        }
-
-        let mut alpha = MIN;
-        let mut final_move = None;
-
-        let move_list = sort_moves(&engine.pos, &move_list);
-
-        for mv in move_list.iter() {
-            let undo_state = self.make_move(&mut engine.pos, mv);
-            let score = -self.alpha_beta_helper(engine, alpha, MAX, depth - 1);
-
-            self.unmake_move(&mut engine.pos, mv, &undo_state);
-
-            if score >= alpha {
-                alpha = score;
-                final_move = Some(*mv);
-            }
-        }
-
-        final_move
     }
 
     pub fn find_best_move(&mut self, engine: &mut Engine, depth: u8) -> Option<Move> {
@@ -200,19 +167,33 @@ impl Searcher {
             }
         }
 
-        let mv = self.negamax(engine, depth);
+        let mut alpha = MIN;
+        let mut best_move = Move::null();
 
-        log::debug!("{} nodes evaluated at depth: {}", self.evaluation_count, depth);
-        match mv {
-            Some(mv) => {
-                log::debug!("best move found: {:?}", mv.to_string());
-            }
-            None => {
-                log::debug!("no best move found at depth: {}", depth);
+        let move_list = sort_moves(&engine.pos, &move_list);
+
+        for mv in move_list.iter() {
+            let undo_state = self.make_move(&mut engine.pos, mv);
+            let score = -self.negamax(engine, depth, depth - 1, alpha, MAX);
+
+            self.unmake_move(&mut engine.pos, mv, &undo_state);
+
+            if score >= alpha {
+                alpha = score;
+                best_move = mv.clone();
             }
         }
 
-        mv
+        assert!(!best_move.is_null(), "No best move found, this should not happen");
+
+        log::debug!(
+            "evaluated {} node, best move found: {} (score{})",
+            self.evaluation_count,
+            best_move.to_string(),
+            alpha
+        );
+
+        Some(best_move)
     }
 }
 

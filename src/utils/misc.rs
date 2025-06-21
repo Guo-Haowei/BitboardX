@@ -31,18 +31,19 @@ fn parse_move_impl(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
             let src = Square::make(File(f1), Rank(r1));
             let dst = Square::make(File(f2), Rank(r2));
 
-            if len == 5 {
-                let promotion = match input.chars().nth(4)? {
-                    'q' | 'Q' => Some(PieceType::QUEEN),
-                    'r' | 'R' => Some(PieceType::ROOK),
-                    'b' | 'B' => Some(PieceType::BISHOP),
-                    'n' | 'N' => Some(PieceType::KNIGHT),
-                    _ => return None,
-                };
-                return Some((src, dst, promotion));
+            if len == 4 {
+                return Some((src, dst, None));
             }
 
-            Some((src, dst, None))
+            let promotion = match input.chars().nth(4)? {
+                'q' | 'Q' => Some(PieceType::QUEEN),
+                'r' | 'R' => Some(PieceType::ROOK),
+                'b' | 'B' => Some(PieceType::BISHOP),
+                'n' | 'N' => Some(PieceType::KNIGHT),
+                _ => return None,
+            };
+
+            Some((src, dst, promotion))
         }
         _ => return None,
     }
@@ -50,7 +51,10 @@ fn parse_move_impl(input: &str) -> Option<(Square, Square, Option<PieceType>)> {
 
 pub fn parse_move(input: &str) -> Option<Move> {
     if let Some((src, dst, promotion)) = parse_move_impl(input) {
-        return Some(Move::new(src, dst, MoveType::Normal, promotion));
+        return match promotion {
+            Some(_) => Some(Move::new(src, dst, MoveType::Promotion, promotion)),
+            None => Some(Move::new(src, dst, MoveType::Normal, None)),
+        };
     }
 
     None
@@ -127,6 +131,7 @@ mod test {
             parse_move_impl("d7d8q"),
             Some((Square::D7, Square::D8, Some(PieceType::QUEEN)))
         );
+        assert_eq!(parse_move_impl("g2g1r"), Some((Square::G2, Square::G1, Some(PieceType::ROOK))));
         assert_eq!(parse_move_impl("z1z2"), None);
         assert_eq!(parse_move_impl("e9e4"), None);
         assert_eq!(parse_move_impl("e2e"), None);

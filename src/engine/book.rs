@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
 use crate::core::types::{File, Move, MoveType, PieceType, Rank, Square};
-use crate::core::zobrist::Zobrist;
+use crate::core::zobrist::ZobristHash;
 use crate::utils::*;
 
 static BOOK_DATA: &[u8] = include_bytes!("./gm2600.bin");
@@ -84,7 +84,7 @@ impl MoveList {
 }
 
 pub struct Book {
-    map: HashMap<Zobrist, MoveList>,
+    map: HashMap<ZobristHash, MoveList>,
 }
 
 impl Book {
@@ -121,7 +121,7 @@ impl Book {
 
             // Create a BookEntry
             let entry = BookEntry { raw_move, weight };
-            self.map.entry(Zobrist(key)).or_insert(MoveList::new()).moves.push(entry);
+            self.map.entry(ZobristHash(key)).or_insert(MoveList::new()).moves.push(entry);
         }
 
         for move_list in self.map.values_mut() {
@@ -131,7 +131,7 @@ impl Book {
         Ok(())
     }
 
-    pub fn get_move(&self, hash: Zobrist) -> Option<Move> {
+    pub fn get_move(&self, hash: ZobristHash) -> Option<Move> {
         if let Some(entries) = self.map.get(&hash) {
             assert!(!entries.moves.is_empty(), "No entries found for hash: {:?}", hash);
             let rand = random();

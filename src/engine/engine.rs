@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::core::{move_gen, position::Position, types::Move, zobrist::Zobrist};
+use crate::core::{move_gen, position::Position, types::Move, zobrist::ZobristHash};
 use crate::engine::searcher;
+use crate::engine::ttable::TTable;
 use crate::utils;
 
 const NAME: &str = "BitboardX";
@@ -12,8 +13,9 @@ const VERSION_PATCH: u32 = 5;
 
 pub struct Engine {
     pub(super) pos: Position,
-    pub(super) repetition_table: HashMap<Zobrist, u32>, // for threefold detection
-    pub(super) last_hash: Zobrist,
+    pub(super) repetition_table: HashMap<ZobristHash, u32>, // for threefold detection
+    pub(super) last_hash: ZobristHash,
+    pub(super) tt: TTable,
 }
 
 impl Engine {
@@ -35,7 +37,16 @@ impl Engine {
         let mut repetition_table = HashMap::new();
         repetition_table.insert(last_hash, 1);
 
-        Ok(Self { pos, repetition_table, last_hash })
+        Ok(Self { pos, repetition_table, last_hash, tt: TTable::new() })
+    }
+
+    pub fn reset(&mut self) {
+        self.set_position(Position::new());
+        let last_hash = self.pos.zobrist();
+        self.last_hash = last_hash;
+        self.repetition_table.clear();
+        self.repetition_table.insert(last_hash, 1);
+        self.tt.clear();
     }
 
     pub fn best_move(&mut self, depth: u8) -> Option<Move> {
@@ -52,9 +63,10 @@ impl Engine {
     }
 
     // Assume that the move is legal, otherwise it might crash the engine
-    pub fn make_move(&mut self, mv: &str) -> bool {
-        let mv = utils::parse_move(mv);
+    pub fn make_move(&mut self, mv_str: &str) -> bool {
+        let mv = utils::parse_move(mv_str);
         if mv.is_none() {
+            log::error!("Failed to parse move: '{}'", mv_str);
             return false;
         }
 
@@ -70,10 +82,11 @@ impl Engine {
             }
         }
 
+        log::error!("'{}' is not a legal move", mv_str);
         return false;
     }
 
-    pub fn repetition_count(&self, key: Zobrist) -> u32 {
+    pub fn repetition_count(&self, key: ZobristHash) -> u32 {
         let val = self.repetition_table.get(&key).unwrap_or(&0);
         *val
     }

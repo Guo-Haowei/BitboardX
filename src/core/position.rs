@@ -159,7 +159,7 @@ impl Position {
         )
     }
 
-    pub fn zobrist(&self) -> Zobrist {
+    pub fn zobrist(&self) -> ZobristHash {
         zobrist::zobrist_hash(&self)
     }
 

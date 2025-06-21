@@ -3,9 +3,15 @@ use crate::core::position::Position;
 use crate::core::types::{CastlingRight, Color, Piece, Square};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Zobrist(pub u64);
+pub struct ZobristHash(pub u64);
 
-pub fn zobrist_hash(pos: &Position) -> Zobrist {
+impl ZobristHash {
+    pub fn null() -> Self {
+        ZobristHash(0)
+    }
+}
+
+pub fn zobrist_hash(pos: &Position) -> ZobristHash {
     let mut weed: u64 = 0;
 
     hash_pieces(&mut weed, pos);
@@ -13,7 +19,7 @@ pub fn zobrist_hash(pos: &Position) -> Zobrist {
     hash_color_to_move(&mut weed, pos.side_to_move);
     hash_castling_rights(&mut weed, pos.castling_rights);
 
-    Zobrist(weed)
+    ZobristHash(weed)
 }
 
 fn xor_with_random(weed: &mut u64, num: usize) {
@@ -88,7 +94,7 @@ mod tests {
     fn test_zobrist_hash() {
         let pos = Position::new();
 
-        assert_eq!(zobrist_hash(&pos), Zobrist(5060803636482931868)); // Initial position hash
+        assert_eq!(zobrist_hash(&pos), ZobristHash(5060803636482931868)); // Initial position hash
     }
 }
 
