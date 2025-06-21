@@ -1,13 +1,22 @@
+fn get_executable_name() -> String {
+    use std::env;
+    env::current_exe()
+        .ok()
+        .and_then(|path| path.file_stem().map(|os_str| os_str.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
 #[ctor::ctor]
 fn init_logging() {
     use chrono::Local;
     use fern::Dispatch;
     use log::LevelFilter;
 
+    let executable_name = get_executable_name();
     let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
 
     // Compose filename with timestamp
-    let log_path = format!("app_{}.log", timestamp);
+    let log_path = format!("{}_{}.log", executable_name, timestamp);
 
     let log_file = std::fs::OpenOptions::new()
         .create(true)
