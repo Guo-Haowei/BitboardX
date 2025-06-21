@@ -1,9 +1,9 @@
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
 use crate::core::types::{File, Move, MoveType, PieceType, Rank, Square};
-use crate::core::utils::*;
 use crate::core::zobrist::Zobrist;
-use crate::logger;
+use crate::utils::*;
 
 static BOOK_DATA: &[u8] = include_bytes!("./gm2600.bin");
 
@@ -149,14 +149,13 @@ impl Book {
 
             let entry = entry.unwrap();
             let mv = entry.to_move();
-            logger::log(
-                format!(
-                    "[DEBUG] -- found book move: {} (weight: {}/{})",
-                    mv.to_string(),
-                    entry.weight,
-                    entries.total_weight
-                )
-                .to_string(),
+            log::debug!(
+                "found book move: {} out of {} moves, rand: {} (weight: {}/{})",
+                mv.to_string(),
+                entries.moves.len(),
+                rand,
+                entry.weight,
+                entries.total_weight
             );
             return Some(mv);
         }
@@ -165,9 +164,6 @@ impl Book {
     }
 }
 
-use once_cell::sync::Lazy;
-
-// Global, accessible everywhere
 pub static DEFAULT_BOOK: Lazy<Book> = Lazy::new(|| Book::default());
 
 #[cfg(test)]

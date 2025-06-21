@@ -33,7 +33,7 @@ fn main() {
     let mut game = GameState::new();
 
     let player: Box<dyn Player> = Box::new(AiPlayer::new());
-    // let player = Box::new(ConsolePlayer);
+    let player = Box::new(ConsolePlayer);
     game.set_white(player);
 
     let player: Box<dyn Player> = Box::new(AiPlayer::new());

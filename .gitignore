@@ -11,5 +11,6 @@ frontend/chess/
 *.exe
 
 # user-specific files
+*.log
 *.txt
 out.pgn

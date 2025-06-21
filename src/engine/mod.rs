@@ -1,6 +1,6 @@
 mod book;
 mod engine;
 mod eval;
-mod search;
+mod searcher;
 
 pub use engine::*;

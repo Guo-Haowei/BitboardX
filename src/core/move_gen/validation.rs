@@ -1,6 +1,6 @@
 use super::super::position::Position;
 use super::super::types::*;
-use super::super::utils;
+use crate::utils;
 
 /* #region */
 /// # Legal Moves When the King is in Check
