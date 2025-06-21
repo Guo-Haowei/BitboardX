@@ -38,14 +38,13 @@ impl WasmMove {
 #[wasm_bindgen]
 pub struct WasmGame {
     internal: GameState,
-    pos_and_moves: String,
 }
 
 #[wasm_bindgen]
 impl WasmGame {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        let mut game = Self { internal: GameState::new(), pos_and_moves: String::new() };
+        let mut game = Self { internal: GameState::new() };
 
         let player: Box<dyn Player> = Box::new(GuiPlayer::new());
         game.internal.set_white(player);
@@ -66,7 +65,6 @@ impl WasmGame {
         };
 
         self.internal = game;
-        self.pos_and_moves = format!("position fen {fen} moves");
 
         fn create_player(human: bool) -> Box<dyn Player> {
             if human { Box::new(GuiPlayer::new()) } else { Box::new(AiPlayer::new()) }
@@ -80,9 +78,10 @@ impl WasmGame {
         // logger::log(format!("command: {}", self.pos_and_moves).to_string());
 
         let action = {
+            let commands = self.internal.pos_and_moves.clone();
             let player = self.internal.active_player();
             player.request_move();
-            player.poll_move(&self.pos_and_moves)
+            player.poll_move(&commands)
         };
 
         match action {
@@ -97,10 +96,6 @@ impl WasmGame {
 
     pub fn make_move(&mut self, mv_str: String) -> WasmMove {
         let mv = self.internal.execute(&mv_str);
-
-        if mv.is_some() {
-            self.pos_and_moves.push_str(&format!(" {mv_str}"));
-        }
 
         WasmMove { mv: mv }
     }

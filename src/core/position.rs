@@ -1,4 +1,5 @@
-use crate::core::move_gen;
+use crate::core::zobrist::*;
+use crate::core::{move_gen, zobrist};
 
 use super::types::*;
 
@@ -158,6 +159,10 @@ impl Position {
         )
     }
 
+    pub fn zobrist(&self) -> Zobrist {
+        zobrist::zobrist_hash(&self)
+    }
+
     pub fn get_piece_at(&self, sq: Square) -> Piece {
         for i in 0..Piece::COUNT {
             if self.bitboards[i].test(sq.as_u8()) {
@@ -205,7 +210,8 @@ impl Position {
         pin_map.test(sq.as_u8())
     }
 
-    pub fn is_in_check(&self, color: Color) -> bool {
+    pub fn is_in_check(&self) -> bool {
+        let color = self.side_to_move;
         let checker_count = self.checkers[color.as_usize()].count();
 
         if cfg!(debug_assertions) && checker_count != 0 {

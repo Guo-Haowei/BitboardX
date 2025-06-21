@@ -7,10 +7,10 @@ use super::player::*;
 
 pub struct GameState {
     pub pos: Position,
-
     pub legal_moves: MoveList,
-
     pub players: [Box<dyn Player>; 2],
+
+    pub pos_and_moves: String,
 
     // undo and redo
     undo_stack: Vec<(Move, UndoState)>,
@@ -25,10 +25,12 @@ impl GameState {
             pos,
             legal_moves: MoveList::new(),
             players: [Box::new(NullPlayer), Box::new(NullPlayer)],
+            pos_and_moves: String::new(),
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         };
 
+        game.pos_and_moves = format!("position startpos moves");
         game.post_move();
         game
     }
@@ -39,10 +41,12 @@ impl GameState {
             pos,
             legal_moves: MoveList::new(),
             players: [Box::new(NullPlayer), Box::new(NullPlayer)],
+            pos_and_moves: String::new(),
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         };
 
+        game.pos_and_moves = format!("position fen {fen} moves");
         game.post_move();
         Ok(game)
     }
@@ -84,6 +88,8 @@ impl GameState {
                 let mv = mv.clone();
                 let undo_state = self.pos.make_move(mv);
                 self.post_move();
+
+                self.pos_and_moves.push_str(&format!(" {}", mv.to_string()));
 
                 self.undo_stack.push((mv, undo_state));
                 self.redo_stack.clear();

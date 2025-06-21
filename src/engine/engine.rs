@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::core::{move_gen, utils, zobrist};
+use crate::core::{move_gen, utils};
 use crate::core::{position::Position, types::Move, zobrist::Zobrist};
 use crate::engine::search;
 use crate::logger;
@@ -9,11 +9,11 @@ use crate::logger;
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 1;
-const VERSION_PATCH: u32 = 3; // pesto
+const VERSION_PATCH: u32 = 4;
 
 pub struct Engine {
     pub(super) pos: Position,
-    pub(super) history: HashMap<Zobrist, u32>, // for threefold detection
+    pub(super) repetition_table: HashMap<Zobrist, u32>, // for threefold detection
     pub(super) last_hash: Zobrist,
 }
 
@@ -32,11 +32,11 @@ impl Engine {
 
     pub fn from_fen(fen: &str) -> Result<Self, &'static str> {
         let pos = Position::from_fen(fen)?;
-        let last_hash = zobrist::zobrist_hash(&pos);
-        let mut history = HashMap::new();
-        history.insert(last_hash, 1);
+        let last_hash = pos.zobrist();
+        let mut repetition_table = HashMap::new();
+        repetition_table.insert(last_hash, 1);
 
-        Ok(Self { pos, history, last_hash })
+        Ok(Self { pos, repetition_table, last_hash })
     }
 
     pub fn best_move(&mut self, depth: u8) -> Option<Move> {
@@ -44,11 +44,10 @@ impl Engine {
     }
 
     pub fn set_position(&mut self, pos: Position) {
-        let zobrist = zobrist::zobrist_hash(&pos);
+        let zobrist = pos.zobrist();
         self.pos = pos;
-
-        self.history.clear();
-        self.history.insert(zobrist, 1);
+        self.repetition_table.clear();
+        self.repetition_table.insert(zobrist, 1);
         self.last_hash = zobrist;
     }
 
@@ -74,12 +73,17 @@ impl Engine {
         return false;
     }
 
+    pub fn repetition_count(&self, key: Zobrist) -> u32 {
+        let val = self.repetition_table.get(&key).unwrap_or(&0);
+        *val
+    }
+
     pub fn make_move_unverified(&mut self, mv: Move) {
         self.pos.make_move(mv);
 
-        let zobrist = zobrist::zobrist_hash(&self.pos);
+        let zobrist = self.pos.zobrist();
         self.last_hash = zobrist;
-        *self.history.entry(zobrist).or_insert(0) += 1;
+        *self.repetition_table.entry(zobrist).or_insert(0) += 1;
     }
 
     /// The following methods are for UCI commands
@@ -115,7 +119,7 @@ impl Engine {
     }
 
     pub fn uci_cmd_ucinewgame<W: Write>(&mut self, _: &mut W) {
-        panic!("UCI command 'ucinewgame' is not implemented yet");
+        self.set_position(Position::new());
     }
 
     pub fn uci_cmd_uci<W: Write>(&self, writer: &mut W) {
