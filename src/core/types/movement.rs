@@ -86,7 +86,7 @@ impl Move {
         Self(data)
     }
 
-    pub fn is_none(&self) -> bool {
+    pub fn is_null(&self) -> bool {
         self.0 == 0
     }
 
@@ -101,10 +101,6 @@ impl Move {
     pub fn get_type(&self) -> MoveType {
         let bits = (self.0 >> 12) & 0b11;
         unsafe { std::mem::transmute::<u8, MoveType>(bits as u8) }
-    }
-
-    pub fn is_null(&self) -> bool {
-        self.0 == 0
     }
 
     pub fn get_promotion(&self) -> Option<PieceType> {
