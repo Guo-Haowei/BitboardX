@@ -20,19 +20,18 @@ fn evaluate_material(pos: &Position, color: Color) -> i32 {
     score
 }
 
-fn evaluate_pst(pos: &Position) -> i32 {
-    let mut scores = [0; 2];
+fn evaluate_pst(pos: &Position, color: Color) -> i32 {
+    let mut score = 0;
 
-    for i in 0..Piece::COUNT {
-        let piece = Piece::new(i as u8);
-        let color = piece.color();
+    for i in 0..PieceType::COUNT {
+        let piece = Piece::get_piece(color, PieceType(i));
         let bitboard = pos.bitboards[piece.as_usize()];
         for sq in bitboard.iter() {
-            scores[color.as_usize()] += PST_TABLE[piece.as_usize()][sq.as_u8() as usize];
+            score += PST_TABLE[piece.as_usize()][sq.as_u8() as usize];
         }
     }
 
-    scores[0] - scores[1]
+    score
 }
 
 // @TODO: Implement pawn structure, mobility, rook activity, bishop pair, etc.
@@ -52,7 +51,8 @@ pub fn evaluate(pos: &Position) -> i32 {
     let mut score = 0;
 
     score += evaluate_material(pos, Color::WHITE) - evaluate_material(pos, Color::BLACK);
-    score += evaluate_pst(pos);
+    score += evaluate_pst(pos, Color::WHITE) - evaluate_pst(pos, Color::BLACK);
+
     score += evaluate_king_safety(pos);
 
     if pos.side_to_move == Color::WHITE { score } else { -score }

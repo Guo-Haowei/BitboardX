@@ -6,7 +6,7 @@ use crate::engine::book::*;
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
 
-const DRAW_PENALTY: i32 = MIN + 1000;
+const DRAW_PENALTY: i32 = -1000;
 
 pub struct Searcher {
     evaluation_count: u64,
@@ -181,8 +181,7 @@ impl Searcher {
         }
 
         // @TODO: add ply optimization, if there are more than 20 plys, it's unlikely to find a book move
-        const USE_BOOK: bool = false;
-        // const USE_BOOK: bool = true;
+        const USE_BOOK: bool = true;
         if USE_BOOK {
             if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.last_hash) {
                 for mv in move_list.iter() {
