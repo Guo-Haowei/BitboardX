@@ -141,7 +141,9 @@ impl BitBoard {
             for file in 0..8 {
                 let sq: u8 = rank * 8 + file;
                 s.push(if self.test(sq) { '1' } else { '0' });
-                s.push(' ');
+                if file < 7 {
+                    s.push(' ');
+                }
             }
             s.push('\n');
         }

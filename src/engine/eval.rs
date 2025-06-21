@@ -1,15 +1,6 @@
 use super::piece_square_table::*;
 use crate::core::{position::Position, types::*};
 
-const PIECE_VALUES: [i32; 6] = [
-    100,   // Pawn
-    305,   // Knight
-    305,   // Bishop
-    490,   // Rook
-    1000,  // Queen
-    40000, // King
-];
-
 struct EvaluationData {
     material_score: i32,
     mop_up_score: i32, // score for endgame material
@@ -39,19 +30,21 @@ impl EvaluationData {
 }
 
 struct MaterialInfo {
+    pub color: Color,
     pub material_score: i32,
     pub _num_pawns: i32,
     pub _num_knights: i32,
     pub _num_bishops: i32,
     pub _num_queens: i32,
     pub _num_rooks: i32,
-    pub _my_pawns: BitBoard,
-    pub _enemy_pawns: BitBoard,
+    pub my_pawns: BitBoard,
+    pub enemy_pawns: BitBoard,
     pub endgame_t: f32, // Transition from midgame to endgame (0->1)
 }
 
 impl MaterialInfo {
     fn new(
+        color: Color,
         num_pawns: i32,
         num_knights: i32,
         num_bishops: i32,
@@ -85,14 +78,15 @@ impl MaterialInfo {
         let endgame_t = 1.0 - (endgame_weight_sum as f32 / ENDGAME_START_WEIGHT as f32).min(1.0);
 
         MaterialInfo {
+            color,
             material_score,
             _num_pawns: num_pawns,
             _num_knights: num_knights,
             _num_bishops: num_bishops,
             _num_queens: num_queens,
             _num_rooks: num_rooks,
-            _my_pawns: my_pawns,
-            _enemy_pawns: enemy_pawns,
+            my_pawns,
+            enemy_pawns,
             endgame_t,
         }
     }
@@ -104,7 +98,6 @@ const BISHOP_VALUE: i32 = 320;
 const ROOK_VALUE: i32 = 500;
 const QUEEN_VALUE: i32 = 900;
 
-// const PASSED_PAWN_BONUSES: [i32; 7] = [0, 120, 80, 50, 30, 15, 15];
 // const ISOLATED_PAWN_PENALTY_BY_COUNT: [i32; 9] = [0, -10, -25, -50, -75, -75, -75, -75, -75];
 // const KING_PAWN_SHIELD_SCORES: [i32; 6] = [4, 7, 4, 3, 6, 3];
 
@@ -121,8 +114,8 @@ impl Evaluation {
     }
 
     pub fn evaluate_position(&mut self, pos: &Position) -> i32 {
-        let white_material = self.get_material_info(pos, Color::WHITE);
-        let black_material = self.get_material_info(pos, Color::BLACK);
+        let white_material = Self::get_material_info(pos, Color::WHITE);
+        let black_material = Self::get_material_info(pos, Color::BLACK);
 
         // Score based on material left on the board
         self.white_score.material_score = white_material.material_score;
@@ -134,9 +127,11 @@ impl Evaluation {
         self.black_score.piece_square_score =
             self.evaluate_piece_square_table(pos, Color::BLACK, black_material.endgame_t);
 
-        // Push the king to edge of the board in endgame
-
         // Evaluate pawns (passed, isolated, sheild)
+        self.white_score.pawn_score = self.evaluate_pawns(&white_material);
+        self.black_score.pawn_score = self.evaluate_pawns(&black_material);
+
+        // Push the king to edge of the board in endgame (for endgame checkmate)
 
         let perspective = if pos.side_to_move == Color::WHITE { 1 } else { -1 };
         let score = self.white_score.sum() - self.black_score.sum();
@@ -151,7 +146,7 @@ impl Evaluation {
         score * perspective
     }
 
-    fn get_material_info(&self, pos: &Position, color: Color) -> MaterialInfo {
+    fn get_material_info(pos: &Position, color: Color) -> MaterialInfo {
         let pawn = Piece::get_piece(color, PieceType::PAWN);
         let knight = Piece::get_piece(color, PieceType::KNIGHT);
         let bishop = Piece::get_piece(color, PieceType::BISHOP);
@@ -169,6 +164,7 @@ impl Evaluation {
         let num_queens = pos.bitboards[queen.as_usize()].count() as i32;
 
         MaterialInfo::new(
+            color,
             num_pawns,
             num_knights,
             num_bishops,
@@ -198,7 +194,150 @@ impl Evaluation {
 
         value
     }
+
+    fn evaluate_pawns(&self, material: &MaterialInfo) -> i32 {
+        let mut score = 0;
+        score += Self::evaluate_passed_pawns(material);
+        score
+    }
+
+    fn evaluate_passed_pawns(material: &MaterialInfo) -> i32 {
+        const PASSED_PAWN_BONUSES: [i32; 7] = [0, 120, 80, 50, 30, 15, 15];
+
+        let mut score = 0;
+
+        for sq in material.my_pawns.iter() {
+            let mask = PASSED_PAWN_MASKS[material.color.as_usize()][sq.as_u8() as usize];
+            if (material.enemy_pawns & mask).none() {
+                let (_, rank) = sq.file_rank();
+                debug_assert!(rank.0 < 7);
+                let idx = if material.color == Color::WHITE { rank.0 } else { 7 - rank.0 };
+                score += PASSED_PAWN_BONUSES[idx as usize];
+                log::debug!(
+                    "Passed pawn at {}: score += {} (total: {})",
+                    sq,
+                    PASSED_PAWN_BONUSES[idx as usize],
+                    score
+                );
+            }
+        }
+
+        score
+    }
 }
+
+const FILE_MASKS: [u64; 8] = [
+    0x0101010101010101, // A file
+    0x0202020202020202, // B file
+    0x0404040404040404, // C file
+    0x0808080808080808, // D file
+    0x1010101010101010, // E file
+    0x2020202020202020, // F file
+    0x4040404040404040, // G file
+    0x8080808080808080, // H file
+];
+
+const RANK_MASKS: [u64; 8] = [
+    0x00000000000000FF, // Rank 1
+    0x000000000000FF00, // Rank 2
+    0x0000000000FF0000, // Rank 3
+    0x00000000FF000000, // Rank 4
+    0x000000FF00000000, // Rank 5
+    0x0000FF0000000000, // Rank 6
+    0x00FF000000000000, // Rank 7
+    0xFF00000000000000, // Rank 8
+];
+
+const fn passed_pawn_mask<const IS_WHITE: bool>(square: Square) -> BitBoard {
+    let mut mask = !0u64;
+    let (file, rank) = square.file_rank();
+
+    let mut f = 0i8;
+    while f < 8 {
+        let diff = file.0 as i8 - f;
+        let diff = diff.abs();
+        if diff <= 1 {
+            mask &= !FILE_MASKS[f as usize];
+        }
+
+        f += 1;
+    }
+
+    let mut r = rank.0 as i8;
+    if IS_WHITE {
+        while r >= 0 {
+            mask |= RANK_MASKS[r as usize];
+            r -= 1;
+        }
+    } else {
+        while r < 8 {
+            mask |= RANK_MASKS[r as usize];
+            r += 1;
+        }
+    }
+
+    BitBoard::from(!mask)
+}
+
+const fn passed_pawn_mask_all<const IS_WHITE: bool>() -> [BitBoard; 64] {
+    let mut masks = [BitBoard::new(); 64];
+    let mut sq = 0u8;
+    while sq < 64 {
+        masks[sq as usize] = passed_pawn_mask::<IS_WHITE>(Square::new(sq));
+        sq += 1;
+    }
+    masks
+}
+
+const PASSED_PAWN_MASKS: [[BitBoard; 64]; 2] = [
+    passed_pawn_mask_all::<true>(),  // White
+    passed_pawn_mask_all::<false>(), // White
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_passed_pawn_mask() {
+        const F4_MASK: BitBoard = passed_pawn_mask::<true>(Square::F4);
+
+        assert_eq!(
+            F4_MASK.to_string(),
+            r#"0 0 0 0 1 1 1 0
+0 0 0 0 1 1 1 0
+0 0 0 0 1 1 1 0
+0 0 0 0 1 1 1 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+"#
+        );
+    }
+
+    #[test]
+    fn test_passed_pawn_score() {
+        let fen = "rnbqkbnr/3pp2p/8/6P1/6p1/1P3p2/P1PP4/RNBQKBNR w KQkq - 0 1";
+        let pos = Position::from_fen(fen).unwrap();
+        let white_material = Evaluation::get_material_info(&pos, Color::WHITE);
+        let white_passed_pawns_score = Evaluation::evaluate_passed_pawns(&white_material);
+        assert_eq!(white_passed_pawns_score, 200);
+
+        let black_material = Evaluation::get_material_info(&pos, Color::BLACK);
+        let black_passed_pawns_score = Evaluation::evaluate_passed_pawns(&black_material);
+        assert_eq!(black_passed_pawns_score, 45);
+    }
+}
+
+const PIECE_VALUES: [i32; 6] = [
+    PAWN_VALUE,
+    KNIGHT_VALUE,
+    BISHOP_VALUE,
+    ROOK_VALUE,
+    QUEEN_VALUE,
+    40000, // King
+];
 
 // for simplicity, we use mid-game piece value table
 fn get_piece_value(piece_type: PieceType) -> i32 {
@@ -206,6 +345,7 @@ fn get_piece_value(piece_type: PieceType) -> i32 {
     PIECE_VALUES[piece_type.as_u8() as usize]
 }
 
+// @TODO: refactor
 pub fn move_score_guess(pos: &Position, mv: Move) -> i32 {
     let move_type = mv.get_type();
     let src_sq = mv.src_sq();
