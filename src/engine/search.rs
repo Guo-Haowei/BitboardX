@@ -1,7 +1,6 @@
 use crate::core::{move_gen, position::Position, types::*};
 use crate::engine::book::*;
 use crate::engine::{Engine, eval};
-use crate::logger;
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
@@ -45,7 +44,7 @@ fn alpha_beta_helper(engine: &mut Engine, mut alpha: i32, beta: i32, depth: u8) 
     let repetition = engine.repetition_count(key);
     if repetition >= 2 {
         debug_assert!(repetition == 2); // if we make this move, it will be a draw
-        logger::log(format!("Repetition detected: {}", engine.pos.fen()).to_string());
+        log::debug!("Repetition detected: {}", engine.pos.fen());
         return -DRAW_PENALTY; // draw
     }
 
@@ -139,8 +138,8 @@ pub fn find_best_move(engine: &mut Engine, depth: u8) -> Option<Move> {
                 return Some(mv.clone());
             }
         }
-        logger::log(format!("book move is: {:?}", book_mv.to_string()));
-        logger::log(format!("FEN: {:?}", engine.pos.fen()));
+        log::debug!("book move is: {:?}", book_mv.to_string());
+        log::debug!("FEN: {:?}", engine.pos.fen());
         panic!("Should not happen, book move not found in legal moves");
     }
 

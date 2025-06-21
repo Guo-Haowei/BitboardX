@@ -1,7 +1,7 @@
-use super::super::position::{Position, SmallSquareList};
-use super::super::types::*;
+use crate::core::position::{Position, SmallSquareList};
 use crate::core::types::bitboard::*;
-use crate::core::utils;
+use crate::core::types::*;
+use crate::utils;
 
 const SHIFT_FUNCS: [fn(&BitBoard) -> BitBoard; 8] = [
     BitBoard::shift_north,

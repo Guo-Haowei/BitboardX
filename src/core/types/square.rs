@@ -1,7 +1,8 @@
-use super::super::utils;
-use super::bitboard::BitBoard;
 use paste::paste;
 use std::fmt;
+
+use super::bitboard::BitBoard;
+use crate::utils;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct File(pub u8);

@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::core::{move_gen, utils};
-use crate::core::{position::Position, types::Move, zobrist::Zobrist};
+use crate::core::{move_gen, position::Position, types::Move, zobrist::Zobrist};
 use crate::engine::search;
-use crate::logger;
+use crate::utils;
 
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
@@ -104,10 +103,7 @@ impl Engine {
                 return false;
             }
             _ => {
-                logger::log(
-                    format!("Unknown command: '{}'. Type help for more information.", input)
-                        .to_string(),
-                );
+                log::error!("Unknown command: '{}'. Type help for more information.", input);
             }
         }
 
@@ -136,7 +132,7 @@ impl Engine {
         let mut parts: Vec<&str> = args.split_whitespace().collect();
 
         if parts.is_empty() {
-            logger::log("Error: position command requires arguments".to_string());
+            log::error!("Error: position command requires arguments");
             return;
         }
 
@@ -153,13 +149,13 @@ impl Engine {
                         parts.drain(0..=6); // remove the FEN parts
                     }
                     Err(err) => {
-                        logger::log(format!("Error: {}", err));
+                        log::error!("Error: {}", err);
                         return;
                     }
                 }
             }
             _ => {
-                logger::log("Error: Invalid position command".to_string());
+                log::error!("Error: Invalid position command");
                 return;
             }
         }
@@ -169,16 +165,13 @@ impl Engine {
                 ["moves", moves @ ..] => {
                     for move_str in moves {
                         if !self.make_move(move_str) {
-                            logger::log(format!("Error: Invalid move '{}'", move_str));
+                            log::error!("Error: Invalid move '{}'", move_str);
                             break;
                         }
                     }
                 }
                 _ => {
-                    logger::log(format!(
-                        "Warning: Unrecognized position command parts: {:?}",
-                        parts
-                    ));
+                    log::error!("Warning: Unrecognized position command parts: {:?}", parts);
                 }
             }
         }

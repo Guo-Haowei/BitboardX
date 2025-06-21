@@ -2,9 +2,10 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use crate::{
-    core::{types::*, utils},
+    core::types::*,
     game::{player::GuiPlayer, *},
     // logger,
+    utils::*,
 };
 
 #[wasm_bindgen]
@@ -117,7 +118,7 @@ impl WasmGame {
     }
 
     pub fn debug_string(&self) -> String {
-        utils::debug_string(self.internal.pos())
+        debug_string(self.internal.pos())
     }
 
     // @TODO: game status, running, draw, white wins, black wins

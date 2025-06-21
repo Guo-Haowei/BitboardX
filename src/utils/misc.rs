@@ -1,4 +1,4 @@
-use super::position::Position;
+use crate::core::position::Position;
 use crate::core::types::*;
 
 #[cfg(not(target_arch = "wasm32"))]

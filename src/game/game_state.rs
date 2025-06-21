@@ -1,7 +1,7 @@
 use crate::core::move_gen;
 use crate::core::position::*;
 use crate::core::types::{Move, MoveList};
-use crate::core::utils;
+use crate::utils;
 
 use super::player::*;
 
