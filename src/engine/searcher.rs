@@ -183,7 +183,7 @@ impl Searcher {
         }
 
         // @TODO: add ply optimization, if there are more than 20 plys, it's unlikely to find a book move
-        const USE_BOOK: bool = false;
+        const USE_BOOK: bool = true;
         if USE_BOOK {
             if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.last_hash) {
                 for mv in move_list.iter() {
