@@ -148,7 +148,11 @@ pub fn find_best_move(engine: &mut Engine, depth: u8) -> Option<Move> {
 
     let mv = alpha_beta(engine, depth);
 
-    log::trace!("Best move found: {:?}", mv.to_string());
+    if mv.is_some() {
+        log::trace!("Best move found: {:?}", mv.unwrap().to_string());
+    } else {
+        log::trace!("No best move found, returning None");
+    }
 
     mv
 }
