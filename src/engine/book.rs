@@ -150,8 +150,10 @@ impl Book {
             let entry = entry.unwrap();
             let mv = entry.to_move();
             log::debug!(
-                "[DEBUG] -- found book move: {} (weight: {}/{})",
+                "found book move: {} out of {} moves, rand: {} (weight: {}/{})",
                 mv.to_string(),
+                entries.moves.len(),
+                rand,
                 entry.weight,
                 entries.total_weight
             );

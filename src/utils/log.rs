@@ -2,6 +2,7 @@
 fn init_logging() {
     use chrono::Local;
     use fern::Dispatch;
+    use log::LevelFilter;
 
     let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
 
@@ -15,6 +16,10 @@ fn init_logging() {
         .open(&log_path)
         .expect("Failed to open log file");
 
+    let file_dispatch = Dispatch::new().level(LevelFilter::Trace).chain(log_file);
+
+    let console_dispatch = Dispatch::new().level(LevelFilter::Debug).chain(std::io::stderr());
+
     Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -24,9 +29,8 @@ fn init_logging() {
                 message
             ))
         })
-        .level(log::LevelFilter::Trace)
-        .chain(std::io::stderr())
-        .chain(log_file)
+        .chain(file_dispatch)
+        .chain(console_dispatch)
         .apply()
         .expect("Failed to initialize logger");
 

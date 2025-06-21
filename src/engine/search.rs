@@ -123,6 +123,7 @@ fn sort_moves(pos: &Position, move_list: &MoveList) -> Vec<Move> {
 
 pub fn find_best_move(engine: &mut Engine, depth: u8) -> Option<Move> {
     debug_assert!(depth > 0);
+
     let move_list = move_gen::legal_moves(&engine.pos);
     if move_list.len() == 0 {
         return None; // no legal moves
@@ -143,7 +144,13 @@ pub fn find_best_move(engine: &mut Engine, depth: u8) -> Option<Move> {
         panic!("Should not happen, book move not found in legal moves");
     }
 
-    alpha_beta(engine, depth)
+    log::trace!("Searching for best move at depth: {}", depth);
+
+    let mv = alpha_beta(engine, depth);
+
+    log::trace!("Best move found: {:?}", mv.to_string());
+
+    mv
 }
 
 #[cfg(test)]
