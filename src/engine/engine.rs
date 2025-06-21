@@ -52,9 +52,10 @@ impl Engine {
     }
 
     // Assume that the move is legal, otherwise it might crash the engine
-    pub fn make_move(&mut self, mv: &str) -> bool {
-        let mv = utils::parse_move(mv);
+    pub fn make_move(&mut self, mv_str: &str) -> bool {
+        let mv = utils::parse_move(mv_str);
         if mv.is_none() {
+            log::error!("Failed to parse move: '{}'", mv_str);
             return false;
         }
 
@@ -70,6 +71,7 @@ impl Engine {
             }
         }
 
+        log::error!("'{}' is not a legal move", mv_str);
         return false;
     }
 

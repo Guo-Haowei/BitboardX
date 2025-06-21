@@ -8,7 +8,7 @@ dist/
 frontend/chess/
 
 # build artifacts
-*.exe
+# *.exe
 
 # user-specific files
 *.log
