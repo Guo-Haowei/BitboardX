@@ -27,10 +27,16 @@ impl BitBoard {
     pub const SE: i32 = BitBoard::S + BitBoard::E;
     pub const SW: i32 = BitBoard::S + BitBoard::W;
 
-    pub const MASK_A: u64 = !0x0101010101010101;
-    pub const MASK_B: u64 = !0x0202020202020202;
-    pub const MASK_G: u64 = !0x4040404040404040;
-    pub const MASK_H: u64 = !0x8080808080808080;
+    pub const MASK_A: u64 = 0x0101010101010101;
+    pub const MASK_B: u64 = 0x0202020202020202;
+    pub const MASK_C: u64 = 0x0404040404040404;
+    pub const MASK_D: u64 = 0x0808080808080808;
+    pub const MASK_E: u64 = 0x1010101010101010;
+    pub const MASK_F: u64 = 0x2020202020202020;
+    pub const MASK_G: u64 = 0x4040404040404040;
+    pub const MASK_H: u64 = 0x8080808080808080;
+    // @TODO: makes no sence to have ! here,
+    // refactor it
     pub const MASK_R1: u64 = !0x00000000000000FF;
     pub const MASK_R2: u64 = !0x000000000000FF00;
     pub const MASK_R7: u64 = !0x00FF000000000000;
@@ -92,11 +98,11 @@ impl BitBoard {
     }
 
     pub fn shift_east(&self) -> BitBoard {
-        BitBoard(self.0 & BitBoard::MASK_H).shift(BitBoard::E)
+        BitBoard(self.0 & !BitBoard::MASK_H).shift(BitBoard::E)
     }
 
     pub fn shift_west(&self) -> BitBoard {
-        BitBoard(self.0 & BitBoard::MASK_A).shift(BitBoard::W)
+        BitBoard(self.0 & !BitBoard::MASK_A).shift(BitBoard::W)
     }
 
     pub fn shift_north(&self) -> BitBoard {
@@ -108,19 +114,19 @@ impl BitBoard {
     }
 
     pub fn shift_ne(&self) -> BitBoard {
-        BitBoard(self.0 & BitBoard::MASK_H & BitBoard::MASK_R8).shift(BitBoard::NE)
+        BitBoard(self.0 & !BitBoard::MASK_H & BitBoard::MASK_R8).shift(BitBoard::NE)
     }
 
     pub fn shift_nw(&self) -> BitBoard {
-        BitBoard(self.0 & BitBoard::MASK_A & BitBoard::MASK_R8).shift(BitBoard::NW)
+        BitBoard(self.0 & !BitBoard::MASK_A & BitBoard::MASK_R8).shift(BitBoard::NW)
     }
 
     pub fn shift_se(&self) -> BitBoard {
-        BitBoard(self.0 & BitBoard::MASK_H & BitBoard::MASK_R1).shift(BitBoard::SE)
+        BitBoard(self.0 & !BitBoard::MASK_H & BitBoard::MASK_R1).shift(BitBoard::SE)
     }
 
     pub fn shift_sw(&self) -> BitBoard {
-        BitBoard(self.0 & BitBoard::MASK_A & BitBoard::MASK_R1).shift(BitBoard::SW)
+        BitBoard(self.0 & !BitBoard::MASK_A & BitBoard::MASK_R1).shift(BitBoard::SW)
     }
 
     pub fn count(&self) -> u32 {

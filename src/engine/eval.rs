@@ -98,7 +98,6 @@ const BISHOP_VALUE: i32 = 320;
 const ROOK_VALUE: i32 = 500;
 const QUEEN_VALUE: i32 = 900;
 
-// const ISOLATED_PAWN_PENALTY_BY_COUNT: [i32; 9] = [0, -10, -25, -50, -75, -75, -75, -75, -75];
 // const KING_PAWN_SHIELD_SCORES: [i32; 6] = [4, 7, 4, 3, 6, 3];
 
 // const ENDGAME_MATERIAL_START: i32 = ROOK_VALUE * 2 + BISHOP_VALUE + KNIGHT_VALUE;
@@ -198,6 +197,7 @@ impl Evaluation {
     fn evaluate_pawns(&self, material: &MaterialInfo) -> i32 {
         let mut score = 0;
         score += Self::evaluate_passed_pawns(material);
+        score += Self::evaluate_isolated_pawns(material);
         score
     }
 
@@ -213,16 +213,26 @@ impl Evaluation {
                 debug_assert!(rank.0 < 7);
                 let idx = if material.color == Color::WHITE { rank.0 } else { 7 - rank.0 };
                 score += PASSED_PAWN_BONUSES[idx as usize];
-                log::debug!(
-                    "Passed pawn at {}: score += {} (total: {})",
-                    sq,
-                    PASSED_PAWN_BONUSES[idx as usize],
-                    score
-                );
             }
         }
 
         score
+    }
+
+    fn evaluate_isolated_pawns(material: &MaterialInfo) -> i32 {
+        const ISOLATED_PAWN_PENALTY_BY_COUNT: [i32; 9] =
+            [0, -10, -25, -50, -75, -75, -75, -75, -75];
+
+        let mut isolated_count = 0;
+        for sq in material.my_pawns.iter() {
+            let (file, _) = sq.file_rank();
+            let mask = ISOLATED_PAWN_MASKS[file.0 as usize];
+            if (material.my_pawns & mask).none() {
+                isolated_count += 1;
+            }
+        }
+
+        ISOLATED_PAWN_PENALTY_BY_COUNT[isolated_count as usize]
     }
 }
 
@@ -247,6 +257,20 @@ const RANK_MASKS: [u64; 8] = [
     0x00FF000000000000, // Rank 7
     0xFF00000000000000, // Rank 8
 ];
+
+const fn adjacent_files_mask(file: File) -> BitBoard {
+    let mut mask = 0u64;
+    let f = file.0 as i8;
+
+    if f > 0 {
+        mask |= FILE_MASKS[(f - 1) as usize];
+    }
+    if f < 7 {
+        mask |= FILE_MASKS[(f + 1) as usize];
+    }
+
+    BitBoard::from(mask)
+}
 
 const fn passed_pawn_mask<const IS_WHITE: bool>(square: Square) -> BitBoard {
     let mut mask = !0u64;
@@ -279,6 +303,17 @@ const fn passed_pawn_mask<const IS_WHITE: bool>(square: Square) -> BitBoard {
     BitBoard::from(!mask)
 }
 
+const ISOLATED_PAWN_MASKS: [BitBoard; 8] = [
+    adjacent_files_mask(File::A),
+    adjacent_files_mask(File::B),
+    adjacent_files_mask(File::C),
+    adjacent_files_mask(File::D),
+    adjacent_files_mask(File::E),
+    adjacent_files_mask(File::F),
+    adjacent_files_mask(File::G),
+    adjacent_files_mask(File::H),
+];
+
 const fn passed_pawn_mask_all<const IS_WHITE: bool>() -> [BitBoard; 64] {
     let mut masks = [BitBoard::new(); 64];
     let mut sq = 0u8;
@@ -299,6 +334,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_adjacent_files_mask() {
+        let mask = adjacent_files_mask(File::A);
+        assert_eq!(mask.get(), BitBoard::MASK_B);
+        let mask = adjacent_files_mask(File::B);
+        assert_eq!(mask.get(), BitBoard::MASK_A | BitBoard::MASK_C);
+        let mask = adjacent_files_mask(File::F);
+        assert_eq!(mask.get(), BitBoard::MASK_E | BitBoard::MASK_G);
+        let mask = adjacent_files_mask(File::H);
+        assert_eq!(mask.get(), BitBoard::MASK_G);
+    }
+
+    #[test]
     fn test_passed_pawn_mask() {
         const F4_MASK: BitBoard = passed_pawn_mask::<true>(Square::F4);
 
@@ -317,7 +364,7 @@ mod tests {
     }
 
     #[test]
-    fn test_passed_pawn_score() {
+    fn test_passed_pawns() {
         let fen = "rnbqkbnr/3pp2p/8/6P1/6p1/1P3p2/P1PP4/RNBQKBNR w KQkq - 0 1";
         let pos = Position::from_fen(fen).unwrap();
         let white_material = Evaluation::get_material_info(&pos, Color::WHITE);
@@ -327,6 +374,22 @@ mod tests {
         let black_material = Evaluation::get_material_info(&pos, Color::BLACK);
         let black_passed_pawns_score = Evaluation::evaluate_passed_pawns(&black_material);
         assert_eq!(black_passed_pawns_score, 45);
+    }
+
+    #[test]
+    fn test_isolated_pawns() {
+        let pos = Position::new();
+        let white_material = Evaluation::get_material_info(&pos, Color::WHITE);
+        let black_material = Evaluation::get_material_info(&pos, Color::BLACK);
+        assert_eq!(Evaluation::evaluate_isolated_pawns(&white_material), 0);
+        assert_eq!(Evaluation::evaluate_isolated_pawns(&black_material), 0);
+
+        let pos = Position::from_fen("rnbqkbnr/pp3ppp/8/1P1p2P1/6P1/8/3PP3/RNBQKBNR b KQkq - 0 1")
+            .unwrap();
+        let white_material = Evaluation::get_material_info(&pos, Color::WHITE);
+        let black_material = Evaluation::get_material_info(&pos, Color::BLACK);
+        assert_eq!(Evaluation::evaluate_isolated_pawns(&white_material), -50);
+        assert_eq!(Evaluation::evaluate_isolated_pawns(&black_material), -10);
     }
 }
 
