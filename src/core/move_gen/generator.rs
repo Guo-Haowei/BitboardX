@@ -468,18 +468,18 @@ fn knight_mask<const ATTACK_MASK: bool>(sq: Square, my_occupancy: BitBoard) -> B
 
     const B_AB: u64 = !(BitBoard::MASK_A | BitBoard::MASK_B);
     const B_GH: u64 = !(BitBoard::MASK_G | BitBoard::MASK_H);
-    const B_12: u64 = BitBoard::MASK_R1 & BitBoard::MASK_R2;
-    const B_78: u64 = BitBoard::MASK_R7 & BitBoard::MASK_R8;
+    const B_12: u64 = !(BitBoard::MASK_1 | BitBoard::MASK_2);
+    const B_78: u64 = !(BitBoard::MASK_7 | BitBoard::MASK_8);
 
     moves |= BitBoard::from(bb & !BitBoard::MASK_H & B_78).shift(BitBoard::NE + BitBoard::N) & mask;
     moves |= BitBoard::from(bb & !BitBoard::MASK_A & B_78).shift(BitBoard::NW + BitBoard::N) & mask;
     moves |= BitBoard::from(bb & !BitBoard::MASK_H & B_12).shift(BitBoard::SE + BitBoard::S) & mask;
     moves |= BitBoard::from(bb & !BitBoard::MASK_A & B_12).shift(BitBoard::SW + BitBoard::S) & mask;
 
-    moves |= BitBoard::from(bb & B_AB & BitBoard::MASK_R8).shift(BitBoard::NW + BitBoard::W) & mask;
-    moves |= BitBoard::from(bb & B_AB & BitBoard::MASK_R1).shift(BitBoard::SW + BitBoard::W) & mask;
-    moves |= BitBoard::from(bb & B_GH & BitBoard::MASK_R8).shift(BitBoard::NE + BitBoard::E) & mask;
-    moves |= BitBoard::from(bb & B_GH & BitBoard::MASK_R1).shift(BitBoard::SE + BitBoard::E) & mask;
+    moves |= BitBoard::from(bb & B_AB & !BitBoard::MASK_8).shift(BitBoard::NW + BitBoard::W) & mask;
+    moves |= BitBoard::from(bb & B_AB & !BitBoard::MASK_1).shift(BitBoard::SW + BitBoard::W) & mask;
+    moves |= BitBoard::from(bb & B_GH & !BitBoard::MASK_8).shift(BitBoard::NE + BitBoard::E) & mask;
+    moves |= BitBoard::from(bb & B_GH & !BitBoard::MASK_1).shift(BitBoard::SE + BitBoard::E) & mask;
 
     moves
 }
