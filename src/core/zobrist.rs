@@ -5,6 +5,12 @@ use crate::core::types::{CastlingRight, Color, Piece, Square};
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ZobristHash(pub u64);
 
+impl ZobristHash {
+    pub fn null() -> Self {
+        ZobristHash(0)
+    }
+}
+
 pub fn zobrist_hash(pos: &Position) -> ZobristHash {
     let mut weed: u64 = 0;
 

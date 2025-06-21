@@ -56,7 +56,7 @@ pub struct Move(u16);
 impl Move {
     const SQUARE_MASK: u16 = 0b111111; // 6 bits for square (0-63)
 
-    pub fn null() -> Self {
+    pub const fn null() -> Self {
         Self(0)
     }
 

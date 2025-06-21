@@ -3,6 +3,6 @@ mod engine;
 mod eval;
 mod piece_square_table;
 mod searcher;
-mod transposition_table;
+mod ttable;
 
 pub use engine::*;

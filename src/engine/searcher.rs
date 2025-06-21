@@ -8,6 +8,7 @@ const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
 
 const DRAW_PENALTY: i32 = -50;
+const MATE_PENALTY: i32 = -40000;
 
 pub struct Searcher {
     evaluation_count: u64,
@@ -91,101 +92,99 @@ impl Searcher {
         alpha
     }
 
-    fn alpha_beta_helper(
+    fn negamax(
         &mut self,
         engine: &mut Engine,
+        ply_remaining: u8,
+        ply_max: u8,
         mut alpha: i32,
         beta: i32,
-        depth: u8,
-    ) -> i32 {
-        let key = engine.pos.zobrist();
-        // threefold repetition check
+    ) -> (Move, i32) {
+        let key: crate::core::zobrist::ZobristHash = engine.pos.zobrist();
+        let _alpha_orig = alpha;
+
         let repetition = engine.repetition_count(key);
+        // threefold repetition check
         if repetition >= 2 {
-            debug_assert!(repetition == 2); // if we make this move, it will be a draw
-            // treat as loss to avoid threefold repetition for now
-            return DRAW_PENALTY; // draw
+            debug_assert!(repetition == 2);
+            return (Move::null(), DRAW_PENALTY);
         }
 
-        // force it to a number that's smaller than actual 100 plys
-        if engine.pos.halfmove_clock > 80 {
-            // 50-move rule check
-            return DRAW_PENALTY; // draw
+        // 50-move rule check
+        if engine.pos.halfmove_clock > 99 {
+            return (Move::null(), DRAW_PENALTY);
         }
 
+        // checkmate or stalemate
         let move_list = move_gen::legal_moves(&engine.pos);
-
         if move_list.len() == 0 {
-            return if engine.pos.is_in_check() {
-                MIN
+            let score = if engine.pos.is_in_check() {
+                MATE_PENALTY - ply_remaining as i32 // move that leads to checkmate in fewest plys is better
             } else {
                 DRAW_PENALTY
-                // stalemate
             };
+            return (Move::null(), score);
         }
 
-        if depth == 0 {
-            // use a hard code depth of 4 for quiescence search
-            return self.evaluate(&engine.pos);
+        if ply_remaining == 0 {
+            let score = self.evaluate(&engine.pos);
+            return (Move::null(), score);
         }
+
+        let mut best_move = Move::null();
+
+        // @TODO: probe transposition table for a move
 
         let move_list = sort_moves(&engine.pos, &move_list);
 
+        let mut i = move_list.len() - 1;
         for mv in move_list.iter() {
             let undo_state = self.make_move(&mut engine.pos, mv);
 
-            let score = -self.alpha_beta_helper(engine, -beta, -alpha, depth - 1);
+            let (_, score) = self.negamax(engine, ply_remaining - 1, ply_max, -beta, -alpha);
+            let score = -score; // negamax
 
-            self.unmake_move(&mut engine.pos, mv, &undo_state);
-
-            alpha = alpha.max(score);
-            if alpha >= beta {
-                break; // beta cut-off
+            if ply_max == ply_remaining {
+                log::debug!(
+                    "move '{}' has score {} (ply remaining: {})",
+                    mv.to_string(),
+                    score,
+                    ply_remaining
+                );
             }
-        }
-
-        alpha
-    }
-
-    fn negamax(&mut self, engine: &mut Engine, depth: u8) -> Option<Move> {
-        debug_assert!(depth > 0);
-        let move_list = move_gen::legal_moves(&engine.pos);
-        if move_list.len() == 0 {
-            return None; // no legal moves
-        }
-
-        let mut alpha = MIN;
-        let mut final_move = None;
-
-        let move_list = sort_moves(&engine.pos, &move_list);
-
-        for mv in move_list.iter() {
-            let undo_state = self.make_move(&mut engine.pos, mv);
-            let score = -self.alpha_beta_helper(engine, alpha, MAX, depth - 1);
 
             self.unmake_move(&mut engine.pos, mv, &undo_state);
 
-            if score >= alpha {
+            if alpha <= score {
                 alpha = score;
-                final_move = Some(*mv);
+                // @TODO: two posible moves???
+                best_move = mv.clone();
             }
+
+            // Move was *too* good, opponent will choose a different move earlier on to avoid this position.
+            // (Beta-cutoff / Fail high)
+            if alpha >= beta {
+                if ply_max == ply_remaining {
+                    log::debug!("beta cut-off without evaluating {} moves", i);
+                }
+                return (best_move, beta);
+            }
+            i -= 1;
         }
 
-        final_move
+        // @TODO: store the best move in transposition table
+
+        (best_move, alpha)
     }
 
     pub fn find_best_move(&mut self, engine: &mut Engine, depth: u8) -> Option<Move> {
         debug_assert!(depth > 0);
 
-        let move_list = move_gen::legal_moves(&engine.pos);
-        if move_list.len() == 0 {
-            return None; // no legal moves
-        }
-
         // @TODO: add ply optimization, if there are more than 20 plys, it's unlikely to find a book move
         const USE_BOOK: bool = true;
         if USE_BOOK {
             if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.last_hash) {
+                let move_list = move_gen::legal_moves(&engine.pos);
                 for mv in move_list.iter() {
                     if mv.src_sq() == book_mv.src_sq()
                         && mv.dst_sq() == book_mv.dst_sq()
@@ -200,19 +199,14 @@ impl Searcher {
             }
         }
 
-        let mv = self.negamax(engine, depth);
+        let (mv, score) = self.negamax(engine, depth, depth, MIN, MAX);
 
-        log::debug!("{} nodes evaluated at depth: {}", self.evaluation_count, depth);
-        match mv {
-            Some(mv) => {
-                log::debug!("best move found: {:?}", mv.to_string());
-            }
-            None => {
-                log::debug!("no best move found at depth: {}", depth);
-            }
+        if mv.is_null() {
+            log::debug!("no best move found at depth: {}", depth);
+            return None;
         }
 
-        mv
+        Some(mv)
     }
 }
 

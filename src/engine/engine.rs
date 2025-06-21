@@ -3,6 +3,7 @@ use std::io::Write;
 
 use crate::core::{move_gen, position::Position, types::Move, zobrist::ZobristHash};
 use crate::engine::searcher;
+use crate::engine::ttable::TTable;
 use crate::utils;
 
 const NAME: &str = "BitboardX";
@@ -14,6 +15,7 @@ pub struct Engine {
     pub(super) pos: Position,
     pub(super) repetition_table: HashMap<ZobristHash, u32>, // for threefold detection
     pub(super) last_hash: ZobristHash,
+    pub(super) tt: TTable,
 }
 
 impl Engine {
@@ -35,7 +37,16 @@ impl Engine {
         let mut repetition_table = HashMap::new();
         repetition_table.insert(last_hash, 1);
 
-        Ok(Self { pos, repetition_table, last_hash })
+        Ok(Self { pos, repetition_table, last_hash, tt: TTable::new() })
+    }
+
+    pub fn reset(&mut self) {
+        self.set_position(Position::new());
+        let last_hash = self.pos.zobrist();
+        self.last_hash = last_hash;
+        self.repetition_table.clear();
+        self.repetition_table.insert(last_hash, 1);
+        self.tt.clear();
     }
 
     pub fn best_move(&mut self, depth: u8) -> Option<Move> {
