@@ -35,5 +35,10 @@ named_test!(should_capture_queen, {
     assert_eq!(mv.to_string(), "e3f1");
 });
 
-// @TODO: avoid check mate
-// 3r2k1/1p3p1p/6p1/8/5n2/1R1b1P2/PP1P1b1P/R1BK4 w - - 0 1
+named_test!(should_avoid_checkmate, {
+    let fen = "3r2k1/1p3p1p/6p1/8/5n2/1R1b1P2/PP1P1b1P/R1BK4 w - - 0 1";
+    let mut engine = Engine::from_fen(fen).unwrap();
+    let mv = engine.best_move(6).unwrap();
+    assert_ne!(mv.to_string(), "b2b7");
+});
+// iterative deepening
