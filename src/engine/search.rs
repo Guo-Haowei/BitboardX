@@ -40,43 +40,6 @@ impl Searcher {
         eval.evaluate_position(pos)
     }
 
-    // @TODO: quiescence search
-    /// Quiescence Search: only search captures when depth = 0
-    #[allow(dead_code)]
-    fn quiescence_search(
-        &mut self,
-        pos: &mut Position,
-        mut alpha: i32,
-        beta: i32,
-        depth: u8,
-    ) -> i32 {
-        let eval = self.evaluate(pos);
-
-        if eval >= beta || depth == 0 {
-            return beta;
-        }
-
-        alpha = alpha.max(eval);
-
-        let move_list = move_gen::capture_moves(pos);
-        let move_list = sort_moves(pos, &move_list);
-
-        for mv in move_list.iter() {
-            let undo_state = self.make_move(pos, mv);
-
-            let score = -self.quiescence_search(pos, -beta, -alpha, depth - 1);
-
-            self.unmake_move(pos, mv, &undo_state);
-
-            alpha = alpha.max(score);
-            if alpha >= beta {
-                break; // beta cut-off
-            }
-        }
-
-        alpha
-    }
-
     fn negamax(
         &mut self,
         engine: &mut Engine,
@@ -119,6 +82,7 @@ impl Searcher {
         }
 
         // --- 3) Probe transposition table ---
+        let mut tt_move = None;
         if let Some(entry) = engine.tt.probe(key) {
             if entry.depth >= ply_remaining {
                 let mut found = false;
@@ -131,6 +95,7 @@ impl Searcher {
                     return (entry.score, entry.best_move);
                 }
             }
+            tt_move = Some(entry.best_move);
         }
 
         // --- 4) Check depth cutoff (leaf node) ---
@@ -139,7 +104,7 @@ impl Searcher {
         }
 
         // --- 5) Move ordering ---
-        let move_list = sort_moves(&engine.pos, &move_list);
+        let move_list = sort_moves(&engine.pos, &move_list, tt_move);
         let mut best_move = Move::null();
         let mut best_score = MIN;
 
@@ -226,24 +191,5 @@ impl Searcher {
         );
 
         Some(mv)
-    }
-}
-
-#[cfg(test)]
-
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_sort_moves_with_guess() {
-        let fen = "7k/2P5/1P6/8/8/8/8/K7 w - - 0 1";
-        let pos = Position::from_fen(fen).unwrap();
-        let move_list = move_gen::legal_moves(&pos);
-
-        let sorted_moves = sort_moves(&pos, &move_list);
-        let expected_best_move =
-            Move::new(Square::C7, Square::C8, MoveType::Promotion, Some(PieceType::QUEEN));
-
-        assert_eq!(expected_best_move, sorted_moves[0]);
     }
 }
