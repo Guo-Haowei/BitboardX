@@ -12,10 +12,10 @@ const MAX: i32 = i32::MAX;
 const DRAW_PENALTY: i32 = -50;
 const IMMEDIATE_MATE_SCORE: i32 = 40000;
 
-const DEBUG_PRINT: bool = false;
-macro_rules! if_debug_print {
+macro_rules! if_debug_search {
     ($e:expr) => {
-        if DEBUG_PRINT {
+        // @TODO: change to false if you want to disable debug search logging
+        if true {
             $e
         }
     };
@@ -125,17 +125,32 @@ impl Searcher {
 
             let (score, _) = self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
             let score = -score; // Negate the score for the opponent
+            if_debug_search!({
+                if ply_remaining == max_ply {
+                    log::debug!(
+                        "ply: {}, move: {}, score: {}, alpha: {}, beta: {}",
+                        ply_remaining,
+                        mv.to_string(),
+                        score,
+                        alpha,
+                        beta
+                    );
+                }
+            });
 
             self.unmake_move(&mut engine.pos, mv, &undo_state);
 
-            if score >= best_score {
+            // because we updated alpha every search,
+            // from now on all moves will have at least alpha score
+            // so we can only update best_move if score is strictly better than previous score
+            if score > best_score {
                 best_score = score;
                 best_move = mv;
             }
 
             alpha = alpha.max(score);
             if alpha >= beta {
-                if_debug_print!(if max_ply - ply_remaining <= 2 && ply_remaining > 1 {
+                if_debug_search!(if max_ply - ply_remaining <= 2 && ply_remaining > 1 {
                     log::debug!("{}/{} nodes pruned", mv_left, move_list.len());
                 });
 

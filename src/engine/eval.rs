@@ -16,7 +16,14 @@ const PIECE_VALUES: [i32; 6] = [
     40000, // King
 ];
 
-// for simplicity, we use mid-game piece value table
+// macro_rules! if_debug_search {
+//     ($e:expr) => {
+//         if false {
+//             $e
+//         }
+//     };
+// }
+
 pub fn get_piece_value(piece_type: PieceType) -> i32 {
     assert!(piece_type != PieceType::NONE, "Piece must not be NONE");
     PIECE_VALUES[piece_type.as_u8() as usize]
