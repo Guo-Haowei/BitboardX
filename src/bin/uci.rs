@@ -11,6 +11,8 @@ fn main() -> Result<()> {
     let mut rl = DefaultEditor::new()?;
     // let _ = rl.load_history("history.txt").is_err();
 
+    // @TODO: take out UCI logic from the engine and put it in a separate module
+    // @TODO: get rid of rustyline dependency, use std::io instead
     loop {
         let readline = rl.readline(">> ");
         match readline {
