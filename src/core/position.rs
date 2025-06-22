@@ -41,7 +41,7 @@ impl CheckerList {
 // @TODO store in undo state
 
 #[derive(Debug, Clone, Copy)]
-pub struct UndoState {
+pub struct PositionState {
     pub side_to_move: Color,
     pub castling_rights: u8,
     pub en_passant: Option<Square>,
@@ -54,6 +54,7 @@ pub struct UndoState {
     pub attack_mask: [BitBoard; Color::COUNT],
     pub pin_map: [BitBoard; Color::COUNT],
     pub checkers: [CheckerList; Color::COUNT],
+    pub hash: ZobristHash,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -61,7 +62,7 @@ pub struct Position {
     /// Data used to serialize/deserialize FEN.
     pub bitboards: [BitBoard; Piece::COUNT],
 
-    pub state: UndoState,
+    pub state: PositionState,
 }
 
 impl Position {
@@ -93,7 +94,7 @@ impl Position {
         let halfmove_clock = utils::parse_halfmove_clock(parts[4])?;
         let fullmove_number = utils::parse_fullmove_number(parts[5])?;
 
-        let state = UndoState {
+        let state = PositionState {
             side_to_move,
             castling_rights: castling,
             en_passant,
@@ -104,6 +105,7 @@ impl Position {
             attack_mask: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
+            hash: ZobristHash(0),
         };
 
         let mut pos = Position { bitboards, state };
@@ -125,10 +127,6 @@ impl Position {
             self.state.halfmove_clock,
             self.state.fullmove_number
         )
-    }
-
-    pub fn hash(&self) -> ZobristHash {
-        zobrist::zobrist_hash(&self)
     }
 
     pub fn white_to_move(&self) -> bool {
@@ -199,34 +197,11 @@ impl Position {
         checker_count != 0
     }
 
-    fn update_attack_map_and_checker(&mut self) {
-        let mut checkers: [CheckerList; Color::COUNT] = [CheckerList::new(); Color::COUNT];
-
-        for color in [Color::WHITE, Color::BLACK] {
-            let mut attack_mask = BitBoard::new();
-            let opponent = color.flip();
-            let king_sq = self.get_king_square(opponent);
-            for i in 0..PieceType::COUNT {
-                let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
-                let piece = Piece::get_piece(color, piece_type);
-                attack_mask |= move_gen::calc_attack_map_impl(
-                    self,
-                    piece,
-                    king_sq,
-                    &mut checkers[opponent.as_usize()],
-                );
-            }
-            self.state.attack_mask[color.as_usize()] = attack_mask;
-        }
-
-        self.state.checkers = checkers;
-    }
-
-    pub fn make_move(&mut self, mv: Move) -> UndoState {
+    pub fn make_move(&mut self, mv: Move) -> PositionState {
         internal::make_move(self, mv)
     }
 
-    pub fn unmake_move(&mut self, mv: Move, undo_state: &UndoState) {
+    pub fn unmake_move(&mut self, mv: Move, undo_state: &PositionState) {
         internal::unmake_move(self, mv, undo_state)
     }
 }

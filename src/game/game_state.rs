@@ -13,8 +13,8 @@ pub struct GameState {
     pub pos_and_moves: String,
 
     // undo and redo
-    undo_stack: Vec<(Move, UndoState)>,
-    redo_stack: Vec<(Move, UndoState)>,
+    undo_stack: Vec<(Move, PositionState)>,
+    redo_stack: Vec<(Move, PositionState)>,
 }
 
 impl GameState {

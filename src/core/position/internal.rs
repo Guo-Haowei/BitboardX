@@ -1,8 +1,8 @@
-use super::UndoState;
+use super::PositionState;
 use crate::core::position::*;
 
 // Assume passed in moves are legal
-pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
+pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
     // borrow the position immutably because we are just checking the move at this point, no actual moving
     let pos: &Position = _pos;
 
@@ -125,7 +125,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
     undo_state
 }
 
-pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
+pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &PositionState) {
     // Keep in mind that the move is already applied to the position
     let src_sq = mv.src_sq();
     let dst_sq = mv.dst_sq();
@@ -175,6 +175,29 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
     pos.state = *undo_state;
 }
 
+fn update_attack_map_and_checker(pos: &mut Position) {
+    let mut checkers: [CheckerList; Color::COUNT] = [CheckerList::new(); Color::COUNT];
+
+    for color in [Color::WHITE, Color::BLACK] {
+        let mut attack_mask = BitBoard::new();
+        let opponent = color.flip();
+        let king_sq = pos.get_king_square(opponent);
+        for i in 0..PieceType::COUNT {
+            let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
+            let piece = Piece::get_piece(color, piece_type);
+            attack_mask |= move_gen::calc_attack_map_impl(
+                pos,
+                piece,
+                king_sq,
+                &mut checkers[opponent.as_usize()],
+            );
+        }
+        pos.state.attack_mask[color.as_usize()] = attack_mask;
+    }
+
+    pos.state.checkers = checkers;
+}
+
 pub fn update_cache(pos: &mut Position) {
     // update occupancies
     pos.state.occupancies[Color::WHITE.as_usize()] = pos.bitboards[Piece::W_PAWN.as_usize()]
@@ -193,11 +216,13 @@ pub fn update_cache(pos: &mut Position) {
         | pos.state.occupancies[Color::BLACK.as_usize()];
 
     // update attack maps
-    pos.update_attack_map_and_checker();
+    update_attack_map_and_checker(pos);
 
     // maybe only need to update the side to move attack map?
     pos.state.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);
     pos.state.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(pos, Color::BLACK);
+
+    pos.state.hash = zobrist::zobrist_hash(pos);
 }
 
 fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {

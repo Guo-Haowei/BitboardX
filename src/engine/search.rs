@@ -1,4 +1,4 @@
-use crate::core::position::{Position, UndoState};
+use crate::core::position::{Position, PositionState};
 use crate::core::{move_gen, types::*};
 use crate::engine::Engine;
 use crate::engine::book::*;
@@ -30,12 +30,12 @@ impl Searcher {
         Self { evaluation_count: 0 }
     }
 
-    fn make_move(&mut self, pos: &mut Position, mv: Move) -> UndoState {
+    fn make_move(&mut self, pos: &mut Position, mv: Move) -> PositionState {
         let undo_state = pos.make_move(mv);
         undo_state
     }
 
-    fn unmake_move(&mut self, pos: &mut Position, mv: Move, undo_state: &UndoState) {
+    fn unmake_move(&mut self, pos: &mut Position, mv: Move, undo_state: &PositionState) {
         pos.unmake_move(mv, undo_state);
     }
 
@@ -55,7 +55,7 @@ impl Searcher {
         mut beta: i32,
     ) -> (i32, Move) {
         // @TODO: refactor draw detection and mate detection
-        let key = engine.pos.hash();
+        let key = engine.pos.state.hash;
         let alpha_orig = alpha;
 
         if max_ply > ply_remaining {
@@ -185,7 +185,7 @@ impl Searcher {
         // @TODO: add ply optimization, if there are more than 20 plys, it's unlikely to find a book move
         const USE_BOOK: bool = true;
         if USE_BOOK {
-            if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.last_hash) {
+            if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.pos.state.hash) {
                 for mv in move_list.iter().copied() {
                     if mv.src_sq() == book_mv.src_sq()
                         && mv.dst_sq() == book_mv.dst_sq()
