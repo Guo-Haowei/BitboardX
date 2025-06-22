@@ -26,20 +26,6 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
         "Trying to move a piece of the wrong color"
     );
 
-    // Copy undo state before making changes to the position
-    let undo_state = UndoState {
-        side_to_move: pos.state.side_to_move,
-        castling_rights: pos.state.castling_rights,
-        en_passant: pos.state.en_passant,
-        halfmove_clock: pos.state.halfmove_clock,
-        fullmove_number: pos.state.fullmove_number,
-        captured_piece: dst_piece,
-        occupancies: pos.state.occupancies,
-        attack_mask: pos.state.attack_mask,
-        pin_map: pos.state.pin_map,
-        checkers: pos.state.checkers, // Clone the checkers list
-    };
-
     // check if the move will change the castling rights
     let castling_rights =
         castling_right_mask(pos.state.castling_rights, src_sq, dst_sq, src_piece, dst_piece);
@@ -71,6 +57,8 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
     // -------------- Update Board Start --------------
     // rebind pos to the mutable reference to update the position
     let pos = _pos;
+    pos.state.captured_piece = dst_piece;
+    let undo_state = pos.state;
 
     debug_assert!(pos.state.occupancies[pos.state.side_to_move.as_usize()].test(src_sq.as_u8()));
 
@@ -184,18 +172,7 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
         _ => {}
     }
 
-    // flip the side to move
-    pos.state.side_to_move = pos.state.side_to_move.opponent();
-
-    // Restore from the undo state
-    pos.state.castling_rights = undo_state.castling_rights;
-    pos.state.en_passant = undo_state.en_passant;
-    pos.state.halfmove_clock = undo_state.halfmove_clock;
-    pos.state.fullmove_number = undo_state.fullmove_number;
-    pos.state.occupancies = undo_state.occupancies;
-    pos.state.attack_mask = undo_state.attack_mask;
-    pos.state.pin_map = undo_state.pin_map;
-    pos.state.checkers = undo_state.checkers;
+    pos.state = *undo_state;
 }
 
 pub fn update_cache(pos: &mut Position) {
