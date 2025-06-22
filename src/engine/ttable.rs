@@ -68,6 +68,9 @@ impl<const N: usize> TranspositionTable<N> {
         best_move: Move,
     ) -> TTStoreResult {
         assert!(!best_move.is_null());
+        if true {
+            return TTStoreResult::NotUpdated; // for testing purposes, always return NotUpdated
+        }
 
         let idx = Self::index(key);
         let existing = &self.table[idx];
