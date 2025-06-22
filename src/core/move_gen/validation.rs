@@ -48,13 +48,13 @@ use crate::utils;
 pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
     let mover = pos.get_piece_at(mv.src_sq());
     let mover_type = mover.get_type();
-    let mover_color = pos.side_to_move;
+    let mover_color = pos.state.side_to_move;
     debug_assert!(mover_type != PieceType::NONE, "Mover must be a valid piece");
     debug_assert!(mover.color() == mover_color, "Mover color must match position side to move");
     let attacker_color = mover_color.opponent();
 
     // if there are two checkers, only moving the king solves the check
-    let checker = &pos.checkers[mover_color.as_usize()];
+    let checker = &pos.state.checkers[mover_color.as_usize()];
     let checker_count = checker.count();
 
     let src_sq = mv.src_sq();
@@ -78,7 +78,8 @@ pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
             }
         }
 
-        let dst_sq_under_attack = pos.attack_mask[attacker_color.as_usize()].test(dst_sq.as_u8());
+        let dst_sq_under_attack =
+            pos.state.attack_mask[attacker_color.as_usize()].test(dst_sq.as_u8());
         assert!(
             !dst_sq_under_attack,
             "this should be filtered when generating the mask, put an assert here for safety"

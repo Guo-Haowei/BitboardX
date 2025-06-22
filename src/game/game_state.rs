@@ -68,7 +68,7 @@ impl GameState {
     }
 
     pub fn active_player(&mut self) -> &mut dyn Player {
-        let side_to_move = self.pos.side_to_move.as_usize();
+        let side_to_move = self.pos.state.side_to_move.as_usize();
         &mut *self.players[side_to_move]
     }
 

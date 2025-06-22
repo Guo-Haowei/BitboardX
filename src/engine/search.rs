@@ -69,8 +69,8 @@ impl Searcher {
             }
 
             // 50-move rule draw
-            if engine.pos.halfmove_clock >= 100 {
-                assert!(engine.pos.halfmove_clock == 100);
+            if engine.pos.state.halfmove_clock >= 100 {
+                assert!(engine.pos.state.halfmove_clock == 100);
                 log::debug!("50-move rule draw detected: {}", engine.pos.fen());
                 return (DRAW_PENALTY, Move::null());
             }

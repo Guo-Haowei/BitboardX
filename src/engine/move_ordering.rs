@@ -12,7 +12,7 @@ pub fn move_score_guess(pos: &Position, mv: Move, tt_mv: Move) -> i32 {
     let move_type = mv.get_type();
     let src_sq = mv.src_sq();
     let dst_sq = mv.dst_sq();
-    let color = pos.side_to_move;
+    let color = pos.state.side_to_move;
     let opponent = color.opponent();
     let src_piece = pos.get_piece_at(src_sq);
     let captured_piece = if move_type == MoveType::EnPassant {
@@ -37,7 +37,7 @@ pub fn move_score_guess(pos: &Position, mv: Move, tt_mv: Move) -> i32 {
     }
 
     // penalize moving a piece to a square that is attacked by an opponent piece
-    if pos.attack_mask[opponent.as_usize()].test(dst_sq.as_u8()) {
+    if pos.state.attack_mask[opponent.as_usize()].test(dst_sq.as_u8()) {
         guess = -src_piece_value;
     }
 
