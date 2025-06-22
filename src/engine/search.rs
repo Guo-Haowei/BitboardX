@@ -3,6 +3,7 @@ use crate::core::{move_gen, types::*};
 use crate::engine::Engine;
 use crate::engine::book::*;
 use crate::engine::eval::Evaluation;
+use crate::engine::move_ordering::sort_moves;
 use crate::engine::ttable::NodeType;
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
@@ -14,20 +15,6 @@ const IMMEDIATE_MATE_SCORE: i32 = 40000;
 pub struct Searcher {
     evaluation_count: u64,
     // @TODO: cutoff move history
-}
-
-fn sort_moves(pos: &Position, move_list: &MoveList) -> Vec<Move> {
-    // @TODO: create move ordering class
-    use crate::engine::eval;
-    let mut scored_move: Vec<_> =
-        move_list.iter().map(|mv| (-eval::move_score_guess(pos, *mv), mv.clone())).collect();
-
-    // Sort by score in descending order
-    scored_move.sort_by_key(|(score, _)| *score);
-
-    let sorted_moves: Vec<Move> = scored_move.into_iter().map(|(_, mv)| mv).collect();
-
-    sorted_moves
 }
 
 impl Searcher {
@@ -139,9 +126,6 @@ impl Searcher {
                     NodeType::Exact => found = true,
                     NodeType::LowerBound => alpha = alpha.max(entry.score as i32),
                     NodeType::UpperBound => beta = beta.min(entry.score as i32),
-                    _ => {
-                        panic!("You should not see any null node types here!");
-                    }
                 }
                 if found || alpha >= beta {
                     log::warn!(
