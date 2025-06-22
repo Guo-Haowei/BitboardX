@@ -3,6 +3,9 @@ use static_assertions::const_assert;
 use crate::core::types::Move;
 use crate::core::zobrist::ZobristHash;
 
+// for testing purposes, turn off transposition table
+const DEBUG_OPTION_TURN_OFF_TT: bool = false;
+
 #[derive(Debug, Copy, Clone)]
 #[repr(u8)]
 pub enum NodeType {
@@ -68,8 +71,9 @@ impl<const N: usize> TranspositionTable<N> {
         best_move: Move,
     ) -> TTStoreResult {
         assert!(!best_move.is_null());
-        if true {
-            return TTStoreResult::NotUpdated; // for testing purposes, always return NotUpdated
+        // Don't store entries with if debug option is enabled
+        if DEBUG_OPTION_TURN_OFF_TT {
+            return TTStoreResult::NotUpdated;
         }
 
         let idx = Self::index(key);
