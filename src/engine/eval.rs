@@ -1,11 +1,14 @@
 use super::piece_square_table::*;
 use crate::core::{position::Position, types::*};
 
-const PAWN_VALUE: i32 = 100;
-const KNIGHT_VALUE: i32 = 300;
-const BISHOP_VALUE: i32 = 320;
-const ROOK_VALUE: i32 = 500;
-const QUEEN_VALUE: i32 = 900;
+// @TODO: change to i16
+pub type Score = i32;
+
+const PAWN_VALUE: Score = 100;
+const KNIGHT_VALUE: Score = 300;
+const BISHOP_VALUE: Score = 320;
+const ROOK_VALUE: Score = 500;
+const QUEEN_VALUE: Score = 900;
 
 const PIECE_VALUES: [i32; 6] = [
     PAWN_VALUE,

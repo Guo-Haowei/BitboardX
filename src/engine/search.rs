@@ -11,6 +11,7 @@ const MAX: i32 = i32::MAX;
 
 const DRAW_PENALTY: i32 = -50;
 const IMMEDIATE_MATE_SCORE: i32 = 40000;
+const MAX_PLY: u8 = 64; // max depth for search, should be enough for most positions
 
 macro_rules! if_debug_search {
     ($e:expr) => {
@@ -21,13 +22,38 @@ macro_rules! if_debug_search {
     };
 }
 
-pub struct Searcher {
-    evaluation_count: u64,
+pub struct SearchContext {
+    prev_best_move: Move,
+
+    killer_moves: [[Option<Move>; 2]; MAX_PLY as usize],
+
+    // for debugging purposes
+    pruned_count: u64,
+    total_moves: u64,
+    leaf_count: u64,
 }
 
-impl Searcher {
+impl SearchContext {
     pub fn new() -> Self {
-        Self { evaluation_count: 0 }
+        Self {
+            prev_best_move: Move::null(),
+            killer_moves: [[None; 2]; MAX_PLY as usize],
+            pruned_count: 0,
+            total_moves: 0,
+            leaf_count: 0,
+        }
+    }
+
+    fn add_killer(&mut self, ply: u8, mv: Move) {
+        let killers = &mut self.killer_moves[ply as usize];
+        if killers[0] != Some(mv) {
+            killers[1] = killers[0];
+            killers[0] = Some(mv);
+        }
+    }
+
+    pub fn is_killer(&self, ply: u8, mv: Move) -> bool {
+        self.killer_moves[ply as usize].contains(&Some(mv))
     }
 
     fn make_move(&mut self, pos: &mut Position, mv: Move) -> PositionState {
@@ -40,7 +66,7 @@ impl Searcher {
     }
 
     fn evaluate(&mut self, pos: &Position) -> i32 {
-        self.evaluation_count += 1;
+        self.leaf_count += 1;
 
         let mut eval = Evaluation::new();
         eval.evaluate_position(pos)
@@ -57,6 +83,7 @@ impl Searcher {
         // @TODO: refactor draw detection and mate detection
         let key = engine.pos.state.hash;
         let alpha_orig = alpha;
+        let is_root = ply_remaining == max_ply;
 
         if max_ply > ply_remaining {
             // --- 1) Check for repetition and 50-move rule ---
@@ -91,7 +118,7 @@ impl Searcher {
         }
 
         // --- 3) Probe transposition table ---
-        let mut tt_move = Move::null();
+        let mut cached_move = Move::null();
         if let Some(entry) = engine.tt.probe(key) {
             if entry.depth >= ply_remaining {
                 let mut found = false;
@@ -104,8 +131,8 @@ impl Searcher {
                     return (entry.score, entry.best_move);
                 }
             }
-            tt_move = entry.best_move;
-            assert!(!tt_move.is_null(), "Transposition table entry should have a best move");
+            cached_move = entry.best_move;
+            assert!(!cached_move.is_null(), "Transposition table entry should have a best move");
         }
 
         // --- 4) Check depth cutoff (leaf node) ---
@@ -114,7 +141,9 @@ impl Searcher {
         }
 
         // --- 5) Move ordering ---
-        let move_list = sort_moves(&engine.pos, &move_list, tt_move);
+        let prev_best_move = if is_root { self.prev_best_move } else { Move::null() };
+        let move_list =
+            sort_moves(&engine.pos, &self, &move_list, ply_remaining, prev_best_move, cached_move);
         let mut best_move = Move::null();
         let mut best_score = MIN;
 
@@ -123,41 +152,34 @@ impl Searcher {
         for mv in move_list.iter().copied() {
             let undo_state = self.make_move(&mut engine.pos, mv);
 
+            let captured_piece = engine.pos.state.captured_piece;
+
             let (score, _) = self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
             let score = -score; // Negate the score for the opponent
-            if_debug_search!({
-                if ply_remaining == max_ply {
-                    log::debug!(
-                        "ply: {}, move: {}, score: {}, alpha: {}, beta: {}",
-                        ply_remaining,
-                        mv.to_string(),
-                        score,
-                        alpha,
-                        beta
-                    );
-                }
-            });
 
             self.unmake_move(&mut engine.pos, mv, &undo_state);
 
-            // because we updated alpha every search,
-            // from now on all moves will have at least alpha score
-            // so we can only update best_move if score is strictly better than previous score
             if score > best_score {
+                if mv.get_type() == MoveType::Normal && captured_piece == Piece::NONE {
+                    // this is a quiet move, so we can add it to the killer moves
+                    self.add_killer(ply_remaining, mv);
+                }
+
+                // because we updated alpha every search,
+                // from now on all moves will have at least alpha score
+                // so we can only update best_move if score is strictly better than previous score
                 best_score = score;
                 best_move = mv;
             }
 
             alpha = alpha.max(score);
             if alpha >= beta {
-                if_debug_search!(if max_ply - ply_remaining <= 2 && ply_remaining > 1 {
-                    log::debug!("{}/{} nodes pruned", mv_left, move_list.len());
-                });
-
                 break; // beta cut-off
             }
             mv_left -= 1;
         }
+        self.pruned_count += mv_left as u64;
+        self.total_moves += move_list.len() as u64;
 
         // --- 7) Store result in transposition table ---
         let node_type = if best_score <= alpha_orig {
@@ -174,8 +196,8 @@ impl Searcher {
         (best_score, best_move)
     }
 
-    pub fn find_best_move(&mut self, engine: &mut Engine, depth: u8) -> Option<Move> {
-        debug_assert!(depth > 0);
+    pub fn find_best_move(&mut self, engine: &mut Engine, max_depth: u8) -> Option<Move> {
+        debug_assert!(max_depth > 0);
 
         let move_list = move_gen::legal_moves(&engine.pos);
         if move_list.len() == 0 {
@@ -200,16 +222,34 @@ impl Searcher {
             }
         }
 
-        let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX);
+        // iterative deepening
+        for depth in 1..MAX_PLY {
+            // @TODO: time control
+            if depth > max_depth {
+                break;
+            }
 
-        assert!(!mv.is_null(), "Best move should be valid");
+            self.total_moves = 0;
+            self.pruned_count = 0;
+            self.leaf_count = 0;
 
-        log::debug!(
-            "evaluated {} node, best move found: {} (score: {})",
-            self.evaluation_count,
-            mv.to_string(),
-            score
-        );
+            let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX);
+            assert!(!mv.is_null(), "Best move should be valid");
+
+            self.prev_best_move = mv;
+            if_debug_search!({
+                log::debug!(
+                    "move '{}'(score: {}) found at depth: {}, {} leaves evaluated, {}/{} ({}%) pruned",
+                    mv.to_string(),
+                    score,
+                    depth,
+                    self.leaf_count,
+                    self.pruned_count,
+                    self.total_moves,
+                    self.pruned_count as f32 / self.total_moves as f32 * 100.0
+                );
+            });
+        }
 
         log::debug!(
             "tt table {}/{}, {}% full, collisions: {}",
@@ -219,6 +259,6 @@ impl Searcher {
             engine.tt.collision_count
         );
 
-        Some(mv)
+        Some(self.prev_best_move)
     }
 }

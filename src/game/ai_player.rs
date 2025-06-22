@@ -21,7 +21,7 @@ impl Player for AiPlayer {
 
         self.engine.handle_uci_cmd(out, &cmd.as_str());
 
-        let mv = self.engine.best_move(5).unwrap();
+        let mv = self.engine.best_move(6).unwrap();
         let mv = mv.to_string();
 
         PlayerAction::Ready(mv)

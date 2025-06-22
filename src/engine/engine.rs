@@ -9,7 +9,7 @@ use crate::utils;
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 1;
-const VERSION_PATCH: u32 = 7;
+const VERSION_PATCH: u32 = 8; // v0.1.8 iterative deepening
 
 pub struct Engine {
     pub(super) pos: Position,
@@ -44,7 +44,7 @@ impl Engine {
     }
 
     pub fn best_move(&mut self, depth: u8) -> Option<Move> {
-        let mut searcher = search::Searcher::new();
+        let mut searcher = search::SearchContext::new();
         searcher.find_best_move(self, depth)
     }
 
@@ -197,7 +197,7 @@ impl Engine {
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
             _ => {
-                let mv = self.best_move(5).unwrap();
+                let mv = self.best_move(6).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
         }
