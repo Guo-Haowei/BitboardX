@@ -9,12 +9,11 @@ use crate::utils;
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 1;
-const VERSION_PATCH: u32 = 7;
+const VERSION_PATCH: u32 = 9; // v0.1.9 quiescence
 
 pub struct Engine {
     pub(super) pos: Position,
     pub(super) repetition_table: HashMap<ZobristHash, u32>, // for threefold detection
-    pub(super) last_hash: ZobristHash,
     pub(super) tt: TTable,
 }
 
@@ -33,11 +32,11 @@ impl Engine {
 
     pub fn from_fen(fen: &str) -> Result<Self, &'static str> {
         let pos = Position::from_fen(fen)?;
-        let last_hash = pos.zobrist();
         let mut repetition_table = HashMap::new();
-        repetition_table.insert(last_hash, 1);
+        assert!(pos.state.hash != ZobristHash(0));
+        repetition_table.insert(pos.state.hash, 1);
 
-        Ok(Self { pos, repetition_table, last_hash, tt: TTable::new() })
+        Ok(Self { pos, repetition_table, tt: TTable::new() })
     }
 
     pub fn reset(&mut self) {
@@ -45,16 +44,15 @@ impl Engine {
     }
 
     pub fn best_move(&mut self, depth: u8) -> Option<Move> {
-        let mut searcher = search::Searcher::new();
+        let mut searcher = search::SearchContext::new();
         searcher.find_best_move(self, depth)
     }
 
     pub fn set_position(&mut self, pos: Position) {
-        let zobrist = pos.zobrist();
         self.pos = pos;
         self.repetition_table.clear();
-        self.repetition_table.insert(zobrist, 1);
-        self.last_hash = zobrist;
+        assert!(pos.state.hash != ZobristHash(0));
+        self.repetition_table.insert(pos.state.hash, 1);
     }
 
     // Assume that the move is legal, otherwise it might crash the engine
@@ -89,9 +87,7 @@ impl Engine {
     pub fn make_move_unverified(&mut self, mv: Move) {
         self.pos.make_move(mv);
 
-        let zobrist = self.pos.zobrist();
-        self.last_hash = zobrist;
-        *self.repetition_table.entry(zobrist).or_insert(0) += 1;
+        *self.repetition_table.entry(self.pos.state.hash).or_insert(0) += 1;
     }
 
     /// The following methods are for UCI commands
@@ -201,7 +197,7 @@ impl Engine {
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
             _ => {
-                let mv = self.best_move(5).unwrap();
+                let mv = self.best_move(6).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
         }

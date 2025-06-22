@@ -1,8 +1,8 @@
-use super::UndoState;
+use super::PositionState;
 use crate::core::position::*;
 
 // Assume passed in moves are legal
-pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
+pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
     // borrow the position immutably because we are just checking the move at this point, no actual moving
     let pos: &Position = _pos;
 
@@ -14,31 +14,21 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
     let src_piece_idx = src_piece.as_usize();
     let move_type = mv.get_type();
     let mover_color = src_piece.color();
-    let enemy_color = mover_color.opponent();
+    let enemy_color = mover_color.flip();
     let is_mover_pawn = src_piece_type == PieceType::PAWN;
     let enemy_pawn = Piece::get_piece(enemy_color, PieceType::PAWN);
     let (src_file, src_rank) = src_sq.file_rank();
     let (dst_file, dst_rank) = dst_sq.file_rank();
 
     debug_assert!(src_piece != Piece::NONE, "No piece found on 'from' square");
-    debug_assert!(pos.side_to_move == mover_color, "Trying to move a piece of the wrong color");
-
-    // Copy undo state before making changes to the position
-    let undo_state = UndoState::new(
-        pos.castling_rights,
-        pos.en_passant,
-        pos.halfmove_clock,
-        pos.fullmove_number,
-        dst_piece,
-        pos.occupancies,
-        pos.attack_mask,
-        pos.pin_map,
-        pos.checkers,
+    debug_assert!(
+        pos.state.side_to_move == mover_color,
+        "Trying to move a piece of the wrong color"
     );
 
     // check if the move will change the castling rights
     let castling_rights =
-        castling_right_mask(pos.castling_rights, src_sq, dst_sq, src_piece, dst_piece);
+        castling_right_mask(pos.state.castling_rights, src_sq, dst_sq, src_piece, dst_piece);
 
     // check if the move will generate an en passant square
     let mut en_passant_sq: Option<Square> = None;
@@ -67,8 +57,10 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
     // -------------- Update Board Start --------------
     // rebind pos to the mutable reference to update the position
     let pos = _pos;
+    pos.state.captured_piece = dst_piece;
+    let undo_state = pos.state;
 
-    debug_assert!(pos.occupancies[pos.side_to_move.as_usize()].test(src_sq.as_u8()));
+    debug_assert!(pos.state.occupancies[pos.state.side_to_move.as_usize()].test(src_sq.as_u8()));
 
     move_piece(&mut pos.bitboards[src_piece_idx], src_sq, dst_sq);
 
@@ -117,15 +109,15 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
 
     // -------------- Update Board End --------------
 
-    pos.side_to_move = pos.side_to_move.opponent();
-    pos.castling_rights = castling_rights;
-    pos.en_passant = en_passant_sq;
-    pos.fullmove_number += if mover_color == Color::WHITE { 0 } else { 1 };
+    pos.state.side_to_move = pos.state.side_to_move.flip();
+    pos.state.castling_rights = castling_rights;
+    pos.state.en_passant = en_passant_sq;
+    pos.state.fullmove_number += if mover_color == Color::WHITE { 0 } else { 1 };
 
     if captured_something || is_mover_pawn {
-        pos.halfmove_clock = 0; // reset halfmove clock if a piece was captured or a non-pawn moved
+        pos.state.halfmove_clock = 0; // reset halfmove clock if a piece was captured or a non-pawn moved
     } else {
-        pos.halfmove_clock += 1; // increment halfmove clock for a pawn move
+        pos.state.halfmove_clock += 1; // increment halfmove clock for a pawn move
     }
 
     update_cache(pos);
@@ -133,14 +125,14 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
     undo_state
 }
 
-pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
+pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &PositionState) {
     // Keep in mind that the move is already applied to the position
     let src_sq = mv.src_sq();
     let dst_sq = mv.dst_sq();
     let src_piece = pos.get_piece_at(dst_sq); // the src_piece is the piece that was moved to the dst_sq
     let captured_piece = undo_state.captured_piece;
     let mover_color = src_piece.color();
-    let enemy_color = mover_color.opponent();
+    let enemy_color = mover_color.flip();
     let enemy_pawn = Piece::get_piece(enemy_color, PieceType::PAWN);
 
     move_piece(&mut pos.bitboards[src_piece.as_usize()], dst_sq, src_sq);
@@ -180,43 +172,57 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
         _ => {}
     }
 
-    // flip the side to move
-    pos.side_to_move = pos.side_to_move.opponent();
+    pos.state = *undo_state;
+}
 
-    // Restore from the undo state
-    pos.castling_rights = undo_state.castling_rights;
-    pos.en_passant = undo_state.en_passant;
-    pos.halfmove_clock = undo_state.halfmove_clock;
-    pos.fullmove_number = undo_state.fullmove_number;
-    pos.occupancies = undo_state.occupancies;
-    pos.attack_mask = undo_state.attack_mask;
-    pos.pin_map = undo_state.pin_map;
-    pos.checkers = undo_state.checkers;
+fn update_attack_map_and_checker(pos: &mut Position) {
+    let mut checkers: [CheckerList; Color::COUNT] = [CheckerList::new(); Color::COUNT];
+
+    for color in [Color::WHITE, Color::BLACK] {
+        let mut attack_mask = BitBoard::new();
+        let opponent = color.flip();
+        let king_sq = pos.get_king_square(opponent);
+        for i in 0..PieceType::COUNT {
+            let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
+            let piece = Piece::get_piece(color, piece_type);
+            attack_mask |= move_gen::calc_attack_map_impl(
+                pos,
+                piece,
+                king_sq,
+                &mut checkers[opponent.as_usize()],
+            );
+        }
+        pos.state.attack_mask[color.as_usize()] = attack_mask;
+    }
+
+    pos.state.checkers = checkers;
 }
 
 pub fn update_cache(pos: &mut Position) {
     // update occupancies
-    pos.occupancies[Color::WHITE.as_usize()] = pos.bitboards[Piece::W_PAWN.as_usize()]
+    pos.state.occupancies[Color::WHITE.as_usize()] = pos.bitboards[Piece::W_PAWN.as_usize()]
         | pos.bitboards[Piece::W_KNIGHT.as_usize()]
         | pos.bitboards[Piece::W_BISHOP.as_usize()]
         | pos.bitboards[Piece::W_ROOK.as_usize()]
         | pos.bitboards[Piece::W_QUEEN.as_usize()]
         | pos.bitboards[Piece::W_KING.as_usize()];
-    pos.occupancies[Color::BLACK.as_usize()] = pos.bitboards[Piece::B_PAWN.as_usize()]
+    pos.state.occupancies[Color::BLACK.as_usize()] = pos.bitboards[Piece::B_PAWN.as_usize()]
         | pos.bitboards[Piece::B_KNIGHT.as_usize()]
         | pos.bitboards[Piece::B_BISHOP.as_usize()]
         | pos.bitboards[Piece::B_ROOK.as_usize()]
         | pos.bitboards[Piece::B_QUEEN.as_usize()]
         | pos.bitboards[Piece::B_KING.as_usize()];
-    pos.occupancies[Color::BOTH.as_usize()] =
-        pos.occupancies[Color::WHITE.as_usize()] | pos.occupancies[Color::BLACK.as_usize()];
+    pos.state.occupancies[Color::BOTH.as_usize()] = pos.state.occupancies[Color::WHITE.as_usize()]
+        | pos.state.occupancies[Color::BLACK.as_usize()];
 
     // update attack maps
-    pos.update_attack_map_and_checker();
+    update_attack_map_and_checker(pos);
 
     // maybe only need to update the side to move attack map?
-    pos.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);
-    pos.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(pos, Color::BLACK);
+    pos.state.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);
+    pos.state.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(pos, Color::BLACK);
+
+    pos.state.hash = zobrist::zobrist_hash(pos);
 }
 
 fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {

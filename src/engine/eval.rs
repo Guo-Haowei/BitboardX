@@ -1,11 +1,14 @@
 use super::piece_square_table::*;
 use crate::core::{position::Position, types::*};
 
-const PAWN_VALUE: i32 = 100;
-const KNIGHT_VALUE: i32 = 300;
-const BISHOP_VALUE: i32 = 320;
-const ROOK_VALUE: i32 = 500;
-const QUEEN_VALUE: i32 = 900;
+// @TODO: change to i16
+pub type Score = i32;
+
+const PAWN_VALUE: Score = 100;
+const KNIGHT_VALUE: Score = 300;
+const BISHOP_VALUE: Score = 320;
+const ROOK_VALUE: Score = 500;
+const QUEEN_VALUE: Score = 900;
 
 const PIECE_VALUES: [i32; 6] = [
     PAWN_VALUE,
@@ -154,7 +157,7 @@ impl Evaluation {
 
         // Push the king to edge of the board in endgame (for endgame checkmate)
 
-        let perspective = if pos.side_to_move == Color::WHITE { 1 } else { -1 };
+        let perspective = if pos.white_to_move() { 1 } else { -1 };
         let score = self.white_score.sum() - self.black_score.sum();
 
         // eprintln!(
@@ -175,7 +178,7 @@ impl Evaluation {
         let queen = Piece::get_piece(color, PieceType::QUEEN);
 
         let my_pawns = pos.bitboards[pawn.as_usize()];
-        let enemy_pawns = Piece::get_piece(color.opponent(), PieceType::PAWN);
+        let enemy_pawns = Piece::get_piece(color.flip(), PieceType::PAWN);
         let enemy_pawns = pos.bitboards[enemy_pawns.as_usize()];
 
         let num_pawns = my_pawns.count() as i32;

@@ -1,7 +1,11 @@
 mod misc;
+mod time;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod logger;
+
+pub use misc::*;
+pub use time::*;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -12,5 +16,3 @@ pub fn init_logging() {
     #[cfg(target_arch = "wasm32")]
     console_error_panic_hook::set_once();
 }
-
-pub use misc::*;

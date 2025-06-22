@@ -33,7 +33,8 @@ def main():
         '-engine', f'name={engine2}', f'cmd=./releases/{engine2}.exe',
         '-each',
         'proto=uci',
-        'tc=40/60',
+        'tc=inf',
+        # 'tc=40/60',
         '-rounds', '10',
         '-pgnout', 'out.pgn',
         '-debug', 'all'

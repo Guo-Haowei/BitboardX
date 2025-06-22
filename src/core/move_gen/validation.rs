@@ -48,13 +48,13 @@ use crate::utils;
 pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
     let mover = pos.get_piece_at(mv.src_sq());
     let mover_type = mover.get_type();
-    let mover_color = pos.side_to_move;
+    let mover_color = pos.state.side_to_move;
     debug_assert!(mover_type != PieceType::NONE, "Mover must be a valid piece");
     debug_assert!(mover.color() == mover_color, "Mover color must match position side to move");
-    let attacker_color = mover_color.opponent();
+    let attacker_color = mover_color.flip();
 
     // if there are two checkers, only moving the king solves the check
-    let checker = &pos.checkers[mover_color.as_usize()];
+    let checker = &pos.state.checkers[mover_color.as_usize()];
     let checker_count = checker.count();
 
     let src_sq = mv.src_sq();
@@ -78,7 +78,8 @@ pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
             }
         }
 
-        let dst_sq_under_attack = pos.attack_mask[attacker_color.as_usize()].test(dst_sq.as_u8());
+        let dst_sq_under_attack =
+            pos.state.attack_mask[attacker_color.as_usize()].test(dst_sq.as_u8());
         assert!(
             !dst_sq_under_attack,
             "this should be filtered when generating the mask, put an assert here for safety"
@@ -180,7 +181,7 @@ fn is_pseudo_en_passant_legal(pos: &Position, mv: Move, mover_color: Color) -> b
     let (captured_file, captured_rank) = captured_sq.file_rank();
 
     debug_assert!(
-        pos.get_piece_at(captured_sq) == Piece::get_piece(mover_color.opponent(), PieceType::PAWN),
+        pos.get_piece_at(captured_sq) == Piece::get_piece(mover_color.flip(), PieceType::PAWN),
         "En passant capture must have an enemy pawn on the square to capture"
     );
 
@@ -212,8 +213,8 @@ fn is_pseudo_en_passant_legal(pos: &Position, mv: Move, mover_color: Color) -> b
 
     let their_piece = if pieces[0] == my_king { pieces[1] } else { pieces[0] };
 
-    let their_rook = Piece::get_piece(mover_color.opponent(), PieceType::ROOK);
-    let their_queen = Piece::get_piece(mover_color.opponent(), PieceType::QUEEN);
+    let their_rook = Piece::get_piece(mover_color.flip(), PieceType::ROOK);
+    let their_queen = Piece::get_piece(mover_color.flip(), PieceType::QUEEN);
     if their_piece == their_rook || their_piece == their_queen {
         return false;
     }

@@ -38,8 +38,8 @@ pub fn pseudo_legal_moves_src_sq(
 ) {
     let color = piece.color();
 
-    let my = pos.occupancies[color.as_usize()];
-    let enemy = pos.occupancies[color.opponent().as_usize()];
+    let my = pos.state.occupancies[color.as_usize()];
+    let enemy = pos.state.occupancies[color.flip().as_usize()];
 
     match piece {
         Piece::W_PAWN => pseudo_legal_move_pawn::<{ Color::WHITE.as_u8() }>(move_list, sq, pos),
@@ -73,8 +73,8 @@ pub fn pseudo_legal_moves_src_sq(
 pub fn attack_mask_src_sq(pos: &Position, sq: Square, piece: Piece) -> BitBoard {
     let color = piece.color();
 
-    let my_occupancy = pos.occupancies[color.as_usize()];
-    let enemy_occupancy = pos.occupancies[color.opponent().as_usize()];
+    let my_occupancy = pos.state.occupancies[color.as_usize()];
+    let enemy_occupancy = pos.state.occupancies[color.flip().as_usize()];
 
     match piece {
         Piece::W_PAWN => pawn_mask::<{ Color::WHITE.as_u8() }, true>(sq, pos),
@@ -135,13 +135,13 @@ fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
         // Handle forward moves
         let next_bb = if is_white { bb.shift_north() } else { bb.shift_south() };
 
-        if (next_bb & pos.occupancies[Color::BOTH.as_usize()]).none() {
+        if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
             moves |= next_bb;
         }
 
         if (is_white && rank == Rank::_2 || is_black && rank == Rank::_7) && moves.any() {
             let next_bb = if is_white { next_bb.shift_north() } else { next_bb.shift_south() };
-            if (next_bb & pos.occupancies[Color::BOTH.as_usize()]).none() {
+            if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
                 moves |= next_bb;
             }
         }
@@ -152,11 +152,11 @@ fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
 
     // Handle attacks moves
     let attack_left = if is_white { bb.shift_nw() } else { bb.shift_sw() };
-    if ATTACK_MASK || (attack_left & pos.occupancies[opponent as usize]).any() {
+    if ATTACK_MASK || (attack_left & pos.state.occupancies[opponent as usize]).any() {
         moves |= attack_left;
     }
     let attack_right = if is_white { bb.shift_ne() } else { bb.shift_se() };
-    if ATTACK_MASK || (attack_right & pos.occupancies[opponent as usize]).any() {
+    if ATTACK_MASK || (attack_right & pos.state.occupancies[opponent as usize]).any() {
         moves |= attack_right;
     }
 
@@ -169,7 +169,7 @@ fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
     let is_white = COLOR == Color::WHITE.as_u8();
     let is_black = COLOR != Color::WHITE.as_u8();
 
-    if let Some(ep_sq) = pos.en_passant {
+    if let Some(ep_sq) = pos.state.en_passant {
         debug_assert!(pos.get_piece_at(ep_sq) == Piece::NONE, "En passant square must be empty");
         let (ep_file, ep_rank) = ep_sq.file_rank();
         if file.diff(ep_file).abs() == 1 {
@@ -326,7 +326,7 @@ fn sliding_mask<const START: u8, const END: u8, const ATTACK_MASK: bool>(
 pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
     let mut pin_map = BitBoard::new();
 
-    let occupied = pos.occupancies[Color::BOTH.as_usize()];
+    let occupied = pos.state.occupancies[Color::BOTH.as_usize()];
     let king_bb = pos.bitboards[Piece::get_piece(color, PieceType::KING).as_usize()];
     debug_assert!(king_bb.count() == 1, "There must be exactly one king on the board");
 
@@ -360,7 +360,7 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
 
         // pinned piece must be of the same color as the king
         // and the attacked piece must be of the opposite color
-        if !(pinned.color() == color && attacker.color() == color.opponent()) {
+        if !(pinned.color() == color && attacker.color() == color.flip()) {
             continue;
         }
 
@@ -540,36 +540,37 @@ fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
 
     let bb = sq.to_bitboard();
     let mut moves = BitBoard::new();
-    let occupancy = !(if ATTACK_MASK { BitBoard::new() } else { pos.occupancies[COLOR as usize] });
+    let occupancy =
+        !(if ATTACK_MASK { BitBoard::new() } else { pos.state.occupancies[COLOR as usize] });
     for shift_func in &SHIFT_FUNCS {
         moves |= shift_func(&bb) & occupancy;
     }
 
     if !ATTACK_MASK {
         // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
-        moves &= !pos.attack_mask[color.opponent().as_usize()];
+        moves &= !pos.state.attack_mask[color.flip().as_usize()];
 
         if is_white {
-            if (pos.castling_rights & CastlingRight::K != 0)
+            if (pos.state.castling_rights & CastlingRight::K != 0)
                 && move_mask_castle_check::<COLOR>(pos, sq, Square::G1, Square::H1)
             {
                 assert!(sq == Square::E1);
                 moves.set_sq(Square::G1);
             }
-            if (pos.castling_rights & CastlingRight::Q != 0)
+            if (pos.state.castling_rights & CastlingRight::Q != 0)
                 && move_mask_castle_check::<COLOR>(pos, sq, Square::C1, Square::A1)
             {
                 assert!(sq == Square::E1);
                 moves.set_sq(Square::C1);
             }
         } else {
-            if (pos.castling_rights & CastlingRight::k != 0)
+            if (pos.state.castling_rights & CastlingRight::k != 0)
                 && move_mask_castle_check::<COLOR>(pos, sq, Square::G8, Square::H8)
             {
                 assert!(sq == Square::E8);
                 moves.set_sq(Square::G8);
             }
-            if (pos.castling_rights & CastlingRight::q != 0)
+            if (pos.state.castling_rights & CastlingRight::q != 0)
                 && move_mask_castle_check::<COLOR>(pos, sq, Square::C8, Square::A8)
             {
                 assert!(sq == Square::E8);
@@ -591,7 +592,7 @@ fn move_mask_castle_check<const COLOR: u8>(
     // r . . . k . . r
     // a b c d e f g h
     let color = Color::new(COLOR);
-    let opponent = color.opponent();
+    let opponent = color.flip();
 
     // check if the rook is in the right place
     let rook_type = Piece::get_piece(color, PieceType::ROOK);
@@ -604,8 +605,8 @@ fn move_mask_castle_check<const COLOR: u8>(
     let (s2, e2) = utils::min_max(sq.as_u8(), rook_sq.as_u8());
 
     let checks = [
-        (s1, e1 + 1, pos.attack_mask[opponent.as_usize()]),
-        (s2 + 1, e2, pos.occupancies[Color::BOTH.as_usize()]),
+        (s1, e1 + 1, pos.state.attack_mask[opponent.as_usize()]),
+        (s2 + 1, e2, pos.state.occupancies[Color::BOTH.as_usize()]),
     ];
 
     for (start, end, mask) in checks {
