@@ -36,7 +36,7 @@ impl Color {
         self.0 == COLOR_BLACK
     }
 
-    pub const fn opponent(&self) -> Color {
+    pub const fn flip(&self) -> Color {
         assert!((self.is_white() ^ self.is_black()), "Invalid color");
         Color(self.0 ^ 1)
     }
@@ -213,8 +213,8 @@ mod tests {
 
     #[test]
     fn test_opponent_color() {
-        assert_eq!(Color::WHITE.opponent(), Color::BLACK);
-        assert_eq!(Color::BLACK.opponent(), Color::WHITE);
+        assert_eq!(Color::WHITE.flip(), Color::BLACK);
+        assert_eq!(Color::BLACK.flip(), Color::WHITE);
         // assert_eq!(Color::BOTH.opponent(), Color::NONE); // crash
         // assert_eq!(Color::NONE.opponent(), Color::NONE); // crash
     }

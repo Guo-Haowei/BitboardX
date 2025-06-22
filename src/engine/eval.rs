@@ -175,7 +175,7 @@ impl Evaluation {
         let queen = Piece::get_piece(color, PieceType::QUEEN);
 
         let my_pawns = pos.bitboards[pawn.as_usize()];
-        let enemy_pawns = Piece::get_piece(color.opponent(), PieceType::PAWN);
+        let enemy_pawns = Piece::get_piece(color.flip(), PieceType::PAWN);
         let enemy_pawns = pos.bitboards[enemy_pawns.as_usize()];
 
         let num_pawns = my_pawns.count() as i32;

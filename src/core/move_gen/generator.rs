@@ -39,7 +39,7 @@ pub fn pseudo_legal_moves_src_sq(
     let color = piece.color();
 
     let my = pos.state.occupancies[color.as_usize()];
-    let enemy = pos.state.occupancies[color.opponent().as_usize()];
+    let enemy = pos.state.occupancies[color.flip().as_usize()];
 
     match piece {
         Piece::W_PAWN => pseudo_legal_move_pawn::<{ Color::WHITE.as_u8() }>(move_list, sq, pos),
@@ -74,7 +74,7 @@ pub fn attack_mask_src_sq(pos: &Position, sq: Square, piece: Piece) -> BitBoard 
     let color = piece.color();
 
     let my_occupancy = pos.state.occupancies[color.as_usize()];
-    let enemy_occupancy = pos.state.occupancies[color.opponent().as_usize()];
+    let enemy_occupancy = pos.state.occupancies[color.flip().as_usize()];
 
     match piece {
         Piece::W_PAWN => pawn_mask::<{ Color::WHITE.as_u8() }, true>(sq, pos),
@@ -360,7 +360,7 @@ pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
 
         // pinned piece must be of the same color as the king
         // and the attacked piece must be of the opposite color
-        if !(pinned.color() == color && attacker.color() == color.opponent()) {
+        if !(pinned.color() == color && attacker.color() == color.flip()) {
             continue;
         }
 
@@ -548,7 +548,7 @@ fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
 
     if !ATTACK_MASK {
         // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
-        moves &= !pos.state.attack_mask[color.opponent().as_usize()];
+        moves &= !pos.state.attack_mask[color.flip().as_usize()];
 
         if is_white {
             if (pos.state.castling_rights & CastlingRight::K != 0)
@@ -592,7 +592,7 @@ fn move_mask_castle_check<const COLOR: u8>(
     // r . . . k . . r
     // a b c d e f g h
     let color = Color::new(COLOR);
-    let opponent = color.opponent();
+    let opponent = color.flip();
 
     // check if the rook is in the right place
     let rook_type = Piece::get_piece(color, PieceType::ROOK);

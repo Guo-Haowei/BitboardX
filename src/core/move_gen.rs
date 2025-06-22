@@ -45,7 +45,7 @@ pub fn legal_moves(pos: &Position) -> MoveList {
 pub fn capture_moves(pos: &Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
-    let opponent = pos.state.side_to_move.opponent();
+    let opponent = pos.state.side_to_move.flip();
     for mv in pseudo_moves.iter().copied() {
         if validation::is_pseudo_move_legal(pos, mv) {
             let dst_sq = mv.dst_sq();
@@ -80,9 +80,9 @@ pub fn calc_attack_map_impl(
 
         if attack_mask.test(opponent_king.as_u8()) {
             debug_assert!(
-                pos.state.occupancies[color.opponent().as_usize()].test(opponent_king.as_u8())
+                pos.state.occupancies[color.flip().as_usize()].test(opponent_king.as_u8())
             );
-            debug_assert!(pos.get_color_at(opponent_king) == piece.color().opponent());
+            debug_assert!(pos.get_color_at(opponent_king) == piece.color().flip());
 
             checkers.add(sq);
         }

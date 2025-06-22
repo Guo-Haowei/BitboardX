@@ -14,7 +14,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
     let src_piece_idx = src_piece.as_usize();
     let move_type = mv.get_type();
     let mover_color = src_piece.color();
-    let enemy_color = mover_color.opponent();
+    let enemy_color = mover_color.flip();
     let is_mover_pawn = src_piece_type == PieceType::PAWN;
     let enemy_pawn = Piece::get_piece(enemy_color, PieceType::PAWN);
     let (src_file, src_rank) = src_sq.file_rank();
@@ -109,7 +109,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
 
     // -------------- Update Board End --------------
 
-    pos.state.side_to_move = pos.state.side_to_move.opponent();
+    pos.state.side_to_move = pos.state.side_to_move.flip();
     pos.state.castling_rights = castling_rights;
     pos.state.en_passant = en_passant_sq;
     pos.state.fullmove_number += if mover_color == Color::WHITE { 0 } else { 1 };
@@ -132,7 +132,7 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
     let src_piece = pos.get_piece_at(dst_sq); // the src_piece is the piece that was moved to the dst_sq
     let captured_piece = undo_state.captured_piece;
     let mover_color = src_piece.color();
-    let enemy_color = mover_color.opponent();
+    let enemy_color = mover_color.flip();
     let enemy_pawn = Piece::get_piece(enemy_color, PieceType::PAWN);
 
     move_piece(&mut pos.bitboards[src_piece.as_usize()], dst_sq, src_sq);

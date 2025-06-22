@@ -188,7 +188,7 @@ impl Position {
 
         if cfg!(debug_assertions) && checker_count != 0 {
             let king_sq = self.get_king_square(color);
-            let attack_map = self.state.attack_mask[color.opponent().as_usize()];
+            let attack_map = self.state.attack_mask[color.flip().as_usize()];
             debug_assert!(
                 attack_map.test(king_sq.as_u8()),
                 "King square {} is not attacked by opponent's pieces",
@@ -204,7 +204,7 @@ impl Position {
 
         for color in [Color::WHITE, Color::BLACK] {
             let mut attack_mask = BitBoard::new();
-            let opponent = color.opponent();
+            let opponent = color.flip();
             let king_sq = self.get_king_square(opponent);
             for i in 0..PieceType::COUNT {
                 let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
