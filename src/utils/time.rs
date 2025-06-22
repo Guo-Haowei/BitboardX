@@ -2,13 +2,10 @@
 use wasm_bindgen::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
 pub fn get_time() -> f64 {
     // Uses `performance.now()` in the browser for high precision milliseconds
-    web_sys::window()
-        .expect("no global `window` exists")
-        .performance()
-        .expect("performance should be available")
-        .now()
+    web_sys::js_sys::Date::now()
 }
 
 #[cfg(not(target_arch = "wasm32"))]

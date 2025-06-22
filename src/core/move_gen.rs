@@ -47,9 +47,9 @@ pub fn capture_moves(pos: &Position) -> MoveList {
     let mut moves = MoveList::new();
     let opponent = pos.state.side_to_move.flip();
     for mv in pseudo_moves.iter().copied() {
-        if validation::is_pseudo_move_legal(pos, mv) {
-            let dst_sq = mv.dst_sq();
-            if pos.state.occupancies[opponent.as_usize()].test(dst_sq.as_u8()) {
+        let dst_sq = mv.dst_sq();
+        if pos.state.occupancies[opponent.as_usize()].test(dst_sq.as_u8()) {
+            if validation::is_pseudo_move_legal(pos, mv) {
                 moves.add(mv.clone());
             }
         }

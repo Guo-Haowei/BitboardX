@@ -9,7 +9,7 @@ use crate::utils;
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 1;
-const VERSION_PATCH: u32 = 8; // v0.1.8 iterative deepening
+const VERSION_PATCH: u32 = 9; // v0.1.9 quiescence
 
 pub struct Engine {
     pub(super) pos: Position,

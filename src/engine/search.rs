@@ -5,6 +5,7 @@ use crate::engine::book::*;
 use crate::engine::eval::Evaluation;
 use crate::engine::move_ordering::sort_moves;
 use crate::engine::ttable::NodeType;
+use crate::utils;
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
@@ -72,6 +73,46 @@ impl SearchContext {
         eval.evaluate_position(pos)
     }
 
+    fn quiescence(&mut self, engine: &mut Engine, mut alpha: i32, beta: i32, depth: i32) -> i32 {
+        // @TODO: cancel
+
+        // @TODO: order
+        let move_list = move_gen::capture_moves(&engine.pos);
+
+        let eval = self.evaluate(&engine.pos);
+        if eval >= beta {
+            // searchDiagnostics.numCutOffs++;
+            return beta;
+        }
+        if eval > alpha {
+            alpha = eval;
+        }
+        // because we can't cancel the search, add a depth parameter
+        if depth == 0 {
+            return eval;
+        }
+
+        if move_list.is_empty() {
+            return self.evaluate(&engine.pos);
+        }
+
+        for mv in move_list.iter().copied() {
+            let undo_state = self.make_move(&mut engine.pos, mv);
+            let score = -self.quiescence(engine, -beta, -alpha, depth - 1);
+            self.unmake_move(&mut engine.pos, mv, &undo_state);
+
+            if score >= beta {
+                // @TODO: stats
+                return beta;
+            }
+            if score > alpha {
+                alpha = score;
+            }
+        }
+
+        alpha
+    }
+
     fn negamax(
         &mut self,
         engine: &mut Engine,
@@ -137,7 +178,7 @@ impl SearchContext {
 
         // --- 4) Check depth cutoff (leaf node) ---
         if ply_remaining == 0 {
-            return (self.evaluate(&engine.pos), Move::null());
+            return (self.quiescence(engine, alpha, beta, 4), Move::null());
         }
 
         // --- 5) Move ordering ---
@@ -233,15 +274,19 @@ impl SearchContext {
             self.pruned_count = 0;
             self.leaf_count = 0;
 
+            let begin_time = utils::get_time();
+
             let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX);
             assert!(!mv.is_null(), "Best move should be valid");
 
             self.prev_best_move = mv;
             if_debug_search!({
+                let end_time = utils::get_time();
                 log::debug!(
-                    "move '{}'(score: {}) found at depth: {}, {} leaves evaluated, {}/{} ({}%) pruned",
+                    "move '{}'(score: {}) found in {} ms, at depth: {}, {} leaves evaluated, {}/{} ({}%) pruned",
                     mv.to_string(),
                     score,
+                    (end_time - begin_time),
                     depth,
                     self.leaf_count,
                     self.pruned_count,
