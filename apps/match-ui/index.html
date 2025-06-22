@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Engine Match Viewer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1c1c1c;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: #555;
+      border-radius: 4px;
+    }
+
+    .menu-dropdown {
+      display: none;
+      position: absolute;
+      background-color: #2b2b2b;
+      border: 1px solid #444;
+      z-index: 50;
+      min-width: 160px;
+    }
+
+    .menu-item:hover .menu-dropdown {
+      display: block;
+    }
+  </style>
+</head>
+
+<body class="bg-[#1e1e1e] text-gray-200 font-sans min-h-screen flex flex-col">
+
+  <!-- Menu Bar -->
+  <div class="bg-[#111111] px-6 py-3 border-b border-gray-700 flex gap-10 relative">
+    <div class="relative menu-item cursor-pointer hover:text-white">File
+      <div class="menu-dropdown text-sm">
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Open</div>
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Save</div>
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Exit</div>
+      </div>
+    </div>
+    <div class="relative menu-item cursor-pointer hover:text-white">Engines
+      <div class="menu-dropdown text-sm">
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Select Engine A</div>
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Select Engine B</div>
+      </div>
+    </div>
+    <div class="relative menu-item cursor-pointer hover:text-white">Help
+      <div class="menu-dropdown text-sm">
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">About</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App Container -->
+  <div class="flex-1 flex items-center justify-center p-4">
+    <div class="flex gap-6">
+
+      <!-- Chessboard -->
+      <div class="w-[720px] h-[720px] bg-black rounded overflow-hidden shadow-lg relative">
+        <canvas id="chessboard" width="720" height="720" class="w-full h-full"></canvas>
+        <!-- Move Controls -->
+        <div class="absolute bottom-2 right-2 flex gap-2">
+          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">|&lt;</button>
+          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">&lt;</button>
+          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">&gt;</button>
+          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">&gt;|</button>
+        </div>
+      </div>
+
+      <!-- Match Panel -->
+      <div class="w-[480px] h-[720px] bg-[#1c1c1c] p-6 rounded shadow-inner overflow-y-auto space-y-6">
+        <!-- 10 Mock Matches -->
+        <script>
+          const matchesHTML = Array.from({ length: 10 }, (_, i) => `
+            <div class="bg-[#2b2b2b] p-4 rounded-lg">
+              <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-semibold">v1.${i} vs v2.${i}</h2>
+                <span class="text-sm text-gray-400">100 games</span>
+              </div>
+              <div class="text-sm text-gray-300 mb-2">
+                Wins: <span class="text-green-400">${40 + i}</span>,
+                Losses: <span class="text-red-400">${30 + i}</span>,
+                Draws: <span class="text-gray-400">${30 - i}</span>
+              </div>
+              <div class="flex h-4 w-full overflow-hidden rounded bg-gray-700 mb-2">
+                <div class="bg-green-500" style="width: ${40 + i}%"></div>
+                <div class="bg-red-500" style="width: ${30 + i}%"></div>
+                <div class="bg-gray-500" style="width: ${30 - i}%"></div>
+              </div>
+              <details class="text-base">
+                <summary class="cursor-pointer text-gray-300 hover:text-white">View Matches</summary>
+                <div class="mt-2 space-y-2 max-h-40 overflow-y-auto text-sm bg-[#1a1a1a] p-2 rounded">
+                  <div><strong>Round 1 PGN:</strong> 1.e4 e5 2.Nf3 Nc6 3.Bb5 a6</div>
+                  <div><strong>Round 2 PGN:</strong> 1.d4 d5 2.c4 e6 3.Nc3 Nf6</div>
+                  <div><strong>Round 3 PGN:</strong> 1.e4 c5 2.Nf3 d6 3.d4 cxd4</div>
+                </div>
+              </details>
+            </div>
+          `).join('');
+          document.write(matchesHTML);
+        </script>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JS: Draw Chessboard -->
+  <script>
+    const canvas = document.getElementById('chessboard');
+    const ctx = canvas.getContext('2d');
+    const squareSize = canvas.width / 8;
+    function drawBoard() {
+      for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+          const isLight = (x + y) % 2 === 0;
+          ctx.fillStyle = isLight ? '#f0d9b5' : '#b58863';
+          ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
+        }
+      }
+    }
+    drawBoard();
+  </script>
+</body>
+
+</html>
