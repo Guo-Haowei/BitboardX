@@ -28,4 +28,4 @@ named_test!(find_mate_in_three, {
     assert_eq!(mv.to_string(), "f7f1");
 });
 
-"r1b1kb1r/1p1n1ppp/p2p4/8/4qPn1/6N1/PPP3PP/R1BK1Q1R b kq - 0 1"
+// "r1b1kb1r/1p1n1ppp/p2p4/8/4qPn1/6N1/PPP3PP/R1BK1Q1R b kq - 0 1"

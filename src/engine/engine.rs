@@ -70,8 +70,7 @@ impl Engine {
         let src_sq = mv.src_sq();
         let dst_sq = mv.dst_sq();
         let promotion = mv.get_promotion();
-        for mv in legal_moves.iter() {
-            let mv = mv.unwrap();
+        for mv in legal_moves.iter().copied() {
             if mv.src_sq() == src_sq && mv.dst_sq() == dst_sq && mv.get_promotion() == promotion {
                 self.make_move_unverified(mv);
                 return true;
@@ -217,8 +216,7 @@ impl Engine {
 
         let mut nodes = 0u64;
         let should_print = depth == max_depth;
-        for mv in move_list.iter() {
-            let mv = mv.unwrap();
+        for mv in move_list.iter().copied() {
             let undo_state = self.pos.make_move(mv);
             let count = self.uci_cmd_go_perft(writer, depth - 1, max_depth);
             nodes += count;

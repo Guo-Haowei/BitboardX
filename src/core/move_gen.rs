@@ -32,8 +32,7 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
 pub fn legal_moves(pos: &Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
-    for mv in pseudo_moves.iter() {
-        let mv = mv.unwrap();
+    for mv in pseudo_moves.iter().copied() {
         if validation::is_pseudo_move_legal(pos, mv) {
             moves.add(mv);
         }
@@ -47,8 +46,7 @@ pub fn capture_moves(pos: &Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
     let opponent = pos.side_to_move.opponent();
-    for mv in pseudo_moves.iter() {
-        let mv = mv.unwrap();
+    for mv in pseudo_moves.iter().copied() {
         if validation::is_pseudo_move_legal(pos, mv) {
             let dst_sq = mv.dst_sq();
             if pos.occupancies[opponent.as_usize()].test(dst_sq.as_u8()) {

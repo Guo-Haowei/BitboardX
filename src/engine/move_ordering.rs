@@ -3,12 +3,10 @@ use crate::core::types::*;
 use crate::engine::eval::get_piece_value;
 
 // @TODO: refactor
-pub fn move_score_guess(pos: &Position, mv: Move, tt_mv: Option<Move>) -> i32 {
+pub fn move_score_guess(pos: &Position, mv: Move, tt_mv: Move) -> i32 {
     // move is in transposition table, give it a high score
-    if let Some(tt_mv) = tt_mv {
-        if mv == tt_mv {
-            return 100000;
-        }
+    if !tt_mv.is_null() {
+        return 100000;
     }
 
     let move_type = mv.get_type();
@@ -47,17 +45,15 @@ pub fn move_score_guess(pos: &Position, mv: Move, tt_mv: Option<Move>) -> i32 {
 }
 
 // @TODO: inplace sorting
-pub fn sort_moves(pos: &Position, move_list: &MoveList, tt_mv: Option<Move>) -> Vec<Move> {
+pub fn sort_moves(pos: &Position, move_list: &MoveList, tt_mv: Move) -> Vec<Move> {
     // @TODO: create move ordering class
-    let mut scored_move: Vec<_> = move_list
-        .iter()
-        .map(|mv| (-move_score_guess(pos, mv.unwrap(), tt_mv), mv.clone()))
-        .collect();
+    let mut scored_move: Vec<_> =
+        move_list.iter().map(|mv| (-move_score_guess(pos, *mv, tt_mv), mv.clone())).collect();
 
     // Sort by score in descending order
     scored_move.sort_by_key(|(score, _)| *score);
 
-    let sorted_moves: Vec<Move> = scored_move.into_iter().map(|(_, mv)| mv.unwrap()).collect();
+    let sorted_moves: Vec<Move> = scored_move.into_iter().map(|(_, mv)| mv).collect();
 
     sorted_moves
 }
@@ -74,7 +70,7 @@ mod tests {
         let pos = Position::from_fen(fen).unwrap();
         let move_list = move_gen::legal_moves(&pos);
 
-        let sorted_moves = sort_moves(&pos, &move_list, None);
+        let sorted_moves = sort_moves(&pos, &move_list, Move::null());
         let expected_best_move =
             Move::new(Square::C7, Square::C8, MoveType::Promotion, Some(PieceType::QUEEN));
 

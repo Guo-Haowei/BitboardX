@@ -30,14 +30,12 @@ impl Searcher {
         Self { evaluation_count: 0 }
     }
 
-    fn make_move(&mut self, pos: &mut Position, mv: &Move) -> UndoState {
-        let mv = mv.clone();
+    fn make_move(&mut self, pos: &mut Position, mv: Move) -> UndoState {
         let undo_state = pos.make_move(mv);
         undo_state
     }
 
-    fn unmake_move(&mut self, pos: &mut Position, mv: &Move, undo_state: &UndoState) {
-        let mv = mv.clone();
+    fn unmake_move(&mut self, pos: &mut Position, mv: Move, undo_state: &UndoState) {
         pos.unmake_move(mv, undo_state);
     }
 
@@ -55,7 +53,7 @@ impl Searcher {
         ply_remaining: u8,
         mut alpha: i32,
         mut beta: i32,
-    ) -> (i32, Option<Move>) {
+    ) -> (i32, Move) {
         // @TODO: refactor draw detection and mate detection
         let key = engine.pos.zobrist();
         let alpha_orig = alpha;
@@ -67,14 +65,14 @@ impl Searcher {
             if repetition >= 3 {
                 assert!(repetition == 3);
                 log::debug!("repetition detected at depth: {}", ply_remaining);
-                return (DRAW_PENALTY, None);
+                return (DRAW_PENALTY, Move::null());
             }
 
             // 50-move rule draw
             if engine.pos.halfmove_clock >= 100 {
                 assert!(engine.pos.halfmove_clock == 100);
                 log::debug!("50-move rule draw detected: {}", engine.pos.fen());
-                return (DRAW_PENALTY, None);
+                return (DRAW_PENALTY, Move::null());
             }
         }
 
@@ -89,11 +87,11 @@ impl Searcher {
             } else {
                 DRAW_PENALTY
             };
-            return (score, None);
+            return (score, Move::null());
         }
 
         // --- 3) Probe transposition table ---
-        let mut tt_move = None;
+        let mut tt_move = Move::null();
         if let Some(entry) = engine.tt.probe(key) {
             if entry.depth >= ply_remaining {
                 let mut found = false;
@@ -107,22 +105,22 @@ impl Searcher {
                 }
             }
             tt_move = entry.best_move;
-            assert!(tt_move.is_some(), "Transposition table entry should have a best move");
+            assert!(!tt_move.is_null(), "Transposition table entry should have a best move");
         }
 
         // --- 4) Check depth cutoff (leaf node) ---
         if ply_remaining == 0 {
-            return (self.evaluate(&engine.pos), None);
+            return (self.evaluate(&engine.pos), Move::null());
         }
 
         // --- 5) Move ordering ---
         let move_list = sort_moves(&engine.pos, &move_list, tt_move);
-        let mut best_move: Option<Move> = None;
+        let mut best_move = Move::null();
         let mut best_score = MIN;
 
         // --- 6) Main search loop ---
         let mut mv_left = move_list.len();
-        for mv in move_list.iter() {
+        for mv in move_list.iter().copied() {
             let undo_state = self.make_move(&mut engine.pos, mv);
 
             let (score, _) = self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
@@ -132,7 +130,7 @@ impl Searcher {
 
             if score >= best_score {
                 best_score = score;
-                best_move = Some(mv.clone());
+                best_move = mv;
             }
 
             alpha = alpha.max(score);
@@ -155,7 +153,7 @@ impl Searcher {
             NodeType::Exact
         };
 
-        assert!(best_move.is_some(), "Best move should be valid");
+        assert!(!best_move.is_null(), "Best move should be valid");
         engine.tt.store(key, ply_remaining, best_score, node_type, best_move);
 
         (best_score, best_move)
@@ -173,8 +171,7 @@ impl Searcher {
         const USE_BOOK: bool = true;
         if USE_BOOK {
             if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.last_hash) {
-                for mv in move_list.iter() {
-                    let mv = mv.unwrap();
+                for mv in move_list.iter().copied() {
                     if mv.src_sq() == book_mv.src_sq()
                         && mv.dst_sq() == book_mv.dst_sq()
                         && mv.get_promotion() == book_mv.get_promotion()
@@ -190,9 +187,7 @@ impl Searcher {
 
         let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX);
 
-        assert!(mv.is_some(), "Best move should be valid");
-
-        let mv = mv.unwrap();
+        assert!(!mv.is_null(), "Best move should be valid");
 
         log::debug!(
             "evaluated {} node, best move found: {} (score: {})",

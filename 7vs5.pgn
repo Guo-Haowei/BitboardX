@@ -1,0 +1,268 @@
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "1"]
+[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.7"]
+[Result "1/2-1/2"]
+[ECO "B42"]
+[GameDuration "00:00:48"]
+[GameEndTime "2025-06-22T16:38:58.550 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:38:09.785 Tokyo Standard Time"]
+[Opening "Sicilian"]
+[PlyCount "193"]
+[TimeControl "40/60"]
+[Variation "Kan, Polugaievsky variation"]
+
+1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 a6 5. Bd3 Bc5 6. Nb3 Ba7 7. Qe2 Nc6 8. Be3
+d6 9. Nc3 {1.2s} Bc5 {4.4s} 10. O-O-O {1.2s} Bxe3+ {4.6s} 11. Qxe3 Ra7 {0.91s}
+12. a3 d5 13. exd5 Qa5 {1.1s} 14. f3 Qb5 {1.4s} 15. g3 Qa5 {2.0s} 16. h3
+Nh6 {1.8s} 17. f4 Qb5 {0.92s} 18. h4 Nf5 {1.8s} 19. Qe1 Kd7 20. g4 Qb6 {2.4s}
+21. a4 Ne3 {0.70s} 22. a5 {0.53s} Nxa5 23. dxe6+ Kc7 24. Rd2 Nac4
+25. Re2 {0.65s} Ra8 {0.68s} 26. exf7 Qg6 27. Na1 Kd6 {0.96s} 28. b3 Nxc2
+29. bxc4 Qxd3 30. c5+ Kxc5 31. Nb3+ Kd6 32. Rxc2 b5 {0.79s} 33. g5 Be6 34. h5
+Qg6 {1.8s} 35. Na1 Qf5 36. Nb1 Qg6 37. Nd2 Qh6 38. Nb1 Rhc8 39. Nd2 Ba2 {0.66s}
+40. f5 Qxg5 41. f8=Q+ Rxf8 42. Rxa2 Kc5 43. Nc2 Rfe8 44. Qd1 Red8 45. Na1 Kd6
+46. Nc2 Qg6 47. Na1 Ke7 48. Nc2 Qf7 {0.58s} 49. Nb4 Qe6 50. Rf1 Qh6 {0.56s}
+51. Nc2 Kf6 {0.76s} 52. Na1 Qg6 53. Nc2 Qg2 54. Re1 Qg6 {0.58s} 55. Na1 Qh6
+56. Nc2 g6 57. Na1 Kxf5 58. Nc2 Qxh5 59. Ne3+ Kf4 60. Nc2 Re8 {0.52s} 61. Nb1
+Qxd1+ 62. Rxd1 Rec8 63. Nd2 Kg5 64. Nb1 Rd8 65. Nba3 Kf4 66. Nb1 Rxd1+ 67. Kxd1
+Ke5 68. Nba3 Kf6 69. Na1 Kg7 70. N1c2 Kf6 71. Na1 Kg7 72. Nb3 Rc8 73. Nb1 Rf8
+74. Rxa6 Rf6 75. Nc5 Rxa6 76. Nxa6 Kf7 77. Nd2 Ke7 78. Nb1 Kd8 79. Nd2 Kd7
+80. Nb1 Kd8 81. Nd2 Kd7 82. Nf1 Ke7 83. Nh2 Kf8 84. Nf1 h6 85. Nd2 Kg8 86. Nb1
+Kg7 87. Nd2 Kf6 88. Nb1 Kg7 89. Nd2 Kf6 90. Nf1 Ke7 91. Nh2 Kd8 92. Nf1 Kd7
+93. Nd2 Kd8 94. Nb1 Kd7 95. Nd2 Kd8 96. Nb1 Kd7
+97. Nd2 {Draw by 3-fold repetition} 1/2-1/2
+
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "2"]
+[White "BitboardX_v0.1.7"]
+[Black "BitboardX_v0.1.5"]
+[Result "1/2-1/2"]
+[ECO "B66"]
+[GameDuration "00:00:18"]
+[GameEndTime "2025-06-22T16:39:16.938 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:38:58.550 Tokyo Standard Time"]
+[Opening "Sicilian"]
+[PlyCount "48"]
+[TimeControl "40/60"]
+[Variation "Richter-Rauzer, Rauzer attack, 7...a6"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 Nc6 6. Bg5 e6 7. Qd2 a6
+8. O-O-O h6 9. Bf4 Bd7 10. Nxc6 Bxc6 11. Qd5 {4.4s} exd5 {0.98s} 12. Rxd5 {3.4s}
+b6 13. Bxa6 {3.0s} Rxa6 14. e5 {3.5s} h5 15. exf6 gxf6 16. g4 {0.91s} hxg4
+17. Re5+ Kd7 18. Rf1 Bg2 19. Ree1 f5 20. Rh1 f6 21. Rhf1 Bf3 22. Rh1 Bg2
+23. Rhf1 Bf3 24. Rh1 Bg2 {Draw by 3-fold repetition} 1/2-1/2
+
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "3"]
+[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.7"]
+[Result "1-0"]
+[ECO "B93"]
+[GameDuration "00:00:13"]
+[GameEndTime "2025-06-22T16:39:30.299 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:39:16.940 Tokyo Standard Time"]
+[Opening "Sicilian"]
+[PlyCount "83"]
+[TimeControl "40/60"]
+[Variation "Najdorf, 6.f4"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. f4 e6 7. Bd3 Nbd7 8. Kd2
+Qb6 {1.1s} 9. Nde2 Ng4 {0.54s} 10. Nd5 exd5 11. Qf1 dxe4 {0.60s} 12. Bxe4
+Qe3+ {0.79s} 13. Kd1 Qxe4 14. Ng3 Qe3 15. Bxe3 Nxe3+ 16. Kc1 Ne5 17. Qg1 N5c4
+18. a4 Nd5 19. b3 Ndb6 20. c3 Nxa4 21. bxa4 h5 22. h4 Be6 23. Nf1 Ne5 24. g3
+O-O-O 25. a5 Nd3+ 26. Kb1 Ne5 27. Nd2 Bc4 28. f5 Rh7 29. Ra3 Be7 30. Rh2 Bd3+
+31. Ka1 Ng6 32. Nb3 Nxh4 33. Qe3 Bc4 34. Nd4 Bf6 35. Kb1 Kd7 {1.3s} 36. Rb2 Be6
+37. Rxb7+ Kc8 38. Rb2 Bxf5+ 39. Ka1 Be5 {0.62s} 40. gxh4 Be4 41. Qxe4 g5
+42. Qb7# {White mates} 1-0
+
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "4"]
+[White "BitboardX_v0.1.7"]
+[Black "BitboardX_v0.1.5"]
+[Result "1/2-1/2"]
+[ECO "B60"]
+[GameDuration "00:00:14"]
+[GameEndTime "2025-06-22T16:39:44.877 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:39:30.300 Tokyo Standard Time"]
+[Opening "Sicilian"]
+[PlyCount "154"]
+[TimeControl "40/60"]
+[Variation "Richter-Rauzer"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 Nc6 6. Bg5 Qb6 7. Nb3 e6 8. Bd3
+h6 {0.67s} 9. Bxf6 {2.8s} gxf6 10. Qh5 {0.53s} Ke7 {0.68s} 11. Qf5 {1.3s}
+exf5 {0.62s} 12. Nd5+ {0.55s} Ke6 13. Nxb6 axb6 14. O-O f4 15. Bc4+ Ke5 16. h3
+h5 17. Bd5 b5 18. Kh2 b4 19. g3 f3 20. Nd2 Bg4 21. Rfd1 f5 22. Rh1 Be7 23. a4
+Na5 24. Bxf7 Bg5 25. hxg4 Bxd2 26. gxf5 Nc6 27. Bd5 Ne7 28. Be6 b6 29. Rhd1 Bg5
+30. Kh3 Bf6 31. Rd3 b5 32. Rd4 Bg5 33. Rc4 Ra7 34. Rc8 Rh7 35. Rg8 Bd2 36. Re8
+Kf6 37. Rd1 bxa4 38. Bd5 Bg5 39. Be6 Nc6 40. Rg8 Ne5 41. Rd5 Bh6 42. Rc8 Rab7
+43. Rxd6 Ke7 44. g4 Bc1 45. Rd7+ Nxd7 46. Kg3 Bxb2 47. Bxd7 Rxd7 48. Kxf3 a3
+49. f6+ Bxf6 50. gxh5 Rxh5 51. Kg4 a2 52. Ra8 a1=Q 53. Rxa1 Bxa1 54. e5 Bxe5
+55. Kf3 Ba1 56. Kf4 Bb2 57. c3 bxc3 58. Kg4 c2 59. Kxh5 c1=Q 60. Kh4 Ba1 61. Kg4
+Bb2 62. Kg3 Ba1 63. Kg4 Bb2 64. Kg3 Ba3 65. Kh4 Bb4 66. Kg4 Be1 67. f3 Bd2
+68. f4 Be1 69. f5 Bd2 70. Kh5 Be1 71. Kg4 Bd2 72. Kh5 Bc3 73. Kg4 Ba1 74. Kg3
+Bb2 75. Kg4 Ba1 76. Kg3 Bb2 77. Kg4 Ba1 {Draw by 3-fold repetition} 1/2-1/2
+
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "5"]
+[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.7"]
+[Result "1-0"]
+[ECO "E32"]
+[GameDuration "00:00:11"]
+[GameEndTime "2025-06-22T16:39:56.826 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:39:44.879 Tokyo Standard Time"]
+[Opening "Nimzo-Indian"]
+[PlyCount "113"]
+[TimeControl "40/60"]
+[Variation "Classical variation"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. Qc2 O-O 5. a3 Bxc3+ 6. Qxc3 d6 7. Bg5 Nbd7
+8. e3 b5 {1.1s} 9. cxb5 Nc5 {0.86s} 10. Qc2 Na4 11. Qxa4 h6 {0.69s} 12. b3 hxg5
+13. O-O-O Kh7 14. f3 a6 15. g3 e5 16. b4 Bg4 {0.74s} 17. Ne2 Bxf3 18. dxe5 Bg2
+19. Bxg2 c6 {1.3s} 20. bxc6 Qe8 21. exd6 Qc8 22. Ng1 Qd7 23. Ne2 Kh8 24. Ng1 Qe6
+25. c7 Qxe3+ 26. Kb1 Ne4 27. Ka1 Qf4 28. h3 Qf6+ 29. Rd4 Qxd4+ 30. Ka2 a5
+31. Bxe4 Qa1+ 32. Kxa1 Rae8 33. bxa5 Rd8 34. g4 Rfe8 35. a6 Ra8 36. d7 Rg8
+37. Ne2 Rge8 38. Nc1 Rf8 39. Na2 Kg8 40. Nc1 g6 41. Na2 Rfc8 42. Nc1 Rf8 43. Na2
+Rfc8 44. Nc3 Re8 45. Nb1 Rf8 46. Nd2 Rfc8 47. Nb1 Rf8 48. Nd2 Rfc8 49. Nf1 Rxc7
+50. Bxa8 Rxd7 51. Qxd7 Kh8 52. a4 f6 53. a5 Kg8 54. a7 f5 55. a6 fxg4 56. hxg4
+Kf8 57. Rh8# {White mates} 1-0
+
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "6"]
+[White "BitboardX_v0.1.7"]
+[Black "BitboardX_v0.1.5"]
+[Result "1/2-1/2"]
+[ECO "B20"]
+[GameDuration "00:00:17"]
+[GameEndTime "2025-06-22T16:40:14.153 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:39:56.827 Tokyo Standard Time"]
+[Opening "Sicilian"]
+[PlyCount "68"]
+[TimeControl "40/60"]
+[Variation "Keres variation (2.Ne2)"]
+
+1. e4 c5 2. Ne2 Nf6 3. Nbc3 d6 4. g3 Nc6 5. Bg2 g6 6. Nb5 {0.89s} a6 7. Nbc3 Bh6
+8. e5 {0.83s} Nxe5 9. Nd5 {0.70s} c4 10. Nef4 a5 11. Nxf6+ exf6 12. O-O a4
+13. Nxg6 {1.7s} fxg6 14. Qf3 {0.75s} g5 15. Qb3 {0.73s} g4 16. Qf3 {0.57s} Ng6
+17. d3 {0.51s} Ne5 18. Qd1 {0.80s} Bg7 19. dxc4 Nxc4 20. Qd2 f5 21. Qh6 Bd4
+22. Re1+ Kf7 23. Qe6+ Bxe6 24. Be4 {0.57s} b5 25. Re3 b4 26. Bxa8 {2.4s} Qxa8
+27. Rc3 d5 28. h3 {0.51s} gxh3 29. Rf3 h5 30. Re3 Na5 31. Rc3 Nb7 32. Re3 Na5
+33. Rc3 Nb7 34. Re3 Na5 {Draw by 3-fold repetition} 1/2-1/2
+
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "7"]
+[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.7"]
+[Result "1/2-1/2"]
+[ECO "B40"]
+[GameDuration "00:00:19"]
+[GameEndTime "2025-06-22T16:40:33.629 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:40:14.154 Tokyo Standard Time"]
+[Opening "Sicilian defense"]
+[PlyCount "95"]
+[TimeControl "40/60"]
+
+1. e4 c5 2. Nf3 e6 3. c3 d5 4. exd5 Qxd5 5. d4 Nf6 6. Na3 cxd4 {2.2s}
+7. Qxd4 {0.71s} Qc5 {2.0s} 8. Bb5+ {1.0s} Nbd7 {2.4s} 9. Bxd7+ {1.4s}
+Bxd7 {0.51s} 10. Qxc5 {1.4s} Be7 11. b4 Bxc5 {2.4s} 12. bxc5 e5 13. Nxe5 Bg4
+14. f4 Bd7 15. g3 Rc8 16. h4 Bc6 17. Rf1 Ke7 18. c4 Bd7 19. Nb1 Kf8 20. a3 Bh3
+21. Nc3 Bxf1 {0.70s} 22. Kxf1 Rxc5 23. Bb2 Rg8 24. a4 Rd5 25. Na2 Ke8 26. Nc3 b5
+27. a5 g5 28. a6 Ke7 29. Nf3 Rd3 30. Nxg5 Kf8 31. cxb5 Rxg3 32. f5 R8xg5
+33. Ba3+ Kg7 34. hxg5 Rg4 35. Nb1 Rh4 36. Bc1 Rh6 37. Nd2 Rg6 38. Nb1 Rxg5
+39. Bxg5 Ng4 40. Nd2 h6 41. Nb1 hxg5 42. Nd2 Nf2 43. Nb1 Kh8 44. f6 Ng4 45. Nd2
+Nf2 46. Nb1 Ng4 47. Nd2 Nf2 48. Nb1 {Draw by 3-fold repetition} 1/2-1/2
+
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "8"]
+[White "BitboardX_v0.1.7"]
+[Black "BitboardX_v0.1.5"]
+[Result "1/2-1/2"]
+[ECO "A05"]
+[GameDuration "00:00:13"]
+[GameEndTime "2025-06-22T16:40:46.827 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:40:33.630 Tokyo Standard Time"]
+[Opening "Reti Opening"]
+[PlyCount "152"]
+[TimeControl "40/60"]
+
+1. Nf3 Nf6 2. c4 c5 3. g3 b6 4. Bg2 Bb7 5. O-O g6 6. b3 Bg7 7. Bb2 O-O 8. Nc3
+Na6 9. d4 d5 10. Ne5 e6 11. Be4 {3.0s} dxe4 {0.57s} 12. dxc5 {1.6s} bxc5 {0.55s}
+13. Nxg6 fxg6 14. f3 {1.3s} e3 15. Qxd8 {0.64s} Raxd8 16. Nb5 g5 17. Nc3 e5
+18. Nb5 h5 19. Bxe5 Nb4 20. Bd6 a5 21. Rf2 Nc2 22. Re1 Nxe1 23. Bf4 Nc2 24. Bxe3
+Nxe3 25. Nc3 Nc2 26. Ne4 Na1 27. Nxg5 Nc2 28. Ne6 Na1 29. Rf1 Nc2 30. Nxf8 Bxf8
+31. Kg2 Na3 32. g4 h4 33. e4 Nc2 34. Kf2 h3 35. Kg3 Na3 36. Kh4 Nc2 37. Kg5 Na3
+38. Kxf6 Nc2 39. Ke6 Na3 40. Kf5 Nc2 41. Ke6 Na3 42. Kf5 Ba6 43. Kf4 Nc2 44. Kg3
+Na3 45. Kxh3 Nc2 46. Rf2 Na1 47. Kh4 Bb7 48. Rf1 Nc2 49. Kg5 Na3 50. Rf2 Nb1
+51. Kf5 Na3 52. Kf6 Nb1 53. Kf5 Na3 54. Kf6 Ba6 55. Ke6 Nb1 56. Kf5 Na3 57. Kf6
+Nb1 58. Kg6 Na3 59. Kf6 Nb1 60. Kg6 Nc3 61. Rc2 Nd1 62. Re2 Nc3 63. Rc2 Nd1
+64. Re2 Bb7 65. Kg5 Nc3 66. Rf2 Nd1 67. Rg2 Nc3 68. Kf6 Nb1 69. Kf5 Na3 70. Kg6
+Nb1 71. Kf5 Na3 72. Kg6 Ba6 73. Kf6 Nb1 74. Kg6 Na3 75. Kf6 Nb1 76. Kg6
+Na3 {Draw by 3-fold repetition} 1/2-1/2
+
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "9"]
+[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.7"]
+[Result "1/2-1/2"]
+[ECO "A46"]
+[GameDuration "00:00:10"]
+[GameEndTime "2025-06-22T16:40:57.000 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:40:46.829 Tokyo Standard Time"]
+[Opening "Queen's pawn game"]
+[PlyCount "101"]
+[TimeControl "40/60"]
+
+1. d4 Nf6 2. Nf3 e6 3. c4 d5 4. Nc3 dxc4 5. e4 Bb4 6. Bg5 c5 7. e5 cxd4 8. Nxd4
+Qa5 9. exf6 Bxc3+ 10. bxc3 Qxg5 11. Qa4+ Bd7 12. Qxc4 O-O {0.57s} 13. fxg7
+Kxg7 {0.79s} 14. Nf3 Qd8 {0.73s} 15. Be2 Bc8 {0.99s} 16. Bf1 a6 {1.0s} 17. a3
+b5 {0.63s} 18. Qe4 Qf6 19. Qxa8 e5 20. Qxb8 Kh8 {0.56s} 21. g3 Qxf3 22. Rb1
+Qxc3+ 23. Kd1 Rd8+ 24. Qd6 Qc7 25. Qxd8+ Qxd8+ 26. Kc1 Qg8 27. Bd3 Qd8 28. Be4
+Kg8 29. Re1 Qf8 30. Ra1 Qh6+ 31. f4 exf4 32. Bd5 fxg3+ 33. Kb1 Bf5+ 34. Be4 Qg5
+35. Bxf5 Qxf5+ 36. Kc1 Qe6 37. Rxe6 Kg7 38. hxg3 fxe6 39. g4 Kf8 40. g5 Kg7
+41. Rb1 Kg6 42. Ra1 Kh5 43. Rb1 Kh4 44. Ra1 Kxg5 45. Rb1 Kh6 46. Ra1 Kg7 47. Rb1
+Kh8 48. Ra1 Kg7 49. Rb1 Kh8 50. Rb2 Kg7 51. Rb1 {Draw by 3-fold repetition}
+1/2-1/2
+
+[Event "?"]
+[Site "?"]
+[Date "2025.06.22"]
+[Round "10"]
+[White "BitboardX_v0.1.7"]
+[Black "BitboardX_v0.1.5"]
+[Result "1/2-1/2"]
+[ECO "A48"]
+[GameDuration "00:00:15"]
+[GameEndTime "2025-06-22T16:41:12.817 Tokyo Standard Time"]
+[GameStartTime "2025-06-22T16:40:57.001 Tokyo Standard Time"]
+[Opening "King's Indian"]
+[PlyCount "68"]
+[TimeControl "40/60"]
+[Variation "East Indian defense"]
+
+1. d4 Nf6 2. Nf3 g6 3. c4 Bg7 4. g3 O-O 5. Bg2 d6 6. O-O Nc6 7. Nc3 a6 8. h3 Rb8
+9. Bg5 b5 10. cxb5 axb5 11. Bxf6 {1.9s} exf6 12. a4 {0.87s} b4 13. Ra3 {0.85s}
+Na5 14. Rb3 {1.3s} f5 15. Qc2 c6 16. Rxb4 {1.4s} Rxb4 17. Nd5 {1.2s} cxd5
+18. Ra1 {0.88s} f6 19. g4 {0.70s} f4 20. Ng5 {0.57s} fxg5 21. Qc3 h6 22. Kh2 Nb7
+23. Kh1 Na5 24. Kg1 Nb7 25. Kh2 Na5 26. Bxd5+ Kh7 27. Qxb4 Bf6 28. Ra3 {0.66s}
+Be7 29. Qc4 Bf6 30. Qc5 {0.68s} Be7 31. Qc6 Bf6 32. Qc5 Be7 33. Qc6 Rf6
+34. Qc5 {0.97s} Rf8 {Draw by 3-fold repetition} 1/2-1/2
+
