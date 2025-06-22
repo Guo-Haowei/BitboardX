@@ -9,8 +9,7 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "files": [
-    "/**/*.ts",
-    "/**/*.js",
+  "inlcude": [
+    "src",
   ],
 }
