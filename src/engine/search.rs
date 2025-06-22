@@ -12,9 +12,17 @@ const MAX: i32 = i32::MAX;
 const DRAW_PENALTY: i32 = -50;
 const IMMEDIATE_MATE_SCORE: i32 = 40000;
 
+const DEBUG_PRINT: bool = false;
+macro_rules! if_debug_print {
+    ($e:expr) => {
+        if DEBUG_PRINT {
+            $e
+        }
+    };
+}
+
 pub struct Searcher {
     evaluation_count: u64,
-    // @TODO: cutoff move history
 }
 
 impl Searcher {
@@ -109,6 +117,7 @@ impl Searcher {
         let mut best_score = MIN;
 
         // --- 6) Main search loop ---
+        let mut mv_left = move_list.len();
         for mv in move_list.iter() {
             let undo_state = self.make_move(&mut engine.pos, mv);
 
@@ -124,8 +133,13 @@ impl Searcher {
 
             alpha = alpha.max(score);
             if alpha >= beta {
+                if_debug_print!(if max_ply - ply_remaining <= 2 && ply_remaining > 1 {
+                    log::debug!("{}/{} nodes pruned", mv_left, move_list.len());
+                });
+
                 break; // beta cut-off
             }
+            mv_left -= 1;
         }
 
         // --- 7) Store result in transposition table ---

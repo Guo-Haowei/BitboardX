@@ -9,7 +9,7 @@ use crate::utils;
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 1;
-const VERSION_PATCH: u32 = 5;
+const VERSION_PATCH: u32 = 7;
 
 pub struct Engine {
     pub(super) pos: Position,
@@ -41,12 +41,7 @@ impl Engine {
     }
 
     pub fn reset(&mut self) {
-        self.set_position(Position::new());
-        let last_hash = self.pos.zobrist();
-        self.last_hash = last_hash;
-        self.repetition_table.clear();
-        self.repetition_table.insert(last_hash, 1);
-        self.tt.clear();
+        *self = Self::new();
     }
 
     pub fn best_move(&mut self, depth: u8) -> Option<Move> {

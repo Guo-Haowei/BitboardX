@@ -106,10 +106,6 @@ impl<const N: usize> TranspositionTable<N> {
             None => None,
         }
     }
-
-    pub fn clear(&mut self) {
-        *self = Self::new();
-    }
 }
 
 const DEFAULT_TT_SIZE_IN_BYTE: usize = 16 * 1024 * 1024; // 32 MB
