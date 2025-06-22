@@ -128,12 +128,6 @@ impl Searcher {
                     NodeType::UpperBound => beta = beta.min(entry.score as i32),
                 }
                 if found || alpha >= beta {
-                    log::warn!(
-                        "Transposition table hit: key: {:?}, score: {}, best move: {}",
-                        key,
-                        entry.score,
-                        entry.best_move.to_string()
-                    );
                     return (entry.score, entry.best_move);
                 }
             }
@@ -221,6 +215,14 @@ impl Searcher {
             self.evaluation_count,
             mv.to_string(),
             score
+        );
+
+        log::debug!(
+            "tt table {}/{}, {}% full, collisions: {}",
+            engine.tt.count(),
+            engine.tt.capacity(),
+            (engine.tt.count() as f32 / engine.tt.capacity() as f32 * 100.0).round(),
+            engine.tt.collision_count
         );
 
         Some(mv)

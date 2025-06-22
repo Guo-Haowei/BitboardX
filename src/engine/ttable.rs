@@ -3,12 +3,6 @@ use static_assertions::const_assert;
 use crate::core::types::Move;
 use crate::core::zobrist::ZobristHash;
 
-macro_rules! tt_debug {
-    ($($arg:tt)*) => {
-        log::debug!($($arg)*);
-    };
-}
-
 #[derive(Debug, Copy, Clone)]
 #[repr(u8)]
 pub enum NodeType {
@@ -30,20 +24,39 @@ pub struct TTEntry {
 const_assert!(std::mem::size_of::<TTEntry>() == 16);
 const_assert!(std::mem::size_of::<Option<TTEntry>>() == 16);
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum TTStoreResult {
+    NotUpdated,
+    UpdatedEmpty,         // entry was empty
+    OverridenCollision,   // entry with the same hash, different key already exists
+    OverridenNoCollision, // entry with the same hash, same key already exists
+}
+
 pub struct TranspositionTable<const N: usize> {
     table: Box<[Option<TTEntry>]>,
+    count: u64,
+
+    pub collision_count: u64,
 }
 
 impl<const N: usize> TranspositionTable<N> {
     pub fn new() -> Self {
         let data = vec![None; N];
         let table = data.into_boxed_slice();
-        Self { table }
+        Self { table, count: 0, collision_count: 0 }
     }
 
     #[inline(always)]
     fn index(key: ZobristHash) -> usize {
         (key.0 as usize) & (N - 1)
+    }
+
+    pub const fn capacity(&self) -> usize {
+        N
+    }
+
+    pub fn count(&self) -> u64 {
+        self.count
     }
 
     pub fn store(
@@ -53,28 +66,29 @@ impl<const N: usize> TranspositionTable<N> {
         score: i32,
         node_type: NodeType,
         best_move: Move,
-    ) -> bool {
+    ) -> TTStoreResult {
         let idx = Self::index(key);
         let existing = &self.table[idx];
 
-        if let Some(old_entry) = existing {
-            // If the entry already exists, and deeper than the new one,
-            // we don't want to update it
-            if old_entry.key == key && old_entry.depth > depth {
-                return false;
+        let result = if let Some(old_entry) = existing {
+            if old_entry.key != key {
+                self.collision_count += 1;
+                TTStoreResult::OverridenCollision
+            } else if depth >= old_entry.depth {
+                TTStoreResult::OverridenNoCollision
+            } else {
+                TTStoreResult::NotUpdated
             }
+        } else {
+            self.count += 1; // only increment count if we are inserting a new entry
+            TTStoreResult::UpdatedEmpty
+        };
+
+        if result != TTStoreResult::NotUpdated {
+            self.table[idx] = Some(TTEntry { key, depth, score, node_type, best_move });
         }
 
-        tt_debug!(
-            "Storing TTEntry: key: {:?}, depth: {}, score: {}, node_type: {:?}, best_move: {}",
-            key,
-            depth,
-            score,
-            node_type,
-            best_move.to_string()
-        );
-        self.table[idx] = Some(TTEntry { key, depth, score, node_type, best_move });
-        true
+        result
     }
 
     pub fn probe(&self, key: ZobristHash) -> Option<&TTEntry> {
@@ -94,7 +108,7 @@ impl<const N: usize> TranspositionTable<N> {
     }
 
     pub fn clear(&mut self) {
-        self.table.fill(None);
+        *self = Self::new();
     }
 }
 
