@@ -8,7 +8,7 @@ const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
 
 const DRAW_PENALTY: i32 = -50;
-const MATE_PENALTY: i32 = -40000;
+const IMMEDIATE_MATE_SCORE: i32 = 40000;
 
 pub struct Searcher {
     evaluation_count: u64,
@@ -96,7 +96,7 @@ impl Searcher {
         ply_remaining: u8,
         mut alpha: i32,
         beta: i32,
-    ) -> i32 {
+    ) -> (i32, Move) {
         // @TODO: refactor draw detection and mate detection
         let key = engine.pos.zobrist();
         // threefold draw
@@ -104,33 +104,50 @@ impl Searcher {
         if repetition >= 2 {
             debug_assert!(repetition == 2); // if we make this move, it will be a draw
             log::debug!("Repetition detected: {}", engine.pos.fen());
-            return DRAW_PENALTY;
+            return (DRAW_PENALTY, Move::null());
         }
 
         // 50-move rule draw
         if engine.pos.halfmove_clock >= 100 {
             log::debug!("50-move rule draw detected: {}", engine.pos.fen());
-            return DRAW_PENALTY;
+            return (DRAW_PENALTY, Move::null());
         }
 
         let move_list = move_gen::legal_moves(&engine.pos);
 
         if move_list.len() == 0 {
-            return if engine.pos.is_in_check() { MATE_PENALTY } else { DRAW_PENALTY };
+            let score = if engine.pos.is_in_check() {
+                // shallower checkmate should have higher score
+                // because it's a position where the side to move is losing,
+                // so we negate the score
+                -(IMMEDIATE_MATE_SCORE + ply_remaining as i32)
+            } else {
+                DRAW_PENALTY
+            };
+            return (score, Move::null());
         }
 
         if ply_remaining == 0 {
-            return self.evaluate(&engine.pos);
+            return (self.evaluate(&engine.pos), Move::null());
         }
 
         let move_list = sort_moves(&engine.pos, &move_list);
 
+        let mut best_move = Move::null();
+        let mut best_score = MIN;
+
         for mv in move_list.iter() {
             let undo_state = self.make_move(&mut engine.pos, mv);
 
-            let score = -self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
+            let (score, _) = self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
+            let score = -score; // Negate the score for the opponent
 
             self.unmake_move(&mut engine.pos, mv, &undo_state);
+
+            if score > best_score {
+                best_score = score;
+                best_move = *mv;
+            }
 
             alpha = alpha.max(score);
             if alpha >= beta {
@@ -138,7 +155,7 @@ impl Searcher {
             }
         }
 
-        alpha
+        (best_score, best_move)
     }
 
     pub fn find_best_move(&mut self, engine: &mut Engine, depth: u8) -> Option<Move> {
@@ -167,33 +184,20 @@ impl Searcher {
             }
         }
 
-        let mut alpha = MIN;
-        let mut best_move = Move::null();
+        let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX);
 
-        let move_list = sort_moves(&engine.pos, &move_list);
-
-        for mv in move_list.iter() {
-            let undo_state = self.make_move(&mut engine.pos, mv);
-            let score = -self.negamax(engine, depth, depth - 1, alpha, MAX);
-
-            self.unmake_move(&mut engine.pos, mv, &undo_state);
-
-            if score >= alpha {
-                alpha = score;
-                best_move = mv.clone();
-            }
+        if mv.is_null() {
+            return None;
         }
 
-        assert!(!best_move.is_null(), "No best move found, this should not happen");
-
         log::debug!(
-            "evaluated {} node, best move found: {} (score{})",
+            "evaluated {} node, best move found: {} (score: {})",
             self.evaluation_count,
-            best_move.to_string(),
-            alpha
+            mv.to_string(),
+            score
         );
 
-        Some(best_move)
+        Some(mv)
     }
 }
 
