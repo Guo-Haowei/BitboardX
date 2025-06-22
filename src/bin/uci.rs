@@ -1,36 +1,32 @@
-use rustyline::{DefaultEditor, Result};
-fn main() -> Result<()> {
+fn main() {
     use bitboard_x::engine::Engine;
     use bitboard_x::utils::*;
-    use std::io::{self};
+    use std::io::{self, BufRead};
+
     logger::init_logger();
 
-    eprintln!("{}", Engine::name());
+    let stdin = io::stdin();
+    let reader = stdin.lock();
+
     let mut stdout = io::stdout();
     let mut engine = Engine::new();
-    let mut rl = DefaultEditor::new()?;
-    // let _ = rl.load_history("history.txt").is_err();
 
-    loop {
-        let readline = rl.readline(">> ");
-        match readline {
+    eprintln!("{}", Engine::name());
+
+    for line_result in reader.lines() {
+        match line_result {
             Ok(line) => {
-                let input = line.trim();
-
-                if !input.is_empty() {
-                    let _ = rl.add_history_entry(line.as_str());
+                if line.is_empty() {
+                    continue;
                 }
-
-                if !engine.handle_uci_cmd(&mut stdout, input) {
+                if !engine.handle_uci_cmd(&mut stdout, line.trim()) {
                     break;
                 }
             }
-            _ => {
+            Err(e) => {
+                eprintln!("Error reading line: {}", e);
                 break;
             }
         }
     }
-
-    // rl.save_history("history.txt")?;
-    Ok(())
 }

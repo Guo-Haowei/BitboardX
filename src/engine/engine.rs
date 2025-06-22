@@ -2,14 +2,14 @@ use std::collections::HashMap;
 use std::io::Write;
 
 use crate::core::{move_gen, position::Position, types::Move, zobrist::ZobristHash};
-use crate::engine::searcher;
+use crate::engine::search;
 use crate::engine::ttable::TTable;
 use crate::utils;
 
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 1;
-const VERSION_PATCH: u32 = 5;
+const VERSION_PATCH: u32 = 7;
 
 pub struct Engine {
     pub(super) pos: Position,
@@ -41,16 +41,11 @@ impl Engine {
     }
 
     pub fn reset(&mut self) {
-        self.set_position(Position::new());
-        let last_hash = self.pos.zobrist();
-        self.last_hash = last_hash;
-        self.repetition_table.clear();
-        self.repetition_table.insert(last_hash, 1);
-        self.tt.clear();
+        *self = Self::new();
     }
 
     pub fn best_move(&mut self, depth: u8) -> Option<Move> {
-        let mut searcher = searcher::Searcher::new();
+        let mut searcher = search::Searcher::new();
         searcher.find_best_move(self, depth)
     }
 
@@ -75,9 +70,9 @@ impl Engine {
         let src_sq = mv.src_sq();
         let dst_sq = mv.dst_sq();
         let promotion = mv.get_promotion();
-        for mv in legal_moves.iter() {
+        for mv in legal_moves.iter().copied() {
             if mv.src_sq() == src_sq && mv.dst_sq() == dst_sq && mv.get_promotion() == promotion {
-                self.make_move_unverified(mv.clone());
+                self.make_move_unverified(mv);
                 return true;
             }
         }
@@ -206,7 +201,7 @@ impl Engine {
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
             _ => {
-                let mv = self.best_move(4).unwrap();
+                let mv = self.best_move(5).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
         }
@@ -221,11 +216,11 @@ impl Engine {
 
         let mut nodes = 0u64;
         let should_print = depth == max_depth;
-        for mv in move_list.iter() {
-            let undo_state = self.pos.make_move(mv.clone());
+        for mv in move_list.iter().copied() {
+            let undo_state = self.pos.make_move(mv);
             let count = self.uci_cmd_go_perft(writer, depth - 1, max_depth);
             nodes += count;
-            self.pos.unmake_move(mv.clone(), &undo_state);
+            self.pos.unmake_move(mv, &undo_state);
 
             if should_print {
                 writeln!(writer, "{}: {}", mv.to_string(), count).unwrap();

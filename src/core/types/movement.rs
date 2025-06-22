@@ -56,10 +56,6 @@ pub struct Move(u16);
 impl Move {
     const SQUARE_MASK: u16 = 0b111111; // 6 bits for square (0-63)
 
-    pub const fn null() -> Self {
-        Self(0)
-    }
-
     pub fn new(
         src_sq: Square,
         dst_sq: Square,
@@ -84,6 +80,10 @@ impl Move {
         }
 
         Self(data)
+    }
+
+    pub const fn null() -> Self {
+        Self(0)
     }
 
     pub fn is_null(&self) -> bool {
@@ -171,6 +171,10 @@ impl MoveList {
 
     pub fn len(&self) -> usize {
         self.count
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
     }
 
     pub fn get(&self, index: usize) -> Option<Move> {

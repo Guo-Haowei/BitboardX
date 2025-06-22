@@ -1,6 +1,34 @@
 use super::piece_square_table::*;
 use crate::core::{position::Position, types::*};
 
+const PAWN_VALUE: i32 = 100;
+const KNIGHT_VALUE: i32 = 300;
+const BISHOP_VALUE: i32 = 320;
+const ROOK_VALUE: i32 = 500;
+const QUEEN_VALUE: i32 = 900;
+
+const PIECE_VALUES: [i32; 6] = [
+    PAWN_VALUE,
+    KNIGHT_VALUE,
+    BISHOP_VALUE,
+    ROOK_VALUE,
+    QUEEN_VALUE,
+    40000, // King
+];
+
+// macro_rules! if_debug_search {
+//     ($e:expr) => {
+//         if false {
+//             $e
+//         }
+//     };
+// }
+
+pub fn get_piece_value(piece_type: PieceType) -> i32 {
+    assert!(piece_type != PieceType::NONE, "Piece must not be NONE");
+    PIECE_VALUES[piece_type.as_u8() as usize]
+}
+
 struct EvaluationData {
     material_score: i32,
     mop_up_score: i32, // score for endgame material
@@ -91,12 +119,6 @@ impl MaterialInfo {
         }
     }
 }
-
-const PAWN_VALUE: i32 = 100;
-const KNIGHT_VALUE: i32 = 300;
-const BISHOP_VALUE: i32 = 320;
-const ROOK_VALUE: i32 = 500;
-const QUEEN_VALUE: i32 = 900;
 
 // const KING_PAWN_SHIELD_SCORES: [i32; 6] = [4, 7, 4, 3, 6, 3];
 
@@ -391,56 +413,4 @@ mod tests {
         assert_eq!(Evaluation::evaluate_isolated_pawns(&white_material), -50);
         assert_eq!(Evaluation::evaluate_isolated_pawns(&black_material), -10);
     }
-}
-
-const PIECE_VALUES: [i32; 6] = [
-    PAWN_VALUE,
-    KNIGHT_VALUE,
-    BISHOP_VALUE,
-    ROOK_VALUE,
-    QUEEN_VALUE,
-    40000, // King
-];
-
-// for simplicity, we use mid-game piece value table
-fn get_piece_value(piece_type: PieceType) -> i32 {
-    assert!(piece_type != PieceType::NONE, "Piece must not be NONE");
-    PIECE_VALUES[piece_type.as_u8() as usize]
-}
-
-// @TODO: refactor
-pub fn move_score_guess(pos: &Position, mv: Move) -> i32 {
-    let move_type = mv.get_type();
-    let src_sq = mv.src_sq();
-    let dst_sq = mv.dst_sq();
-    let color = pos.side_to_move;
-    let opponent = color.opponent();
-    let src_piece = pos.get_piece_at(src_sq);
-    let captured_piece = if move_type == MoveType::EnPassant {
-        Piece::get_piece(opponent, PieceType::PAWN)
-    } else {
-        pos.get_piece_at(dst_sq)
-    };
-    let src_piece_value = get_piece_value(src_piece.get_type());
-
-    let mut guess = 0;
-
-    // prioritize capture high value piece with low value piece
-    if captured_piece != Piece::NONE {
-        let captured_piece_value = get_piece_value(captured_piece.get_type());
-        guess = 10 * captured_piece_value - src_piece_value;
-    }
-
-    // promote a pawn is also a good move
-    if move_type == MoveType::Promotion {
-        let promo_piece = mv.get_promotion().unwrap();
-        guess += get_piece_value(promo_piece);
-    }
-
-    // penalize moving a piece to a square that is attacked by an opponent piece
-    if pos.attack_mask[opponent.as_usize()].test(dst_sq.as_u8()) {
-        guess = -src_piece_value;
-    }
-
-    guess
 }
