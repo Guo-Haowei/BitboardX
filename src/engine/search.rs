@@ -55,7 +55,7 @@ impl Searcher {
         mut beta: i32,
     ) -> (i32, Move) {
         // @TODO: refactor draw detection and mate detection
-        let key = engine.pos.zobrist();
+        let key = engine.pos.hash();
         let alpha_orig = alpha;
 
         if max_ply > ply_remaining {

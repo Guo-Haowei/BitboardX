@@ -154,7 +154,7 @@ impl Evaluation {
 
         // Push the king to edge of the board in endgame (for endgame checkmate)
 
-        let perspective = if pos.side_to_move == Color::WHITE { 1 } else { -1 };
+        let perspective = if pos.white_to_move() { 1 } else { -1 };
         let score = self.white_score.sum() - self.black_score.sum();
 
         // eprintln!(

@@ -33,7 +33,7 @@ impl Engine {
 
     pub fn from_fen(fen: &str) -> Result<Self, &'static str> {
         let pos = Position::from_fen(fen)?;
-        let last_hash = pos.zobrist();
+        let last_hash = pos.hash();
         let mut repetition_table = HashMap::new();
         repetition_table.insert(last_hash, 1);
 
@@ -50,7 +50,7 @@ impl Engine {
     }
 
     pub fn set_position(&mut self, pos: Position) {
-        let zobrist = pos.zobrist();
+        let zobrist = pos.hash();
         self.pos = pos;
         self.repetition_table.clear();
         self.repetition_table.insert(zobrist, 1);
@@ -89,7 +89,7 @@ impl Engine {
     pub fn make_move_unverified(&mut self, mv: Move) {
         self.pos.make_move(mv);
 
-        let zobrist = self.pos.zobrist();
+        let zobrist = self.pos.hash();
         self.last_hash = zobrist;
         *self.repetition_table.entry(zobrist).or_insert(0) += 1;
     }

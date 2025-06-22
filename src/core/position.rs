@@ -148,7 +148,7 @@ impl Position {
         format!(
             "{} {} {} {} {} {}",
             utils::dump_board(&self.bitboards),
-            if self.side_to_move == Color::WHITE { "w" } else { "b" },
+            if self.white_to_move() { "w" } else { "b" },
             utils::dump_castling(self.castling_rights),
             match self.en_passant {
                 Some(sq) => sq.to_string(),
@@ -159,8 +159,12 @@ impl Position {
         )
     }
 
-    pub fn zobrist(&self) -> ZobristHash {
+    pub fn hash(&self) -> ZobristHash {
         zobrist::zobrist_hash(&self)
+    }
+
+    pub fn white_to_move(&self) -> bool {
+        self.side_to_move == Color::WHITE
     }
 
     pub fn get_piece_at(&self, sq: Square) -> Piece {
