@@ -7,7 +7,7 @@ use colored::*;
 fn is_move_legal(pos: &Position, mv: Move) -> bool {
     let pseudo_moves = move_gen::legal_moves(pos);
     for lm in pseudo_moves.iter() {
-        if mv == *lm {
+        if mv == mv.unrap() {
             return true;
         }
     }

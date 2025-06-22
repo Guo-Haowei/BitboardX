@@ -102,7 +102,7 @@ impl WasmGame {
     }
 
     pub fn get_legal_moves(&self) -> Vec<String> {
-        self.internal.legal_moves.iter().map(|m| m.to_string()).collect()
+        self.internal.legal_moves.iter().map(|m| m.unwrap().to_string()).collect()
     }
 
     // @TODO: DONT LIKE THIS, FIND A BETTER WAY

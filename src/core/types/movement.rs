@@ -1,6 +1,8 @@
-use crate::core::types::PieceType;
+use std::num::NonZeroU16;
 
-use super::square::*;
+use static_assertions::const_assert;
+
+use crate::core::types::{PieceType, square::*};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -51,14 +53,10 @@ pub enum MoveType {
 /// - `promo` (14–15): promotion piece (0 = knight, 1 = bishop, 2 = rook, 3 = queen)
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Move(u16);
+pub struct Move(NonZeroU16);
 
 impl Move {
     const SQUARE_MASK: u16 = 0b111111; // 6 bits for square (0-63)
-
-    pub const fn null() -> Self {
-        Self(0)
-    }
 
     pub fn new(
         src_sq: Square,
@@ -83,29 +81,25 @@ impl Move {
             debug_assert!(move_type != MoveType::Promotion);
         }
 
-        Self(data)
-    }
-
-    pub fn is_null(&self) -> bool {
-        self.0 == 0
+        Self(NonZeroU16::new(data).unwrap())
     }
 
     pub fn src_sq(&self) -> Square {
-        Square::new((self.0 & Self::SQUARE_MASK) as u8)
+        Square::new((self.0.get() & Self::SQUARE_MASK) as u8)
     }
 
     pub fn dst_sq(&self) -> Square {
-        Square::new(((self.0 >> 6) & Self::SQUARE_MASK) as u8)
+        Square::new(((self.0.get() >> 6) & Self::SQUARE_MASK) as u8)
     }
 
     pub fn get_type(&self) -> MoveType {
-        let bits = (self.0 >> 12) & 0b11;
+        let bits = (self.0.get() >> 12) & 0b11;
         unsafe { std::mem::transmute::<u8, MoveType>(bits as u8) }
     }
 
     pub fn get_promotion(&self) -> Option<PieceType> {
         if self.get_type() == MoveType::Promotion {
-            let promo_bits = ((self.0 >> 14) & 0b11) + 1;
+            let promo_bits = ((self.0.get() >> 14) & 0b11) + 1;
             match promo_bits {
                 1..=4 => Some(unsafe { std::mem::transmute::<u8, PieceType>(promo_bits as u8) }),
                 _ => panic!("Invalid promotion bits: {}", promo_bits), // Should never happen
@@ -138,6 +132,9 @@ impl Move {
     }
 }
 
+const_assert!(std::mem::size_of::<Move>() == 2);
+const_assert!(std::mem::size_of::<Option<Move>>() == 2);
+
 pub struct MoveList {
     moves: [Move; 256],
     count: usize,
@@ -150,7 +147,7 @@ impl MoveList {
 
     pub fn add(&mut self, mv: Move) {
         if self.count < self.moves.len() {
-            self.moves[self.count] = mv;
+            self.moves[self.count] = Some(mv);
             self.count += 1;
         } else {
             panic!("MoveList is full, cannot add more moves");
@@ -159,14 +156,6 @@ impl MoveList {
 
     pub fn clear(&mut self) {
         self.count = 0;
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &Move> {
-        self.moves.iter().take(self.count)
-    }
-
-    pub fn enumerate(&self) -> impl Iterator<Item = (usize, &Move)> {
-        self.moves.iter().take(self.count).enumerate()
     }
 
     pub fn len(&self) -> usize {
@@ -181,7 +170,15 @@ impl MoveList {
         if index >= self.count {
             return None;
         }
-        Some(self.moves[index])
+        self.moves[index]
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Option<Move>> {
+        self.moves.iter().take(self.count)
+    }
+
+    pub fn enumerate(&self) -> impl Iterator<Item = (usize, &Option<Move>)> {
+        self.moves.iter().take(self.count).enumerate()
     }
 }
 

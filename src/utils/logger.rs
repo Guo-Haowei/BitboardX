@@ -12,10 +12,10 @@ pub fn init_logger() {
     }
 
     let executable_name = get_executable_name();
-    let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+    // let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
 
     // Compose filename with timestamp
-    let log_path = format!("{}_{}.log", executable_name, timestamp);
+    let log_path = format!("{}.log", executable_name);
 
     let log_file = std::fs::OpenOptions::new()
         .create(true)

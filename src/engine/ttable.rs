@@ -14,11 +14,11 @@ pub enum NodeType {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct TTEntry {
-    pub key: ZobristHash,    // 8 bytes
-    pub score: i32,          // 4 bytes
-    pub best_move: Move,     // 2 bytes
-    pub depth: u8,           // 1 byte, means ply searched for this entry
-    pub node_type: NodeType, // 1 byte
+    pub key: ZobristHash,        // 8 bytes
+    pub score: i32,              // 4 bytes
+    pub best_move: Option<Move>, // 2 bytes
+    pub depth: u8,               // 1 byte, means ply searched for this entry
+    pub node_type: NodeType,     // 1 byte
 }
 
 const_assert!(std::mem::size_of::<TTEntry>() == 16);
@@ -65,8 +65,10 @@ impl<const N: usize> TranspositionTable<N> {
         depth: u8,
         score: i32,
         node_type: NodeType,
-        best_move: Move,
+        best_move: Option<Move>,
     ) -> TTStoreResult {
+        assert!(best_move.is_some());
+
         let idx = Self::index(key);
         let existing = &self.table[idx];
 

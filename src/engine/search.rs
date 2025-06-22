@@ -55,24 +55,27 @@ impl Searcher {
         ply_remaining: u8,
         mut alpha: i32,
         mut beta: i32,
-    ) -> (i32, Move) {
+    ) -> (i32, Option<Move>) {
         // @TODO: refactor draw detection and mate detection
         let key = engine.pos.zobrist();
         let alpha_orig = alpha;
 
-        // --- 1) Check for repetition and 50-move rule ---
-        let repetition = engine.repetition_count(key);
-        // threefold draw
-        if repetition >= 2 {
-            assert!(repetition == 2); // if we make this move, it will be a draw
-            log::debug!("Repetition detected: {}", engine.pos.fen());
-            return (DRAW_PENALTY, Move::null());
-        }
+        if max_ply > ply_remaining {
+            // --- 1) Check for repetition and 50-move rule ---
+            let repetition = engine.repetition_count(key);
+            // threefold draw
+            if repetition >= 3 {
+                assert!(repetition == 3);
+                log::debug!("repetition detected at depth: {}", ply_remaining);
+                return (DRAW_PENALTY, None);
+            }
 
-        // 50-move rule draw
-        if engine.pos.halfmove_clock >= 100 {
-            log::debug!("50-move rule draw detected: {}", engine.pos.fen());
-            return (DRAW_PENALTY, Move::null());
+            // 50-move rule draw
+            if engine.pos.halfmove_clock >= 100 {
+                assert!(engine.pos.halfmove_clock == 100);
+                log::debug!("50-move rule draw detected: {}", engine.pos.fen());
+                return (DRAW_PENALTY, None);
+            }
         }
 
         // --- 2) Check for terminal node (mate/stalemate) ---
@@ -86,7 +89,7 @@ impl Searcher {
             } else {
                 DRAW_PENALTY
             };
-            return (score, Move::null());
+            return (score, None);
         }
 
         // --- 3) Probe transposition table ---
@@ -103,17 +106,18 @@ impl Searcher {
                     return (entry.score, entry.best_move);
                 }
             }
-            tt_move = Some(entry.best_move);
+            tt_move = entry.best_move;
+            assert!(tt_move.is_some(), "Transposition table entry should have a best move");
         }
 
         // --- 4) Check depth cutoff (leaf node) ---
         if ply_remaining == 0 {
-            return (self.evaluate(&engine.pos), Move::null());
+            return (self.evaluate(&engine.pos), None);
         }
 
         // --- 5) Move ordering ---
         let move_list = sort_moves(&engine.pos, &move_list, tt_move);
-        let mut best_move = Move::null();
+        let mut best_move: Option<Move> = None;
         let mut best_score = MIN;
 
         // --- 6) Main search loop ---
@@ -126,9 +130,9 @@ impl Searcher {
 
             self.unmake_move(&mut engine.pos, mv, &undo_state);
 
-            if score > best_score {
+            if score >= best_score {
                 best_score = score;
-                best_move = *mv;
+                best_move = Some(mv.clone());
             }
 
             alpha = alpha.max(score);
@@ -151,7 +155,7 @@ impl Searcher {
             NodeType::Exact
         };
 
-        debug_assert!(!best_move.is_null(), "Best move should be valid");
+        assert!(best_move.is_some(), "Best move should be valid");
         engine.tt.store(key, ply_remaining, best_score, node_type, best_move);
 
         (best_score, best_move)
@@ -170,11 +174,12 @@ impl Searcher {
         if USE_BOOK {
             if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.last_hash) {
                 for mv in move_list.iter() {
+                    let mv = mv.unwrap();
                     if mv.src_sq() == book_mv.src_sq()
                         && mv.dst_sq() == book_mv.dst_sq()
                         && mv.get_promotion() == book_mv.get_promotion()
                     {
-                        return Some(mv.clone());
+                        return Some(mv);
                     }
                 }
                 log::debug!("book move is: {:?}", book_mv.to_string());
@@ -185,9 +190,9 @@ impl Searcher {
 
         let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX);
 
-        if mv.is_null() {
-            return None;
-        }
+        assert!(mv.is_some(), "Best move should be valid");
+
+        let mv = mv.unwrap();
 
         log::debug!(
             "evaluated {} node, best move found: {} (score: {})",

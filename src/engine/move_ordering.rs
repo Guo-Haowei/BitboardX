@@ -49,13 +49,15 @@ pub fn move_score_guess(pos: &Position, mv: Move, tt_mv: Option<Move>) -> i32 {
 // @TODO: inplace sorting
 pub fn sort_moves(pos: &Position, move_list: &MoveList, tt_mv: Option<Move>) -> Vec<Move> {
     // @TODO: create move ordering class
-    let mut scored_move: Vec<_> =
-        move_list.iter().map(|mv| (-move_score_guess(pos, *mv, tt_mv), mv.clone())).collect();
+    let mut scored_move: Vec<_> = move_list
+        .iter()
+        .map(|mv| (-move_score_guess(pos, mv.unwrap(), tt_mv), mv.clone()))
+        .collect();
 
     // Sort by score in descending order
     scored_move.sort_by_key(|(score, _)| *score);
 
-    let sorted_moves: Vec<Move> = scored_move.into_iter().map(|(_, mv)| mv).collect();
+    let sorted_moves: Vec<Move> = scored_move.into_iter().map(|(_, mv)| mv.unwrap()).collect();
 
     sorted_moves
 }

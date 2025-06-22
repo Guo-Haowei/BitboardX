@@ -71,8 +71,9 @@ impl Engine {
         let dst_sq = mv.dst_sq();
         let promotion = mv.get_promotion();
         for mv in legal_moves.iter() {
+            let mv = mv.unwrap();
             if mv.src_sq() == src_sq && mv.dst_sq() == dst_sq && mv.get_promotion() == promotion {
-                self.make_move_unverified(mv.clone());
+                self.make_move_unverified(mv);
                 return true;
             }
         }
@@ -201,7 +202,7 @@ impl Engine {
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
             _ => {
-                let mv = self.best_move(4).unwrap();
+                let mv = self.best_move(5).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
         }
@@ -217,10 +218,11 @@ impl Engine {
         let mut nodes = 0u64;
         let should_print = depth == max_depth;
         for mv in move_list.iter() {
-            let undo_state = self.pos.make_move(mv.clone());
+            let mv = mv.unwrap();
+            let undo_state = self.pos.make_move(mv);
             let count = self.uci_cmd_go_perft(writer, depth - 1, max_depth);
             nodes += count;
-            self.pos.unmake_move(mv.clone(), &undo_state);
+            self.pos.unmake_move(mv, &undo_state);
 
             if should_print {
                 writeln!(writer, "{}: {}", mv.to_string(), count).unwrap();
