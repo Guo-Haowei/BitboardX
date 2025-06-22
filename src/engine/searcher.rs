@@ -97,6 +97,7 @@ impl Searcher {
         mut alpha: i32,
         beta: i32,
     ) -> i32 {
+        // @TODO: refactor draw detection and mate detection
         let key = engine.pos.zobrist();
         // threefold draw
         let repetition = engine.repetition_count(key);
@@ -119,7 +120,6 @@ impl Searcher {
         }
 
         if ply_remaining == 0 {
-            // use a hard code depth of 4 for quiescence search
             return self.evaluate(&engine.pos);
         }
 

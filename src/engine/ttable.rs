@@ -30,12 +30,13 @@ impl TTEntry {
 }
 
 pub struct TranspositionTable<const N: usize> {
-    table: Box<[TTEntry; N]>,
+    table: Box<[TTEntry]>,
 }
 
 impl<const N: usize> TranspositionTable<N> {
     pub fn new() -> Self {
-        let table = Box::new([TTEntry::empty(); N]);
+        let data = vec![TTEntry::empty(); N];
+        let table = data.into_boxed_slice();
         Self { table }
     }
 
@@ -72,8 +73,7 @@ impl<const N: usize> TranspositionTable<N> {
     }
 }
 
-const DEFAULT_TT_SIZE_IN_BYTE: usize = 32 * 1024; // 32 KB
-// const DEFAULT_TT_SIZE_IN_BYTE: usize = 32 * 1024 * 1024; // 32 MB
+const DEFAULT_TT_SIZE_IN_BYTE: usize = 16 * 1024 * 1024; // 32 MB
 
 pub type TTable = TranspositionTable<{ DEFAULT_TT_SIZE_IN_BYTE / std::mem::size_of::<TTEntry>() }>;
 
