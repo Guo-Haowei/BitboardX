@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::Write;
 
 use crate::core::{move_gen, position::Position, types::Move, zobrist::ZobristHash};
-use crate::engine::searcher;
+use crate::engine::search;
 use crate::engine::ttable::TTable;
 use crate::utils;
 
@@ -50,7 +50,7 @@ impl Engine {
     }
 
     pub fn best_move(&mut self, depth: u8) -> Option<Move> {
-        let mut searcher = searcher::Searcher::new();
+        let mut searcher = search::Searcher::new();
         searcher.find_best_move(self, depth)
     }
 

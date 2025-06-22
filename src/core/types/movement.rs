@@ -173,6 +173,10 @@ impl MoveList {
         self.count
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+
     pub fn get(&self, index: usize) -> Option<Move> {
         if index >= self.count {
             return None;

@@ -3,7 +3,13 @@ use static_assertions::const_assert;
 use crate::core::types::Move;
 use crate::core::zobrist::ZobristHash;
 
-#[derive(Copy, Clone)]
+macro_rules! tt_debug {
+    ($($arg:tt)*) => {
+        log::debug!($($arg)*);
+    };
+}
+
+#[derive(Debug, Copy, Clone)]
 #[repr(u8)]
 pub enum NodeType {
     None = 0,
@@ -15,17 +21,17 @@ pub enum NodeType {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct TTEntry {
-    key: ZobristHash,    // 8 bytes
-    score: i32,          // 4 bytes
-    best_move: Move,     // 2 bytes
-    ply: u8,             // 1 byte
-    node_type: NodeType, // 1 byte
+    pub key: ZobristHash,    // 8 bytes
+    pub score: i32,          // 4 bytes
+    pub best_move: Move,     // 2 bytes
+    pub depth: u8,           // 1 byte, means ply searched for this entry
+    pub node_type: NodeType, // 1 byte
 }
 
 impl TTEntry {
     pub const fn empty() -> Self {
         let key = ZobristHash(0);
-        Self { key, ply: 0, node_type: NodeType::None, score: 0, best_move: Move::null() }
+        Self { key, depth: 0, node_type: NodeType::None, score: 0, best_move: Move::null() }
     }
 }
 
@@ -48,7 +54,7 @@ impl<const N: usize> TranspositionTable<N> {
     pub fn store(
         &mut self,
         key: ZobristHash,
-        ply: u8,
+        depth: u8,
         score: i32,
         node_type: NodeType,
         best_move: Move,
@@ -56,12 +62,21 @@ impl<const N: usize> TranspositionTable<N> {
         let idx = Self::index(key);
         let existing = &self.table[idx];
 
-        if existing.key == ZobristHash::null() || ply >= existing.ply {
-            self.table[idx] = TTEntry { key, ply, score, node_type, best_move };
+        if existing.key == ZobristHash::null() || depth >= existing.depth {
+            tt_debug!(
+                "Storing TTEntry: key: {:?}, depth: {}, score: {}, node_type: {:?}, best_move: {}",
+                key,
+                depth,
+                score,
+                node_type,
+                best_move.to_string()
+            );
+            self.table[idx] = TTEntry { key, depth, score, node_type, best_move };
         }
     }
 
     pub fn probe(&self, key: ZobristHash) -> Option<&TTEntry> {
+        assert!(key.0 != 0, "ZobristHash cannot be zero");
         let idx = Self::index(key);
         let entry = &self.table[idx];
 

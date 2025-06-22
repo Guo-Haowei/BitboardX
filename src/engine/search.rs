@@ -3,6 +3,7 @@ use crate::core::{move_gen, types::*};
 use crate::engine::Engine;
 use crate::engine::book::*;
 use crate::engine::eval::Evaluation;
+use crate::engine::ttable::NodeType;
 
 const MIN: i32 = i32::MIN + 1; // to avoid overflow when negating
 const MAX: i32 = i32::MAX;
@@ -95,14 +96,17 @@ impl Searcher {
         max_ply: u8,
         ply_remaining: u8,
         mut alpha: i32,
-        beta: i32,
+        mut beta: i32,
     ) -> (i32, Move) {
         // @TODO: refactor draw detection and mate detection
         let key = engine.pos.zobrist();
-        // threefold draw
+        let alpha_orig = alpha;
+
+        // --- 1) Check for repetition and 50-move rule ---
         let repetition = engine.repetition_count(key);
+        // threefold draw
         if repetition >= 2 {
-            debug_assert!(repetition == 2); // if we make this move, it will be a draw
+            assert!(repetition == 2); // if we make this move, it will be a draw
             log::debug!("Repetition detected: {}", engine.pos.fen());
             return (DRAW_PENALTY, Move::null());
         }
@@ -113,9 +117,9 @@ impl Searcher {
             return (DRAW_PENALTY, Move::null());
         }
 
+        // --- 2) Check for terminal node (mate/stalemate) ---
         let move_list = move_gen::legal_moves(&engine.pos);
-
-        if move_list.len() == 0 {
+        if move_list.is_empty() {
             let score = if engine.pos.is_in_check() {
                 // shallower checkmate should have higher score
                 // because it's a position where the side to move is losing,
@@ -127,15 +131,41 @@ impl Searcher {
             return (score, Move::null());
         }
 
+        // --- 3) Probe transposition table ---
+        if let Some(entry) = engine.tt.probe(key) {
+            if entry.depth >= ply_remaining {
+                let mut found = false;
+                match entry.node_type {
+                    NodeType::Exact => found = true,
+                    NodeType::LowerBound => alpha = alpha.max(entry.score as i32),
+                    NodeType::UpperBound => beta = beta.min(entry.score as i32),
+                    _ => {
+                        panic!("You should not see any null node types here!");
+                    }
+                }
+                if found || alpha >= beta {
+                    log::warn!(
+                        "Transposition table hit: key: {:?}, score: {}, best move: {}",
+                        key,
+                        entry.score,
+                        entry.best_move.to_string()
+                    );
+                    return (entry.score, entry.best_move);
+                }
+            }
+        }
+
+        // --- 4) Check depth cutoff (leaf node) ---
         if ply_remaining == 0 {
             return (self.evaluate(&engine.pos), Move::null());
         }
 
+        // --- 5) Move ordering ---
         let move_list = sort_moves(&engine.pos, &move_list);
-
         let mut best_move = Move::null();
         let mut best_score = MIN;
 
+        // --- 6) Main search loop ---
         for mv in move_list.iter() {
             let undo_state = self.make_move(&mut engine.pos, mv);
 
@@ -154,6 +184,18 @@ impl Searcher {
                 break; // beta cut-off
             }
         }
+
+        // --- 7) Store result in transposition table ---
+        let node_type = if best_score <= alpha_orig {
+            NodeType::UpperBound
+        } else if best_score >= beta {
+            NodeType::LowerBound
+        } else {
+            NodeType::Exact
+        };
+
+        debug_assert!(!best_move.is_null(), "Best move should be valid");
+        engine.tt.store(key, ply_remaining, best_score, node_type, best_move);
 
         (best_score, best_move)
     }
