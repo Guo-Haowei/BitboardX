@@ -4,9 +4,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
-
-use crate::meta;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MatchMeta {
@@ -31,24 +30,26 @@ struct PlayerResult {
 }
 
 // @TODO: (optional) data base?
-fn create_metadata_file(path: &PathBuf) -> Result<MatchMeta, String> {
+fn create_metadata_file(path: &PathBuf) -> io::Result<MatchMeta> {
     let stem = path.file_stem();
     if stem.is_none() {
         eprintln!("Failed to get file stem for path: {}", path.display());
-        return Err(format!("File {} has no stem ", path.display()));
+        return Err(io::Error::new(ErrorKind::InvalidInput, "Invalid file stem"));
     }
 
     let meta_path = path.with_extension("json");
     if meta_path.exists() {
+        // let data = fs::read_to_string(path)?;
+        // let meta: MatchMeta = serde_json::from_str(&data)?;
+        // return Ok(meta);
+
         // @TODO:
         // if exists and modified time matches, return early
         // otherwise, delete the file and create a new one
-        std::fs::remove_file(&meta_path)
-            .map_err(|e| format!("Failed to remove existing metadata file: {}", e))?;
+        std::fs::remove_file(&meta_path)?;
     }
 
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read PGN file {}: {}", path.display(), e.to_string()))?;
+    let content = fs::read_to_string(path)?;
 
     // Match White, Black, Result in expected order, allowing any whitespace
     let full_tag_re =
@@ -65,17 +66,16 @@ fn create_metadata_file(path: &PathBuf) -> Result<MatchMeta, String> {
         .collect();
 
     let stem = stem.unwrap();
-    let stem = stem.to_str().ok_or("Failed to convert stem to string")?;
+    let stem = stem
+        .to_str()
+        .ok_or(io::Error::new(ErrorKind::InvalidData, "Failed to convert stem to string"))?;
     let players = stem.split("-vs-").collect::<Vec<&str>>();
     if players.len() != 2
         || players[0].is_empty()
         || players[1].is_empty()
         || players[0] == players[1]
     {
-        return Err(format!(
-            "Invalid file name format for {}: expected 'player1-vs-player2'",
-            path.display()
-        ));
+        return Err(io::Error::new(ErrorKind::InvalidInput, "Invalid player names in file stem"));
     }
 
     let player1 = players[1].trim();
@@ -120,18 +120,14 @@ fn create_metadata_file(path: &PathBuf) -> Result<MatchMeta, String> {
 
     let json = serde_json::to_string_pretty(&match_meta).expect("Failed to serialize to JSON");
 
-    let mut file = File::create(&meta_path).map_err(|e| {
-        format!("Failed to create metadata file {}: {}", meta_path.display(), e.to_string())
-    })?;
+    let mut file = File::create(&meta_path)?;
 
-    file.write_all(json.as_bytes()).map_err(|e| {
-        format!("Failed to write to metadata file {}: {}", meta_path.display(), e.to_string())
-    })?;
+    file.write_all(json.as_bytes())?;
 
     Ok(match_meta)
 }
 
-pub fn process_pgn_files(dir: &Path) -> Result<Vec<MatchMeta>, String> {
+pub fn get_meta_impl(dir: &Path) -> io::Result<Vec<MatchMeta>> {
     match fs::read_dir(dir) {
         Ok(entries) => {
             let mut metas = Vec::new();
@@ -149,20 +145,6 @@ pub fn process_pgn_files(dir: &Path) -> Result<Vec<MatchMeta>, String> {
 
             Ok(metas)
         }
-        Err(e) => Err(e.to_string()),
+        Err(e) => Err(e),
     }
-}
-
-pub fn get_meta_impl() -> Vec<MatchMeta> {
-    // let meta = fs::read_to_string("meta.json")
-    //     .ok()
-    //     .and_then(|s| serde_json::from_str::<Vec<MatchMeta>>(&s).ok())
-    //     .unwrap_or_default();
-    let meta = fs::read_to_string("meta.json")
-        .ok()
-        .and_then(|s| serde_json::from_str::<Vec<MatchMeta>>(&s).ok())
-        .unwrap_or_default();
-    // let meta = "{ a: 1 }";
-
-    meta
 }

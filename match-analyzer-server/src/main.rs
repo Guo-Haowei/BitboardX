@@ -26,8 +26,11 @@ struct FenRequest {
 
 #[get("/meta")]
 async fn get_meta() -> impl Responder {
-    let meta = meta::get_meta_impl();
-    HttpResponse::Ok().json(meta)
+    let match_dir = Path::new(get_root_path()).join("matches");
+    let match_dir = match_dir.as_path();
+    let data = meta::get_meta_impl(&match_dir).unwrap();
+    println!("Meta data: {:?}", data);
+    HttpResponse::Ok().json(data)
 }
 
 #[post("/pgn")]
@@ -80,16 +83,13 @@ async fn get_best_move_from_uci(fen: &str) -> Result<String, Box<dyn std::error:
 
 // -------- Main --------
 
+fn get_root_path() -> &'static str {
+    env!("CARGO_MANIFEST_DIR")
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Server running on http://localhost:3000");
-
-    let root_path = env!("CARGO_MANIFEST_DIR");
-    let root_path = Path::new(root_path);
-
-    let match_dir = root_path.join("matches");
-    let match_dir = match_dir.as_path();
-    meta::process_pgn_files(&match_dir).unwrap();
 
     HttpServer::new(|| {
         let cors = Cors::default()
