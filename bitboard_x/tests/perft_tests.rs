@@ -22,10 +22,10 @@ fn perft_test_inner(pos: &mut Position, depth: u8) -> u64 {
     }
 
     let mut nodes = 0u64;
-    for mv in move_list.iter() {
-        let undo_state = pos.make_move(mv.clone());
+    for mv in move_list.iter().copied() {
+        let undo_state = pos.make_move(mv);
         nodes += perft_test_inner(pos, depth - 1);
-        pos.unmake_move(mv.clone(), &undo_state);
+        pos.unmake_move(mv, &undo_state);
     }
 
     nodes
@@ -45,9 +45,9 @@ fn perft_test(pos: &Position, depth: u8) -> u64 {
 
     let mut handles = Vec::new();
 
-    for mv in move_list.iter() {
+    for mv in move_list.iter().copied() {
         let mut child = pos.clone();
-        child.make_move(mv.clone());
+        child.make_move(mv);
         let handle = thread::spawn(move || perft_test_inner(&mut child, depth - 1));
         handles.push(handle);
     }

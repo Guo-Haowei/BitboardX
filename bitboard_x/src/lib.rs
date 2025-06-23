@@ -1,4 +1,5 @@
-// wasm-pack build --target web
+// build wasm: wasm-pack build --target web
+// benchmark: cargo flamegraph --bench search_performance
 pub mod core;
 pub mod engine;
 pub mod game;

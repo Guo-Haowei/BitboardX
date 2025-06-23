@@ -138,8 +138,9 @@ impl Move {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MoveList {
-    moves: [Move; 256],
+    pub moves: [Move; 256],
     count: usize,
 }
 
@@ -163,6 +164,10 @@ impl MoveList {
 
     pub fn iter(&self) -> impl Iterator<Item = &Move> {
         self.moves.iter().take(self.count)
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Move> {
+        self.moves.iter_mut().take(self.count)
     }
 
     pub fn enumerate(&self) -> impl Iterator<Item = (usize, &Move)> {

@@ -50,7 +50,7 @@ pub fn capture_moves(pos: &Position) -> MoveList {
         let dst_sq = mv.dst_sq();
         if pos.state.occupancies[opponent.as_usize()].test(dst_sq.as_u8()) {
             if validation::is_pseudo_move_legal(pos, mv) {
-                moves.add(mv.clone());
+                moves.add(mv);
             }
         }
     }
