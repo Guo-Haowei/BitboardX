@@ -7,22 +7,16 @@ use tokio::{
     process::Command,
 };
 
+mod meta;
+
 // -------- Types --------
 
 #[derive(Serialize, Deserialize)]
-struct MatchMeta {
-    player1: String,
-    player2: String,
-    result: String,
-    file: String,
-}
-
-#[derive(Deserialize)]
 struct PgnRequest {
     file: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct FenRequest {
     fen: String,
 }
@@ -31,12 +25,7 @@ struct FenRequest {
 
 #[get("/meta")]
 async fn get_meta() -> impl Responder {
-    // let meta = fs::read_to_string("meta.json")
-    //     .ok()
-    //     .and_then(|s| serde_json::from_str::<Vec<MatchMeta>>(&s).ok())
-    //     .unwrap_or_default();
-    let meta = "{ a: 1 }";
-    println!("Meta: {}", meta);
+    let meta = meta::get_meta_impl();
     HttpResponse::Ok().json(meta)
 }
 
