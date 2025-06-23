@@ -87,21 +87,7 @@
   </div>
 
   <!-- JS: Draw Chessboard -->
-  <script>
-    const canvas = document.getElementById('chessboard');
-    const ctx = canvas.getContext('2d');
-    const squareSize = canvas.width / 8;
-    function drawBoard() {
-      for (let y = 0; y < 8; y++) {
-        for (let x = 0; x < 8; x++) {
-          const isLight = (x + y) % 2 === 0;
-          ctx.fillStyle = isLight ? '#f0d9b5' : '#b58863';
-          ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
-        }
-      }
-    }
-    drawBoard();
-  </script>
+  <script type="module" src="./src/main.ts"></script>
 </body>
 
 </html>
