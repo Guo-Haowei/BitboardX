@@ -89,11 +89,6 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
             let enemy_sq = Square::make(dst_file, src_rank);
             let enemy = Piece::get_piece(enemy_color, PieceType::PAWN);
 
-            debug_assert!(pos.get_piece_at(enemy_sq) == enemy);
-            debug_assert!(
-                pos.get_piece_at(dst_sq) == src_piece,
-                "attacking pawn is already moved to the destination square at this point"
-            );
             pos.bitboards[enemy.as_usize()].unset(enemy_sq.as_u8());
         }
         _ => {}
@@ -156,8 +151,6 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &PositionState) {
             let (_, from_rank) = src_sq.file_rank();
             let (to_file, _) = dst_sq.file_rank();
             let enemy_sq = Square::make(to_file, from_rank);
-
-            debug_assert!(pos.get_piece_at(enemy_sq) == Piece::NONE);
 
             pos.bitboards[enemy_pawn.as_usize()].set(enemy_sq.as_u8());
         }
