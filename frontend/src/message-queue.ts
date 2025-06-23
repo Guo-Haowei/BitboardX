@@ -1,6 +1,6 @@
 import { RuntimeModule, runtime } from "./runtime";
 import { picker } from './picker';
-import { WasmMove } from '../../pkg/bitboard_x';
+import { WasmMove } from '../../bitboard_x/pkg/bitboard_x';
 
 const DEBUG = false;
 // const DEBUG = true;

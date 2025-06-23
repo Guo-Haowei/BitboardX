@@ -1,7 +1,7 @@
 import { Listener, EVENT_MAP, Payload } from "./message-queue";
 import { runtime, RuntimeModule } from "./runtime";
 import { squareToFileRank } from "./utils";
-import { WasmMove } from '../../pkg/bitboard_x';
+import { WasmMove } from '../../bitboard_x/pkg/bitboard_x';
 
 export interface Animation {
     piece: string;

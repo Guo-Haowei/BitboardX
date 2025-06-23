@@ -3,7 +3,7 @@ import { isLowerCase, fileRankToSquare } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 import { picker } from './picker';
 import { Listener, EVENT_MAP, Payload } from './message-queue';
-import { WasmMove } from '../../pkg/bitboard_x';
+import { WasmMove } from '../../bitboard_x/pkg/bitboard_x';
 
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
 const RED_COLOR = 'rgba(200, 0, 0, 0.5)';

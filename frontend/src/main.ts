@@ -1,5 +1,5 @@
 import { runtime } from './runtime';
-import init, { name } from '../../pkg/bitboard_x';
+import init, { name } from '../../bitboard_x/pkg/bitboard_x';
 
 function tick() {
   runtime.tick();

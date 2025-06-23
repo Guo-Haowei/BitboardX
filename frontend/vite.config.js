@@ -9,7 +9,7 @@ export default defineConfig({
     port: 8000,
     fs: {
       allow: [
-        path.resolve(__dirname, '../pkg'),
+        path.resolve(__dirname, '../bitboard_x/pkg'),
         path.resolve(__dirname, 'src'),
       ]
     }
