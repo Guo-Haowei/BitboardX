@@ -4,9 +4,10 @@ import path from 'path';
 
 export default defineConfig({
   server: {
+    port: 8001,
     fs: {
       allow: [
-        path.resolve(__dirname, '../../pkg'),
+        path.resolve(__dirname, '../pkg'),
         path.resolve(__dirname, 'src'),
       ]
     }

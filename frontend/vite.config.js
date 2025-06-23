@@ -6,7 +6,7 @@ export default defineConfig({
   base: '/pages/chess/',
   server: {
     host: true,
-    port: 3000,
+    port: 8000,
     fs: {
       allow: [
         path.resolve(__dirname, '../pkg'),
