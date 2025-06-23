@@ -75,7 +75,7 @@ impl BitBoard {
         self.test(sq.as_u8())
     }
 
-    pub fn set_sq(&mut self, sq: Square) {
+    pub const fn set_sq(&mut self, sq: Square) {
         debug_assert!(sq.as_u8() < 64, "Square out of bounds");
         self.set(sq.as_u8());
     }

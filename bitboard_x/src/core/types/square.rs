@@ -96,6 +96,10 @@ impl Square {
         self.0 as u16
     }
 
+    pub const fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+
     pub const fn file_rank(&self) -> (File, Rank) {
         debug_assert!(self.0 < 64);
         let f = self.0 & 0b111;

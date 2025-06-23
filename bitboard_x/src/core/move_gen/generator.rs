@@ -140,15 +140,13 @@ fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
         moves |= move_mask_pawn_ep::<COLOR>(pos, sq);
     }
 
-    // Handle attacks moves
-    let attack_left = if is_white { bb.shift_nw() } else { bb.shift_sw() };
-    if ATTACK_MASK || (attack_left & pos.state.occupancies[opponent as usize]).any() {
-        moves |= attack_left;
-    }
-    let attack_right = if is_white { bb.shift_ne() } else { bb.shift_se() };
-    if ATTACK_MASK || (attack_right & pos.state.occupancies[opponent as usize]).any() {
-        moves |= attack_right;
-    }
+    let attack_mask = PAWM_ATTACK_MASKS[COLOR as usize][sq.as_usize()];
+
+    moves |= if ATTACK_MASK {
+        attack_mask
+    } else {
+        attack_mask & pos.state.occupancies[opponent as usize]
+    };
 
     moves
 }
@@ -432,46 +430,10 @@ fn pseudo_legal_move_queen(
 
 /* #region */
 /// Computes the legal knight moves from a given square on a bitboard.
-///
-/// The knight moves in an L-shape: two squares in one cardinal direction
-/// (N, S, E, W) followed by one square in a perpendicular direction.
-///
-/// ## Movement Description
-///
-/// A knight on a square can move in 8 possible directions:
-///
-/// - NE + N (2N 1E) → North-North-East
-/// - NW + N (2N 1W) → North-North-West
-/// - SE + S (2S 1E) → South-South-East
-/// - SW + S (2S 1W) → South-South-West
-/// - NW + W (2W 1N) → West-West-North
-/// - SW + W (2W 1S) → West-West-South
-/// - NE + E (2E 1N) → East-East-North
-/// - SE + E (2E 1S) → East-East-South
-
+/// use precomputed knight attack masks for efficiency.
 fn knight_mask<const ATTACK_MASK: bool>(sq: Square, my_occupancy: BitBoard) -> BitBoard {
-    let mut moves = BitBoard::new();
-    let bb = sq.to_bitboard().get();
-
-    let mask = if ATTACK_MASK { 0u64 } else { my_occupancy.get() };
-    let mask = BitBoard::from(!mask);
-
-    const B_AB: u64 = !(BitBoard::MASK_A | BitBoard::MASK_B);
-    const B_GH: u64 = !(BitBoard::MASK_G | BitBoard::MASK_H);
-    const B_12: u64 = !(BitBoard::MASK_1 | BitBoard::MASK_2);
-    const B_78: u64 = !(BitBoard::MASK_7 | BitBoard::MASK_8);
-
-    moves |= BitBoard::from(bb & !BitBoard::MASK_H & B_78).shift(BitBoard::NE + BitBoard::N) & mask;
-    moves |= BitBoard::from(bb & !BitBoard::MASK_A & B_78).shift(BitBoard::NW + BitBoard::N) & mask;
-    moves |= BitBoard::from(bb & !BitBoard::MASK_H & B_12).shift(BitBoard::SE + BitBoard::S) & mask;
-    moves |= BitBoard::from(bb & !BitBoard::MASK_A & B_12).shift(BitBoard::SW + BitBoard::S) & mask;
-
-    moves |= BitBoard::from(bb & B_AB & !BitBoard::MASK_8).shift(BitBoard::NW + BitBoard::W) & mask;
-    moves |= BitBoard::from(bb & B_AB & !BitBoard::MASK_1).shift(BitBoard::SW + BitBoard::W) & mask;
-    moves |= BitBoard::from(bb & B_GH & !BitBoard::MASK_8).shift(BitBoard::NE + BitBoard::E) & mask;
-    moves |= BitBoard::from(bb & B_GH & !BitBoard::MASK_1).shift(BitBoard::SE + BitBoard::E) & mask;
-
-    moves
+    let mask = BitBoard::from(if ATTACK_MASK { !0u64 } else { !my_occupancy.get() });
+    mask & KNIGHT_MASKS[sq.as_usize()]
 }
 
 fn pseudo_legal_move_knight(move_list: &mut MoveList, sq: Square, my_occupancy: BitBoard) {
@@ -528,16 +490,12 @@ fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
     let color = Color::new(COLOR);
     let is_white = color.is_white();
 
-    let bb = sq.to_bitboard();
-    let mut moves = BitBoard::new();
-    let occupancy =
-        !(if ATTACK_MASK { BitBoard::new() } else { pos.state.occupancies[COLOR as usize] });
-    for shift_func in &SHIFT_FUNCS {
-        moves |= shift_func(&bb) & occupancy;
-    }
+    let mut moves = KING_MASKS[sq.as_usize()];
 
     if !ATTACK_MASK {
-        // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
+        // if it's move mask, remove squares occupied by own pieces
+        moves &= !pos.state.occupancies[COLOR as usize];
+        // and remove squares being attacked by the opponent
         moves &= !pos.state.attack_mask[color.flip().as_usize()];
 
         if is_white {
@@ -716,3 +674,114 @@ pub fn calc_attack_map_and_checker<const COLOR: u8>(pos: &mut Position) -> (BitB
 
     (final_mask, checkers)
 }
+
+/// Precomputes the move masks
+const fn build_pawn_attack_mask<const IS_WHITE: bool>(file: u8, rank: u8) -> BitBoard {
+    let mut mask = BitBoard::new();
+
+    if rank == 0 || rank == 7 {
+        return mask; // No pawn moves on the first or last rank
+    }
+    if IS_WHITE {
+        if file > 0 {
+            mask.set_sq(Square::make(File(file - 1), Rank(rank + 1)));
+        }
+        if file < 7 {
+            mask.set_sq(Square::make(File(file + 1), Rank(rank + 1)));
+        }
+    } else {
+        if file > 0 {
+            mask.set_sq(Square::make(File(file - 1), Rank(rank - 1)));
+        }
+        if file < 7 {
+            mask.set_sq(Square::make(File(file + 1), Rank(rank - 1)));
+        }
+    }
+
+    mask
+}
+
+const fn build_pawn_attack_masks() -> [[BitBoard; 64]; 2] {
+    let mut masks = [[BitBoard::new(); 64]; 2];
+
+    let mut sq = 0;
+    while sq < 64 {
+        let file = sq % 8;
+        let rank = sq / 8;
+
+        masks[0][sq] = build_pawn_attack_mask::<true>(file as u8, rank as u8); // White pawns
+        masks[1][sq] = build_pawn_attack_mask::<false>(file as u8, rank as u8); // Black pawns
+
+        sq += 1;
+    }
+
+    masks
+}
+
+const fn build_knight_mask(file: u8, rank: u8) -> BitBoard {
+    let mut mask = BitBoard::new();
+
+    const OFFSETS: [(i8, i8); 8] =
+        [(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)];
+
+    let mut idx = 0;
+    while idx < OFFSETS.len() {
+        let (df, dr) = OFFSETS[idx];
+        let new_file = file as i8 + df;
+        let new_rank = rank as i8 + dr;
+
+        if new_file >= 0 && new_file < 8 && new_rank >= 0 && new_rank < 8 {
+            mask.set_sq(Square::make(File(new_file as u8), Rank(new_rank as u8)));
+        }
+        idx += 1;
+    }
+
+    mask
+}
+
+const fn build_king_mask(file: u8, rank: u8) -> BitBoard {
+    let mut mask = BitBoard::new();
+
+    const OFFSETS: [(i8, i8); 8] =
+        [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)];
+
+    let mut idx = 0;
+    while idx < OFFSETS.len() {
+        let (df, dr) = OFFSETS[idx];
+        let new_file = file as i8 + df;
+        let new_rank = rank as i8 + dr;
+
+        if new_file >= 0 && new_file < 8 && new_rank >= 0 && new_rank < 8 {
+            mask.set_sq(Square::make(File(new_file as u8), Rank(new_rank as u8)));
+        }
+        idx += 1;
+    }
+
+    mask
+}
+
+const PAWM_ATTACK_MASKS: [[BitBoard; 64]; 2] = build_pawn_attack_masks();
+
+const KNIGHT_MASKS: [BitBoard; 64] = {
+    let mut masks = [BitBoard::new(); 64];
+    let mut sq = 0;
+    while sq < 64 {
+        let file = sq % 8;
+        let rank = sq / 8;
+        masks[sq] = build_knight_mask(file as u8, rank as u8);
+        sq += 1;
+    }
+    masks
+};
+
+const KING_MASKS: [BitBoard; 64] = {
+    let mut masks = [BitBoard::new(); 64];
+    let mut sq = 0;
+    while sq < 64 {
+        let file = sq % 8;
+        let rank = sq / 8;
+        masks[sq] = build_king_mask(file as u8, rank as u8);
+        sq += 1;
+    }
+    masks
+};
