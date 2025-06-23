@@ -1,7 +1,6 @@
 use crate::core::position::{CheckerList, Position, SmallSquareList};
 use crate::core::types::bitboard::*;
 use crate::core::types::*;
-use crate::utils;
 
 const SHIFT_FUNCS: [fn(&BitBoard) -> BitBoard; 8] = [
     BitBoard::shift_north,
@@ -492,80 +491,38 @@ fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
 
     let mut moves = KING_MASKS[sq.as_usize()];
 
-    if !ATTACK_MASK {
-        // if it's move mask, remove squares occupied by own pieces
-        moves &= !pos.state.occupancies[COLOR as usize];
-        // and remove squares being attacked by the opponent
-        moves &= !pos.state.attack_mask[color.flip().as_usize()];
+    if ATTACK_MASK {
+        return moves;
+    }
 
-        if is_white {
-            if (pos.state.castling_rights & CastlingRight::K != 0)
-                && move_mask_castle_check::<COLOR>(pos, sq, Square::G1, Square::H1)
-            {
-                assert!(sq == Square::E1);
-                moves.set_sq(Square::G1);
-            }
-            if (pos.state.castling_rights & CastlingRight::Q != 0)
-                && move_mask_castle_check::<COLOR>(pos, sq, Square::C1, Square::A1)
-            {
-                assert!(sq == Square::E1);
-                moves.set_sq(Square::C1);
-            }
-        } else {
-            if (pos.state.castling_rights & CastlingRight::k != 0)
-                && move_mask_castle_check::<COLOR>(pos, sq, Square::G8, Square::H8)
-            {
-                assert!(sq == Square::E8);
-                moves.set_sq(Square::G8);
-            }
-            if (pos.state.castling_rights & CastlingRight::q != 0)
-                && move_mask_castle_check::<COLOR>(pos, sq, Square::C8, Square::A8)
-            {
-                assert!(sq == Square::E8);
-                moves.set_sq(Square::C8);
+    // if it's move mask, remove squares occupied by own pieces
+    moves &= !pos.state.occupancies[COLOR as usize];
+    // and remove squares being attacked by the opponent
+    moves &= !pos.state.attack_mask[color.flip().as_usize()];
+
+    // check castling possibilities
+    let offset = if is_white { 0 } else { 2 };
+
+    for i in 0..2 {
+        let bit = i + offset;
+        let flag = 1u8 << bit;
+        if flag & pos.state.castling_rights != 0 {
+            let path_clear = (KING_CASTLING_CLEAR_MASK[bit]
+                & pos.state.occupancies[Color::BOTH.as_usize()])
+            .none();
+            let path_safe = (KING_CASTLING_SAFE_MASKS[bit]
+                & pos.state.attack_mask[(COLOR ^ 1) as usize])
+                .none();
+            let rook_still_there = pos.bitboards
+                [Piece::get_piece(color, PieceType::ROOK).as_usize()]
+            .test_sq(KING_CASTLING_ROOK_SQ[bit]);
+            if path_clear && path_safe && rook_still_there {
+                moves.set_sq(KING_CASTLING_DEST_SQ[bit]);
             }
         }
     }
 
     moves
-}
-
-/// @TODO: refactor this
-fn move_mask_castle_check<const COLOR: u8>(
-    pos: &Position,
-    sq: Square,
-    dst_sq: Square,
-    rook_sq: Square,
-) -> bool {
-    // r . . . k . . r
-    // a b c d e f g h
-    let color = Color::new(COLOR);
-    let opponent = color.flip();
-
-    // check if the rook is in the right place
-    let rook_type = Piece::get_piece(color, PieceType::ROOK);
-    if pos.bitboards[rook_type.as_usize()].test(rook_sq.as_u8()) == false {
-        return false;
-    }
-
-    // check if the cells are under attack
-    let (s1, e1) = utils::min_max(sq.as_u8(), dst_sq.as_u8());
-    let (s2, e2) = utils::min_max(sq.as_u8(), rook_sq.as_u8());
-
-    let checks = [
-        (s1, e1 + 1, pos.state.attack_mask[opponent.as_usize()]),
-        (s2 + 1, e2, pos.state.occupancies[Color::BOTH.as_usize()]),
-    ];
-
-    for (start, end, mask) in checks {
-        for i in start..end {
-            if mask.test(i) {
-                return false;
-            }
-        }
-    }
-
-    true
 }
 
 pub fn pseudo_legal_move_king<const COLOR: u8>(
@@ -785,3 +742,71 @@ const KING_MASKS: [BitBoard; 64] = {
     }
     masks
 };
+
+const B1_MASK: u64 = 1u64 << Square::B1.as_u8();
+const C1_MASK: u64 = 1u64 << Square::C1.as_u8();
+const D1_MASK: u64 = 1u64 << Square::D1.as_u8();
+const E1_MASK: u64 = 1u64 << Square::E1.as_u8();
+const F1_MASK: u64 = 1u64 << Square::F1.as_u8();
+const G1_MASK: u64 = 1u64 << Square::G1.as_u8();
+
+const B8_MASK: u64 = 1u64 << Square::B8.as_u8();
+const C8_MASK: u64 = 1u64 << Square::C8.as_u8();
+const D8_MASK: u64 = 1u64 << Square::D8.as_u8();
+const E8_MASK: u64 = 1u64 << Square::E8.as_u8();
+const F8_MASK: u64 = 1u64 << Square::F8.as_u8();
+const G8_MASK: u64 = 1u64 << Square::G8.as_u8();
+
+const KING_CASTLING_CLEAR_MASK: [BitBoard; 4] = [
+    BitBoard::from(F1_MASK | G1_MASK),           // White kingside
+    BitBoard::from(B1_MASK | C1_MASK | D1_MASK), // White queenside
+    BitBoard::from(F8_MASK | G8_MASK),           // Black kingside
+    BitBoard::from(B8_MASK | C8_MASK | D8_MASK), // Black queenside
+];
+
+const KING_CASTLING_SAFE_MASKS: [BitBoard; 4] = [
+    BitBoard::from(E1_MASK | F1_MASK | G1_MASK), // White kingside
+    BitBoard::from(C1_MASK | D1_MASK | E1_MASK), // White queenside
+    BitBoard::from(E8_MASK | F8_MASK | G8_MASK), // Black kingside
+    BitBoard::from(C8_MASK | D8_MASK | E8_MASK), // Black queenside
+];
+
+const KING_CASTLING_DEST_SQ: [Square; 4] = [
+    Square::G1, // White kingside
+    Square::C1, // White queenside
+    Square::G8, // Black kingside
+    Square::C8, // Black queenside
+];
+
+const KING_CASTLING_ROOK_SQ: [Square; 4] = [
+    Square::H1, // White kingside
+    Square::A1, // White queenside
+    Square::H8, // Black kingside
+    Square::A8, // Black queenside
+];
+
+//     if (pos.state.castling_rights & CastlingRight::K != 0)
+//         && move_mask_castle_check::<COLOR>(pos, sq, Square::G1, Square::H1)
+//     {
+//         assert!(sq == Square::E1);
+//         moves.set_sq(Square::G1);
+//     }
+//     if (pos.state.castling_rights & CastlingRight::Q != 0)
+//         && move_mask_castle_check::<COLOR>(pos, sq, Square::C1, Square::A1)
+//     {
+//         assert!(sq == Square::E1);
+//         moves.set_sq(Square::C1);
+//     }
+// } else {
+//     if (pos.state.castling_rights & CastlingRight::k != 0)
+//         && move_mask_castle_check::<COLOR>(pos, sq, Square::G8, Square::H8)
+//     {
+//         assert!(sq == Square::E8);
+//         moves.set_sq(Square::G8);
+//     }
+//     if (pos.state.castling_rights & CastlingRight::q != 0)
+//         && move_mask_castle_check::<COLOR>(pos, sq, Square::C8, Square::A8)
+//     {
+//         assert!(sq == Square::E8);
+//         moves.set_sq(Square::C8);
+//     }
