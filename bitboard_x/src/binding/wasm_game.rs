@@ -98,11 +98,11 @@ impl WasmGame {
     pub fn make_move(&mut self, mv_str: String) -> WasmMove {
         let mv = self.internal.execute(&mv_str);
 
-        WasmMove { mv: mv }
+        WasmMove { mv }
     }
 
     pub fn get_legal_moves(&self) -> Vec<String> {
-        self.internal.legal_moves.iter().map(|m| m.to_string()).collect()
+        self.internal.legal_moves.iter().map(|mv| mv.to_string()).collect()
     }
 
     // @TODO: DONT LIKE THIS, FIND A BETTER WAY

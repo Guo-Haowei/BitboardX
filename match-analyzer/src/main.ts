@@ -16,9 +16,9 @@ function writeMatchHTML(matchData: MatchData): string {
         <span class="text-sm text-gray-400">100 games</span>
     </div>
     <div class="text-sm text-gray-300 mb-2">
-      Wins: <span class="text-green-400">${wins}</span>,
+      Wins: <span class="text-green-400">${wins}</span>
       Draws: <span class="text-gray-400">${draws}</span>
-      Losses: <span class="text-red-400">${losses}</span>,
+      Losses: <span class="text-red-400">${losses}</span>
     </div>
     <div class="flex h-4 w-full overflow-hidden rounded bg-gray-700 mb-2">
       <div class="bg-green-500" style="width: ${wins / totalGames}%"></div>

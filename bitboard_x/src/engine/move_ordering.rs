@@ -3,15 +3,19 @@ use crate::core::types::*;
 use crate::engine::eval::get_piece_value;
 use crate::engine::search::SearchContext;
 
-// @TODO: inplace sorting
+struct ScoredMove {
+    mv: Move,
+    score: i16,
+}
+
 pub fn sort_moves(
     pos: &Position,
     ctx: &SearchContext,
-    move_list: &MoveList,
+    move_list: &mut MoveList,
     ply: u8,
     prev_best_move: Move,
     cached_mv: Move,
-) -> Vec<Move> {
+) {
     fn move_score_guess(
         ctx: &SearchContext,
         pos: &Position,
@@ -19,7 +23,7 @@ pub fn sort_moves(
         mv: Move,
         prev_best_move: Move,
         cached_mv: Move,
-    ) -> i32 {
+    ) -> i16 {
         debug_assert!(mv != Move::null(), "move cannot be null");
 
         // move is in transposition table, give it a high score
@@ -81,17 +85,17 @@ pub fn sort_moves(
         score
     }
 
-    // @TODO: inplace sorting without vector
-    // @TODO: create move ordering class
-    let mut scored_move: Vec<_> = move_list
+    let mut scored: Vec<ScoredMove> = move_list.moves[..move_list.len()]
         .iter()
-        .map(|mv| (-move_score_guess(ctx, pos, ply, *mv, prev_best_move, cached_mv), mv.clone()))
+        .map(|&mv| ScoredMove {
+            mv,
+            score: move_score_guess(ctx, pos, ply, mv, prev_best_move, cached_mv),
+        })
         .collect();
 
-    // Sort by score in descending order
-    scored_move.sort_by_key(|(score, _)| *score);
+    scored.sort_unstable_by_key(|m| -m.score);
 
-    let sorted_moves: Vec<Move> = scored_move.into_iter().map(|(_, mv)| mv).collect();
-
-    sorted_moves
+    for (i, scored_move) in scored.iter().enumerate() {
+        move_list.moves[i] = scored_move.mv;
+    }
 }

@@ -2,7 +2,7 @@ use crate::core::position::Position;
 use crate::core::types::{Color, Piece, PieceType};
 
 #[rustfmt::skip]
-pub const PST_PAWN_START: [i32;64] = [
+pub const PST_PAWN_START: [i16; 64] = [
      0,   0,   0,   0,   0,   0,   0,   0,
     50,  50,  50,  50,  50,  50,  50,  50,
     10,  10,  20,  30,  30,  20,  10,  10,
@@ -14,7 +14,7 @@ pub const PST_PAWN_START: [i32;64] = [
 ];
 
 #[rustfmt::skip]
-pub const PST_PAWN_END: [i32;64] = [
+pub const PST_PAWN_END: [i16; 64] = [
      0,   0,   0,   0,   0,   0,   0,   0,
     80,  80,  80,  80,  80,  80,  80,  80,
     50,  50,  50,  50,  50,  50,  50,  50,
@@ -26,7 +26,7 @@ pub const PST_PAWN_END: [i32;64] = [
 ];
 
 #[rustfmt::skip]
-pub const PST_KNIGHT: [i32;64] = [
+pub const PST_KNIGHT: [i16; 64] = [
     -50,-40,-30,-30,-30,-30,-40,-50,
     -40,-20,  0,  0,  0,  0,-20,-40,
     -30,  0, 10, 15, 15, 10,  0,-30,
@@ -38,7 +38,7 @@ pub const PST_KNIGHT: [i32;64] = [
 ];
 
 #[rustfmt::skip]
-pub const PST_BISHOP: [i32;64] = [
+pub const PST_BISHOP: [i16; 64] = [
     -20,-10,-10,-10,-10,-10,-10,-20,
     -10,  0,  0,  0,  0,  0,  0,-10,
     -10,  0,  5, 10, 10,  5,  0,-10,
@@ -50,7 +50,7 @@ pub const PST_BISHOP: [i32;64] = [
 ];
 
 #[rustfmt::skip]
-pub const PST_ROOK: [i32;64] = [
+pub const PST_ROOK: [i16; 64] = [
     0,  0,  0,  0,  0,  0,  0,  0,
     5, 10, 10, 10, 10, 10, 10,  5,
    -5,  0,  0,  0,  0,  0,  0, -5,
@@ -62,7 +62,7 @@ pub const PST_ROOK: [i32;64] = [
 ];
 
 #[rustfmt::skip]
-pub const PST_QUEEN: [i32;64] = [
+pub const PST_QUEEN: [i16; 64] = [
     -20,-10,-10, -5, -5,-10,-10,-20,
     -10,  0,  0,  0,  0,  0,  0,-10,
     -10,  0,  5,  5,  5,  5,  0,-10,
@@ -74,7 +74,7 @@ pub const PST_QUEEN: [i32;64] = [
 ];
 
 #[rustfmt::skip]
-pub const PST_KING_START: [i32;64] = [
+pub const PST_KING_START: [i16; 64] = [
     -80, -70, -70, -70, -70, -70, -70, -80,
     -60, -60, -60, -60, -60, -60, -60, -60,
     -40, -50, -50, -60, -60, -50, -50, -40,
@@ -86,7 +86,7 @@ pub const PST_KING_START: [i32;64] = [
 ];
 
 #[rustfmt::skip]
-pub const PST_KING_END: [i32;64] = [
+pub const PST_KING_END: [i16; 64] = [
     -20, -10, -10, -10, -10, -10, -10, -20,
      -5,   0,   5,   5,   5,   5,   0,  -5,
     -10,  -5,  20,  30,  30,  20,  -5, -10,
@@ -97,7 +97,7 @@ pub const PST_KING_END: [i32;64] = [
     -50, -30, -30, -30, -30, -30, -30, -50
 ];
 
-const fn flip_table(input: &[i32; 64]) -> [i32; 64] {
+const fn flip_table(input: &[i16; 64]) -> [i16; 64] {
     let mut output = [0; 64];
     let mut sq = 0;
     while sq < 64 {
@@ -108,7 +108,7 @@ const fn flip_table(input: &[i32; 64]) -> [i32; 64] {
     output
 }
 
-pub type PieceSquareTable = [[i32; 64]; 2];
+pub type PieceSquareTable = [[i16; 64]; 2];
 
 pub const KNIGHT_TABLES: PieceSquareTable = [PST_KNIGHT, flip_table(&PST_KNIGHT)];
 pub const BISHOP_TABLES: PieceSquareTable = [PST_BISHOP, flip_table(&PST_BISHOP)];
@@ -125,7 +125,7 @@ pub fn evaluate_table(
     piece_square_table: &PieceSquareTable,
     piece_type: PieceType,
     color: Color,
-) -> i32 {
+) -> i16 {
     let piece = Piece::get_piece(color, piece_type);
     let bitboard = pos.bitboards[piece.as_usize()];
 
@@ -141,7 +141,7 @@ pub fn evaluate_table(
 mod test {
     use super::*;
 
-    fn test_table_helper(table1: &[i32; 64], table2: &[i32; 64]) {
+    fn test_table_helper(table1: &[i16; 64], table2: &[i16; 64]) {
         for f in 0..8 {
             for r in 0..8 {
                 let r1 = r;

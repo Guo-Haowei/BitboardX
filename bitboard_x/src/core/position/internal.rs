@@ -1,4 +1,5 @@
 use super::PositionState;
+use crate::core::move_gen::PAWN_EN_PASSANT_MASKS;
 use crate::core::position::*;
 
 // Assume passed in moves are legal
@@ -32,26 +33,17 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
 
     // check if the move will generate an en passant square
     let mut en_passant_sq: Option<Square> = None;
-    loop {
-        if !is_mover_pawn {
-            break;
-        }
+    if is_mover_pawn {
         let dy = dst_rank.diff(src_rank).abs();
         debug_assert!(dy <= 2, "Pawn move must be 1 or 2 squares");
-        if dy == 1 {
-            break;
+        if dy == 2 {
+            let enemy_pawns = pos.bitboards[enemy_pawn.as_usize()];
+            if (PAWN_EN_PASSANT_MASKS[mover_color.as_usize()][dst_sq.as_usize()] & enemy_pawns)
+                .any()
+            {
+                en_passant_sq = Some(Square::make(src_file, Rank((src_rank.0 + dst_rank.0) / 2)));
+            }
         }
-        let enemy_pawns = pos.bitboards[enemy_pawn.as_usize()];
-        let dst_sq_bb = dst_sq.to_bitboard();
-        let east = dst_sq_bb.shift_east();
-        let west = dst_sq_bb.shift_west();
-
-        // if there's an enemy pawn on the east or west square, we can generate an en passant square
-        if (east & enemy_pawns).any() || (west & enemy_pawns).any() {
-            en_passant_sq = Some(Square::make(src_file, Rank((src_rank.0 + dst_rank.0) / 2)));
-        }
-
-        break;
     }
 
     // -------------- Update Board Start --------------
@@ -97,11 +89,6 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
             let enemy_sq = Square::make(dst_file, src_rank);
             let enemy = Piece::get_piece(enemy_color, PieceType::PAWN);
 
-            debug_assert!(pos.get_piece_at(enemy_sq) == enemy);
-            debug_assert!(
-                pos.get_piece_at(dst_sq) == src_piece,
-                "attacking pawn is already moved to the destination square at this point"
-            );
             pos.bitboards[enemy.as_usize()].unset(enemy_sq.as_u8());
         }
         _ => {}
@@ -165,37 +152,12 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &PositionState) {
             let (to_file, _) = dst_sq.file_rank();
             let enemy_sq = Square::make(to_file, from_rank);
 
-            debug_assert!(pos.get_piece_at(enemy_sq) == Piece::NONE);
-
             pos.bitboards[enemy_pawn.as_usize()].set(enemy_sq.as_u8());
         }
         _ => {}
     }
 
     pos.state = *undo_state;
-}
-
-fn update_attack_map_and_checker(pos: &mut Position) {
-    let mut checkers: [CheckerList; Color::COUNT] = [CheckerList::new(); Color::COUNT];
-
-    for color in [Color::WHITE, Color::BLACK] {
-        let mut attack_mask = BitBoard::new();
-        let opponent = color.flip();
-        let king_sq = pos.get_king_square(opponent);
-        for i in 0..PieceType::COUNT {
-            let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
-            let piece = Piece::get_piece(color, piece_type);
-            attack_mask |= move_gen::calc_attack_map_impl(
-                pos,
-                piece,
-                king_sq,
-                &mut checkers[opponent.as_usize()],
-            );
-        }
-        pos.state.attack_mask[color.as_usize()] = attack_mask;
-    }
-
-    pos.state.checkers = checkers;
 }
 
 pub fn update_cache(pos: &mut Position) {
@@ -216,7 +178,16 @@ pub fn update_cache(pos: &mut Position) {
         | pos.state.occupancies[Color::BLACK.as_usize()];
 
     // update attack maps
-    update_attack_map_and_checker(pos);
+    let (white_attack_map, white_checkers) = move_gen::calc_attack_map_and_checker::<0>(pos);
+    let (black_attack_map, black_checkers) = move_gen::calc_attack_map_and_checker::<1>(pos);
+
+    pos.state.attack_mask[Color::WHITE.as_usize()] = white_attack_map;
+    pos.state.attack_mask[Color::BLACK.as_usize()] = black_attack_map;
+    // note that for black to move, it needs to check if there are any white checkers
+    pos.state.checkers[Color::WHITE.as_usize()] = black_checkers;
+    pos.state.checkers[Color::BLACK.as_usize()] = white_checkers;
+    // pos.state.checkers[Color::WHITE.as_usize()] = white_checkers;
+    // pos.state.checkers[Color::BLACK.as_usize()] = black_checkers;
 
     // maybe only need to update the side to move attack map?
     pos.state.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);

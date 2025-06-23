@@ -70,7 +70,8 @@ impl SearchContext {
         self.leaf_count += 1;
 
         let mut eval = Evaluation::new();
-        eval.evaluate_position(pos)
+        // @TODO: change to i16
+        eval.evaluate_position(pos) as i32
     }
 
     fn quiescence(&mut self, engine: &mut Engine, mut alpha: i32, beta: i32, depth: i32) -> i32 {
@@ -145,7 +146,7 @@ impl SearchContext {
         }
 
         // --- 2) Check for terminal node (mate/stalemate) ---
-        let move_list = move_gen::legal_moves(&engine.pos);
+        let mut move_list = move_gen::legal_moves(&engine.pos);
         if move_list.is_empty() {
             let score = if engine.pos.is_in_check() {
                 // shallower checkmate should have higher score
@@ -183,8 +184,7 @@ impl SearchContext {
 
         // --- 5) Move ordering ---
         let prev_best_move = if is_root { self.prev_best_move } else { Move::null() };
-        let move_list =
-            sort_moves(&engine.pos, &self, &move_list, ply_remaining, prev_best_move, cached_move);
+        sort_moves(&engine.pos, &self, &mut move_list, ply_remaining, prev_best_move, cached_move);
         let mut best_move = Move::null();
         let mut best_score = MIN;
 

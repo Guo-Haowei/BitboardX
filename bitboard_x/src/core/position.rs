@@ -134,13 +134,24 @@ impl Position {
     }
 
     pub fn get_piece_at(&self, sq: Square) -> Piece {
-        for i in 0..Piece::COUNT {
-            if self.bitboards[i].test(sq.as_u8()) {
-                return unsafe { std::mem::transmute(i as u8) };
-            }
+        let sq = sq.as_u8();
+        if self.state.occupancies[Color::BOTH.as_usize()].test(sq) == false {
+            return Piece::NONE;
         }
 
-        Piece::NONE
+        let color = if self.state.occupancies[Color::WHITE.as_usize()].test(sq) {
+            Color::WHITE
+        } else {
+            Color::BLACK
+        };
+
+        for i in 0..PieceType::COUNT {
+            let piece = Piece::get_piece(color, PieceType(i));
+            if self.bitboards[piece.as_usize()].test(sq) {
+                return piece;
+            }
+        }
+        panic!("No piece found at square {}", sq);
     }
 
     pub fn get_color_at(&self, sq: Square) -> Color {

@@ -39,6 +39,10 @@ impl BitBoard {
     // refactor it
     pub const MASK_1: u64 = 0x00000000000000FF;
     pub const MASK_2: u64 = 0x000000000000FF00;
+    pub const MASK_3: u64 = 0x0000000000FF0000;
+    pub const MASK_4: u64 = 0x00000000FF000000;
+    pub const MASK_5: u64 = 0x000000FF00000000;
+    pub const MASK_6: u64 = 0x0000FF0000000000;
     pub const MASK_7: u64 = 0x00FF000000000000;
     pub const MASK_8: u64 = 0xFF00000000000000;
 
@@ -75,7 +79,7 @@ impl BitBoard {
         self.test(sq.as_u8())
     }
 
-    pub fn set_sq(&mut self, sq: Square) {
+    pub const fn set_sq(&mut self, sq: Square) {
         debug_assert!(sq.as_u8() < 64, "Square out of bounds");
         self.set(sq.as_u8());
     }

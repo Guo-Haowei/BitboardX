@@ -1,7 +1,6 @@
-use crate::core::position::{Position, SmallSquareList};
+use crate::core::position::{CheckerList, Position, SmallSquareList};
 use crate::core::types::bitboard::*;
 use crate::core::types::*;
-use crate::utils;
 
 const SHIFT_FUNCS: [fn(&BitBoard) -> BitBoard; 8] = [
     BitBoard::shift_north,
@@ -48,48 +47,38 @@ pub fn pseudo_legal_moves_src_sq(
         Piece::W_ROOK | Piece::B_ROOK => pseudo_legal_move_rook(move_list, sq, my, enemy),
         Piece::W_BISHOP | Piece::B_BISHOP => pseudo_legal_move_bishop(move_list, sq, my, enemy),
         Piece::W_QUEEN | Piece::B_QUEEN => pseudo_legal_move_queen(move_list, sq, my, enemy),
-        Piece::W_KING => pseudo_legal_move_king::<{ Color::WHITE.as_u8() }>(move_list, sq, pos),
-        Piece::B_KING => pseudo_legal_move_king::<{ Color::BLACK.as_u8() }>(move_list, sq, pos),
         _ => panic!("Invalid piece type: {:?}", piece),
     }
 }
 
-/// Computes the attack mask for a given piece on a specific square.
-///
-/// Returns a `BitBoard` representing all squares attacked by the piece from `sq`
-/// on the current board position `pos`. Unlike move generation, the attack mask
-/// includes squares occupied by friendly pieces since attacks consider threats,
-/// not legal moves.
-///
-/// # Arguments
-///
-/// * `pos` - The current board position.
-/// * `sq` - The square where the piece is located.
-/// * `piece` - The type of piece whose attacks are being calculated.
-///
-/// # Returns
-///
-/// A `BitBoard` with bits set for each square attacked by the piece.
-pub fn attack_mask_src_sq(pos: &Position, sq: Square, piece: Piece) -> BitBoard {
-    let color = piece.color();
+/// Pseudo-legal move generation
+pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
+    let mut move_list = MoveList::new();
 
-    let my_occupancy = pos.state.occupancies[color.as_usize()];
-    let enemy_occupancy = pos.state.occupancies[color.flip().as_usize()];
+    let color = pos.state.side_to_move;
+    let king_sq = pos.get_king_square(color);
+    let (start, end) = if color == Color::WHITE {
+        pseudo_legal_move_king::<0>(&mut move_list, king_sq, pos);
+        (Piece::W_START, Piece::W_END)
+    } else {
+        pseudo_legal_move_king::<1>(&mut move_list, king_sq, pos);
+        (Piece::B_START, Piece::B_END)
+    };
 
-    match piece {
-        Piece::W_PAWN => pawn_mask::<{ Color::WHITE.as_u8() }, true>(sq, pos),
-        Piece::B_PAWN => pawn_mask::<{ Color::BLACK.as_u8() }, true>(sq, pos),
-        Piece::W_ROOK | Piece::B_ROOK => rook_mask::<true>(sq, my_occupancy, enemy_occupancy),
-        Piece::W_BISHOP | Piece::B_BISHOP => bishop_mask::<true>(sq, my_occupancy, enemy_occupancy),
-        Piece::W_QUEEN | Piece::B_QUEEN => queen_mask::<true>(sq, my_occupancy, enemy_occupancy),
-        Piece::W_KNIGHT | Piece::B_KNIGHT => knight_mask::<true>(sq, my_occupancy),
-        Piece::W_KING => king_mask::<{ Color::WHITE.as_u8() }, true>(sq, pos),
-        Piece::B_KING => king_mask::<{ Color::BLACK.as_u8() }, true>(sq, pos),
-        Piece::NONE => BitBoard::new(),
-        _ => {
-            panic!("Invalid piece type: {:?}", piece);
+    // early return if double check
+    if pos.state.checkers[color.as_usize()].count() == 2 {
+        return move_list;
+    }
+
+    for i in start..end {
+        let piece = Piece::new(i);
+
+        for sq in pos.bitboards[i as usize].iter() {
+            pseudo_legal_moves_src_sq(pos, sq, piece, &mut move_list);
         }
     }
+
+    move_list
 }
 
 /* #region */
@@ -122,76 +111,41 @@ pub fn attack_mask_src_sq(pos: &Position, sq: Square, piece: Piece) -> BitBoard 
 /// - SE / SW → Diagonal captures
 
 fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Position) -> BitBoard {
-    let (_file, rank) = sq.file_rank();
-    let bb = sq.to_bitboard();
-    let mut moves = BitBoard::new();
-
     let opponent = COLOR ^ 1;
+    let is_white = COLOR == 0;
 
-    let is_white = COLOR == Color::WHITE.as_u8();
-    let is_black = COLOR != Color::WHITE.as_u8();
+    let attack_mask = PAWM_ATTACK_MASKS[COLOR as usize][sq.as_usize()];
 
-    if !ATTACK_MASK {
-        // Handle forward moves
-        let next_bb = if is_white { bb.shift_north() } else { bb.shift_south() };
+    let attacks = if ATTACK_MASK {
+        attack_mask
+    } else {
+        attack_mask & pos.state.occupancies[opponent as usize]
+    };
 
-        if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
-            moves |= next_bb;
-        }
-
-        if (is_white && rank == Rank::_2 || is_black && rank == Rank::_7) && moves.any() {
-            let next_bb = if is_white { next_bb.shift_north() } else { next_bb.shift_south() };
-            if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
-                moves |= next_bb;
-            }
-        }
-
-        // Handle en passant
-        moves |= move_mask_pawn_ep::<COLOR>(pos, sq);
+    if ATTACK_MASK {
+        return attacks;
     }
 
-    // Handle attacks moves
-    let attack_left = if is_white { bb.shift_nw() } else { bb.shift_sw() };
-    if ATTACK_MASK || (attack_left & pos.state.occupancies[opponent as usize]).any() {
-        moves |= attack_left;
-    }
-    let attack_right = if is_white { bb.shift_ne() } else { bb.shift_se() };
-    if ATTACK_MASK || (attack_right & pos.state.occupancies[opponent as usize]).any() {
-        moves |= attack_right;
-    }
+    let offset = if is_white { 8i8 } else { -8i8 };
+    let rank = if is_white { BitBoard::MASK_4 } else { BitBoard::MASK_5 };
+    let empty_mask = !pos.state.occupancies[2].get();
+    let mut single_push_mask = 1u64 << (sq.as_u8() as i8 + offset);
+    single_push_mask &= empty_mask;
+    // if can't single push, then single push is 0,
+    // double push mask will never land on rank 4 or 5
+    let mut double_push_mask = if is_white { single_push_mask << 8 } else { single_push_mask >> 8 };
+    double_push_mask &= empty_mask & rank;
 
-    moves
-}
-
-fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
-    // Handle en passant
-    let (file, rank) = sq.file_rank();
-    let is_white = COLOR == Color::WHITE.as_u8();
-    let is_black = COLOR != Color::WHITE.as_u8();
-
-    if let Some(ep_sq) = pos.state.en_passant {
-        debug_assert!(pos.get_piece_at(ep_sq) == Piece::NONE, "En passant square must be empty");
-        let (ep_file, ep_rank) = ep_sq.file_rank();
-        if file.diff(ep_file).abs() == 1 {
-            if is_white && rank == Rank::_5 && ep_rank == Rank::_6 {
-                debug_assert!(pos.get_piece_at(Square::new(ep_sq.as_u8() - 8)) == Piece::B_PAWN);
-                return ep_sq.to_bitboard();
-            }
-            if is_black && rank == Rank::_4 && ep_rank == Rank::_3 {
-                debug_assert!(pos.get_piece_at(Square::new(ep_sq.as_u8() + 8)) == Piece::W_PAWN);
-                return ep_sq.to_bitboard();
-            }
-        }
-    }
-
-    return BitBoard::new();
+    BitBoard::from(single_push_mask | double_push_mask) | attacks
 }
 
 fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square, pos: &Position) {
     let mask = pawn_mask::<{ COLOR }, false>(sq, pos);
 
     for dst_sq in mask.iter() {
-        if check_if_promotion::<COLOR>(dst_sq) {
+        let sq_mask = 1u64 << dst_sq.as_u8();
+        let promo_rank = if COLOR == 0 { BitBoard::MASK_8 } else { BitBoard::MASK_1 };
+        if sq_mask & promo_rank != 0 {
             // Promotion move
             let promotion_types =
                 [PieceType::QUEEN, PieceType::ROOK, PieceType::BISHOP, PieceType::KNIGHT];
@@ -199,65 +153,17 @@ fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square,
                 move_list.add(Move::new(sq, dst_sq, MoveType::Promotion, Some(promotion)));
             }
         } else {
-            let is_ep_capture =
-                check_if_eq_capture::<COLOR>(pos, sq, dst_sq, pos.get_piece_at(dst_sq));
-            let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
-            move_list.add(Move::new(sq, dst_sq, move_type, None));
+            move_list.add(Move::new(sq, dst_sq, MoveType::Normal, None));
         }
     }
-}
 
-fn check_if_promotion<const COLOR: u8>(dst_sq: Square) -> bool {
-    let (_, rank) = dst_sq.file_rank();
-
-    match rank {
-        Rank::_8 if COLOR == Color::WHITE.as_u8() => true,
-        Rank::_1 if COLOR == Color::BLACK.as_u8() => true,
-        _ => false,
+    if let Some(ep_sq) = pos.state.en_passant {
+        let attack_mask = pawn_mask::<{ COLOR }, true>(sq, pos);
+        // if attach mask and ep square overlap, then it's an en passant capture
+        if attack_mask.test_sq(ep_sq) {
+            move_list.add(Move::new(sq, ep_sq, MoveType::EnPassant, None));
+        }
     }
-}
-
-fn check_if_eq_capture<const COLOR: u8>(
-    pos: &Position,
-    src_sq: Square,
-    dst_sq: Square,
-    to: Piece,
-) -> bool {
-    if to.get_type() != PieceType::NONE {
-        return false;
-    }
-
-    // 8 . . . . . k . . black pawn c7c5, c6 is empty, c5 has black pawn
-    // 7 . . . . . . . .
-    // 6 . . . . . . . .
-    // 5 . . p P . . . .
-    // 4 . . . . . . . .
-    // 3 . . . . . . . .
-    // 2 . . . . . . . .
-    // 1 . . . . K . . .
-    //   a b c d e f g h
-
-    // if the to square is empty, but it still moves diagonally, then
-    let (src_file, src_rank) = src_sq.file_rank();
-    let (dst_file, dst_rank) = dst_sq.file_rank();
-    if src_file == dst_file {
-        return false;
-    }
-    debug_assert!(src_file.diff(dst_file).abs() == 1);
-    debug_assert!(src_rank.diff(dst_rank).abs() == 1);
-
-    if cfg!(debug_assertions) {
-        let color = Color::new(COLOR);
-        let enemy = if color == Color::WHITE { Piece::B_PAWN } else { Piece::W_PAWN };
-        let enemy_sq = Square::make(dst_file, src_rank);
-
-        debug_assert!(
-            pos.bitboards[enemy.as_usize()].test(enemy_sq.as_u8()),
-            "En passant capture must have an enemy pawn on the square to capture"
-        );
-    }
-
-    true
 }
 
 /* #endregion */
@@ -442,46 +348,10 @@ fn pseudo_legal_move_queen(
 
 /* #region */
 /// Computes the legal knight moves from a given square on a bitboard.
-///
-/// The knight moves in an L-shape: two squares in one cardinal direction
-/// (N, S, E, W) followed by one square in a perpendicular direction.
-///
-/// ## Movement Description
-///
-/// A knight on a square can move in 8 possible directions:
-///
-/// - NE + N (2N 1E) → North-North-East
-/// - NW + N (2N 1W) → North-North-West
-/// - SE + S (2S 1E) → South-South-East
-/// - SW + S (2S 1W) → South-South-West
-/// - NW + W (2W 1N) → West-West-North
-/// - SW + W (2W 1S) → West-West-South
-/// - NE + E (2E 1N) → East-East-North
-/// - SE + E (2E 1S) → East-East-South
-
+/// use precomputed knight attack masks for efficiency.
 fn knight_mask<const ATTACK_MASK: bool>(sq: Square, my_occupancy: BitBoard) -> BitBoard {
-    let mut moves = BitBoard::new();
-    let bb = sq.to_bitboard().get();
-
-    let mask = if ATTACK_MASK { 0u64 } else { my_occupancy.get() };
-    let mask = BitBoard::from(!mask);
-
-    const B_AB: u64 = !(BitBoard::MASK_A | BitBoard::MASK_B);
-    const B_GH: u64 = !(BitBoard::MASK_G | BitBoard::MASK_H);
-    const B_12: u64 = !(BitBoard::MASK_1 | BitBoard::MASK_2);
-    const B_78: u64 = !(BitBoard::MASK_7 | BitBoard::MASK_8);
-
-    moves |= BitBoard::from(bb & !BitBoard::MASK_H & B_78).shift(BitBoard::NE + BitBoard::N) & mask;
-    moves |= BitBoard::from(bb & !BitBoard::MASK_A & B_78).shift(BitBoard::NW + BitBoard::N) & mask;
-    moves |= BitBoard::from(bb & !BitBoard::MASK_H & B_12).shift(BitBoard::SE + BitBoard::S) & mask;
-    moves |= BitBoard::from(bb & !BitBoard::MASK_A & B_12).shift(BitBoard::SW + BitBoard::S) & mask;
-
-    moves |= BitBoard::from(bb & B_AB & !BitBoard::MASK_8).shift(BitBoard::NW + BitBoard::W) & mask;
-    moves |= BitBoard::from(bb & B_AB & !BitBoard::MASK_1).shift(BitBoard::SW + BitBoard::W) & mask;
-    moves |= BitBoard::from(bb & B_GH & !BitBoard::MASK_8).shift(BitBoard::NE + BitBoard::E) & mask;
-    moves |= BitBoard::from(bb & B_GH & !BitBoard::MASK_1).shift(BitBoard::SE + BitBoard::E) & mask;
-
-    moves
+    let mask = BitBoard::from(if ATTACK_MASK { !0u64 } else { !my_occupancy.get() });
+    mask & KNIGHT_MASKS[sq.as_usize()]
 }
 
 fn pseudo_legal_move_knight(move_list: &mut MoveList, sq: Square, my_occupancy: BitBoard) {
@@ -538,86 +408,40 @@ fn king_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
     let color = Color::new(COLOR);
     let is_white = color.is_white();
 
-    let bb = sq.to_bitboard();
-    let mut moves = BitBoard::new();
-    let occupancy =
-        !(if ATTACK_MASK { BitBoard::new() } else { pos.state.occupancies[COLOR as usize] });
-    for shift_func in &SHIFT_FUNCS {
-        moves |= shift_func(&bb) & occupancy;
+    let mut moves = KING_MASKS[sq.as_usize()];
+
+    if ATTACK_MASK {
+        return moves;
     }
 
-    if !ATTACK_MASK {
-        // If we are checking if cells are being attacked, not actually moving, no need exclude pieces under attack
-        moves &= !pos.state.attack_mask[color.flip().as_usize()];
+    // if it's move mask, remove squares occupied by own pieces
+    moves &= !pos.state.occupancies[COLOR as usize];
+    // and remove squares being attacked by the opponent
+    moves &= !pos.state.attack_mask[color.flip().as_usize()];
 
-        if is_white {
-            if (pos.state.castling_rights & CastlingRight::K != 0)
-                && move_mask_castle_check::<COLOR>(pos, sq, Square::G1, Square::H1)
-            {
-                assert!(sq == Square::E1);
-                moves.set_sq(Square::G1);
-            }
-            if (pos.state.castling_rights & CastlingRight::Q != 0)
-                && move_mask_castle_check::<COLOR>(pos, sq, Square::C1, Square::A1)
-            {
-                assert!(sq == Square::E1);
-                moves.set_sq(Square::C1);
-            }
-        } else {
-            if (pos.state.castling_rights & CastlingRight::k != 0)
-                && move_mask_castle_check::<COLOR>(pos, sq, Square::G8, Square::H8)
-            {
-                assert!(sq == Square::E8);
-                moves.set_sq(Square::G8);
-            }
-            if (pos.state.castling_rights & CastlingRight::q != 0)
-                && move_mask_castle_check::<COLOR>(pos, sq, Square::C8, Square::A8)
-            {
-                assert!(sq == Square::E8);
-                moves.set_sq(Square::C8);
+    // check castling possibilities
+    let offset = if is_white { 0 } else { 2 };
+
+    for i in 0..2 {
+        let bit = i + offset;
+        let flag = 1u8 << bit;
+        if flag & pos.state.castling_rights != 0 {
+            let path_clear = (KING_CASTLING_CLEAR_MASK[bit]
+                & pos.state.occupancies[Color::BOTH.as_usize()])
+            .none();
+            let path_safe = (KING_CASTLING_SAFE_MASKS[bit]
+                & pos.state.attack_mask[(COLOR ^ 1) as usize])
+                .none();
+            let rook_still_there = pos.bitboards
+                [Piece::get_piece(color, PieceType::ROOK).as_usize()]
+            .test_sq(KING_CASTLING_ROOK_SQ[bit]);
+            if path_clear && path_safe && rook_still_there {
+                moves.set_sq(KING_CASTLING_DEST_SQ[bit]);
             }
         }
     }
 
     moves
-}
-
-/// @TODO: refactor this
-fn move_mask_castle_check<const COLOR: u8>(
-    pos: &Position,
-    sq: Square,
-    dst_sq: Square,
-    rook_sq: Square,
-) -> bool {
-    // r . . . k . . r
-    // a b c d e f g h
-    let color = Color::new(COLOR);
-    let opponent = color.flip();
-
-    // check if the rook is in the right place
-    let rook_type = Piece::get_piece(color, PieceType::ROOK);
-    if pos.bitboards[rook_type.as_usize()].test(rook_sq.as_u8()) == false {
-        return false;
-    }
-
-    // check if the cells are under attack
-    let (s1, e1) = utils::min_max(sq.as_u8(), dst_sq.as_u8());
-    let (s2, e2) = utils::min_max(sq.as_u8(), rook_sq.as_u8());
-
-    let checks = [
-        (s1, e1 + 1, pos.state.attack_mask[opponent.as_usize()]),
-        (s2 + 1, e2, pos.state.occupancies[Color::BOTH.as_usize()]),
-    ];
-
-    for (start, end, mask) in checks {
-        for i in start..end {
-            if mask.test(i) {
-                return false;
-            }
-        }
-    }
-
-    true
 }
 
 pub fn pseudo_legal_move_king<const COLOR: u8>(
@@ -642,3 +466,270 @@ pub fn pseudo_legal_move_king<const COLOR: u8>(
 }
 
 /* #endregion */
+
+pub fn calc_attack_map_and_checker<const COLOR: u8>(pos: &mut Position) -> (BitBoard, CheckerList) {
+    let enemy_king = if COLOR == 0 { Piece::B_KING } else { Piece::W_KING };
+    let enemy_king_mask = pos.bitboards[enemy_king.as_usize()];
+
+    let pawn = if COLOR == 0 { Piece::W_PAWN } else { Piece::B_PAWN };
+    let knight = if COLOR == 0 { Piece::W_KNIGHT } else { Piece::B_KNIGHT };
+    let bishop = if COLOR == 0 { Piece::W_BISHOP } else { Piece::B_BISHOP };
+    let rook = if COLOR == 0 { Piece::W_ROOK } else { Piece::B_ROOK };
+    let queen = if COLOR == 0 { Piece::W_QUEEN } else { Piece::B_QUEEN };
+    let king = if COLOR == 0 { Piece::W_KING } else { Piece::B_KING };
+
+    let my_occupancy = pos.state.occupancies[COLOR as usize];
+    let enemy_occupancy = pos.state.occupancies[(COLOR ^ 1) as usize];
+
+    let mut masks = [BitBoard::new(); 6];
+
+    let mut checkers = CheckerList::new();
+
+    // pawn
+    let mask = &mut masks[PieceType::PAWN.as_usize()];
+    for sq in pos.bitboards[pawn.as_usize()].iter() {
+        let sq_attack_mask = pawn_mask::<{ COLOR }, true>(sq, pos);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // knight
+    let mask = &mut masks[PieceType::KNIGHT.as_usize()];
+    for sq in pos.bitboards[knight.as_usize()].iter() {
+        let sq_attack_mask = knight_mask::<true>(sq, my_occupancy);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // bishop
+    let mask = &mut masks[PieceType::BISHOP.as_usize()];
+    for sq in pos.bitboards[bishop.as_usize()].iter() {
+        let sq_attack_mask = bishop_mask::<true>(sq, my_occupancy, enemy_occupancy);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // rook
+    let mask = &mut masks[PieceType::ROOK.as_usize()];
+    for sq in pos.bitboards[rook.as_usize()].iter() {
+        let sq_attack_mask = rook_mask::<true>(sq, my_occupancy, enemy_occupancy);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // queen
+    let mask = &mut masks[PieceType::QUEEN.as_usize()];
+    for sq in pos.bitboards[queen.as_usize()].iter() {
+        let sq_attack_mask = queen_mask::<true>(sq, my_occupancy, enemy_occupancy);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // king
+    let mask = &mut masks[PieceType::KING.as_usize()];
+    for sq in pos.bitboards[king.as_usize()].iter() {
+        *mask |= king_mask::<{ COLOR }, true>(sq, pos);
+
+        // not possible to check the king, so no need to check for overlap
+    }
+
+    let mut final_mask = BitBoard::new();
+    for mask in masks.iter().copied() {
+        final_mask |= mask;
+    }
+
+    (final_mask, checkers)
+}
+
+/// Precomputes the move masks
+const fn build_pawn_attack_mask<const IS_WHITE: bool>(file: u8, rank: u8) -> BitBoard {
+    let mut mask = BitBoard::new();
+
+    if rank == 0 || rank == 7 {
+        return mask; // No pawn moves on the first or last rank
+    }
+    if IS_WHITE {
+        if file > 0 {
+            mask.set_sq(Square::make(File(file - 1), Rank(rank + 1)));
+        }
+        if file < 7 {
+            mask.set_sq(Square::make(File(file + 1), Rank(rank + 1)));
+        }
+    } else {
+        if file > 0 {
+            mask.set_sq(Square::make(File(file - 1), Rank(rank - 1)));
+        }
+        if file < 7 {
+            mask.set_sq(Square::make(File(file + 1), Rank(rank - 1)));
+        }
+    }
+
+    mask
+}
+
+const fn build_pawn_attack_masks() -> [[BitBoard; 64]; 2] {
+    let mut masks = [[BitBoard::new(); 64]; 2];
+
+    let mut sq = 0;
+    while sq < 64 {
+        let file = sq % 8;
+        let rank = sq / 8;
+
+        masks[0][sq] = build_pawn_attack_mask::<true>(file as u8, rank as u8); // White pawns
+        masks[1][sq] = build_pawn_attack_mask::<false>(file as u8, rank as u8); // Black pawns
+
+        sq += 1;
+    }
+
+    masks
+}
+
+const fn build_pawn_en_passant_mask(file: u8, rank: u8) -> BitBoard {
+    let mut mask = BitBoard::new();
+
+    if file > 0 {
+        mask.set_sq(Square::make(File(file - 1), Rank(rank)));
+    }
+    if file < 7 {
+        mask.set_sq(Square::make(File(file + 1), Rank(rank)));
+    }
+
+    mask
+}
+
+const fn build_knight_mask(file: u8, rank: u8) -> BitBoard {
+    let mut mask = BitBoard::new();
+
+    const OFFSETS: [(i8, i8); 8] =
+        [(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)];
+
+    let mut idx = 0;
+    while idx < OFFSETS.len() {
+        let (df, dr) = OFFSETS[idx];
+        let new_file = file as i8 + df;
+        let new_rank = rank as i8 + dr;
+
+        if new_file >= 0 && new_file < 8 && new_rank >= 0 && new_rank < 8 {
+            mask.set_sq(Square::make(File(new_file as u8), Rank(new_rank as u8)));
+        }
+        idx += 1;
+    }
+
+    mask
+}
+
+const fn build_king_mask(file: u8, rank: u8) -> BitBoard {
+    let mut mask = BitBoard::new();
+
+    const OFFSETS: [(i8, i8); 8] =
+        [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)];
+
+    let mut idx = 0;
+    while idx < OFFSETS.len() {
+        let (df, dr) = OFFSETS[idx];
+        let new_file = file as i8 + df;
+        let new_rank = rank as i8 + dr;
+
+        if new_file >= 0 && new_file < 8 && new_rank >= 0 && new_rank < 8 {
+            mask.set_sq(Square::make(File(new_file as u8), Rank(new_rank as u8)));
+        }
+        idx += 1;
+    }
+
+    mask
+}
+
+const PAWM_ATTACK_MASKS: [[BitBoard; 64]; 2] = build_pawn_attack_masks();
+
+pub const PAWN_EN_PASSANT_MASKS: [[BitBoard; 64]; 2] = {
+    let mut masks = [[BitBoard::new(); 64]; 2];
+    let mut sq = 0;
+    while sq < 64 {
+        let file = sq % 8;
+        let rank = sq / 8;
+        if rank == 3 {
+            masks[0][sq] = build_pawn_en_passant_mask(file as u8, 3);
+        }
+        if rank == 4 {
+            masks[1][sq] = build_pawn_en_passant_mask(file as u8, 4);
+        }
+        sq += 1;
+    }
+    masks
+};
+
+const KNIGHT_MASKS: [BitBoard; 64] = {
+    let mut masks = [BitBoard::new(); 64];
+    let mut sq = 0;
+    while sq < 64 {
+        let file = sq % 8;
+        let rank = sq / 8;
+        masks[sq] = build_knight_mask(file as u8, rank as u8);
+        sq += 1;
+    }
+    masks
+};
+
+const KING_MASKS: [BitBoard; 64] = {
+    let mut masks = [BitBoard::new(); 64];
+    let mut sq = 0;
+    while sq < 64 {
+        let file = sq % 8;
+        let rank = sq / 8;
+        masks[sq] = build_king_mask(file as u8, rank as u8);
+        sq += 1;
+    }
+    masks
+};
+
+const B1_MASK: u64 = 1u64 << Square::B1.as_u8();
+const C1_MASK: u64 = 1u64 << Square::C1.as_u8();
+const D1_MASK: u64 = 1u64 << Square::D1.as_u8();
+const E1_MASK: u64 = 1u64 << Square::E1.as_u8();
+const F1_MASK: u64 = 1u64 << Square::F1.as_u8();
+const G1_MASK: u64 = 1u64 << Square::G1.as_u8();
+
+const B8_MASK: u64 = 1u64 << Square::B8.as_u8();
+const C8_MASK: u64 = 1u64 << Square::C8.as_u8();
+const D8_MASK: u64 = 1u64 << Square::D8.as_u8();
+const E8_MASK: u64 = 1u64 << Square::E8.as_u8();
+const F8_MASK: u64 = 1u64 << Square::F8.as_u8();
+const G8_MASK: u64 = 1u64 << Square::G8.as_u8();
+
+const KING_CASTLING_CLEAR_MASK: [BitBoard; 4] = [
+    BitBoard::from(F1_MASK | G1_MASK),           // White kingside
+    BitBoard::from(B1_MASK | C1_MASK | D1_MASK), // White queenside
+    BitBoard::from(F8_MASK | G8_MASK),           // Black kingside
+    BitBoard::from(B8_MASK | C8_MASK | D8_MASK), // Black queenside
+];
+
+const KING_CASTLING_SAFE_MASKS: [BitBoard; 4] = [
+    BitBoard::from(E1_MASK | F1_MASK | G1_MASK), // White kingside
+    BitBoard::from(C1_MASK | D1_MASK | E1_MASK), // White queenside
+    BitBoard::from(E8_MASK | F8_MASK | G8_MASK), // Black kingside
+    BitBoard::from(C8_MASK | D8_MASK | E8_MASK), // Black queenside
+];
+
+const KING_CASTLING_DEST_SQ: [Square; 4] = [
+    Square::G1, // White kingside
+    Square::C1, // White queenside
+    Square::G8, // Black kingside
+    Square::C8, // Black queenside
+];
+
+const KING_CASTLING_ROOK_SQ: [Square; 4] = [
+    Square::H1, // White kingside
+    Square::A1, // White queenside
+    Square::H8, // Black kingside
+    Square::A8, // Black queenside
+];

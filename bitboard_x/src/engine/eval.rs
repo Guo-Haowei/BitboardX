@@ -2,21 +2,21 @@ use super::piece_square_table::*;
 use crate::core::{position::Position, types::*};
 
 // @TODO: change to i16
-pub type Score = i32;
+pub type Score = i16;
 
-const PAWN_VALUE: Score = 100;
-const KNIGHT_VALUE: Score = 300;
-const BISHOP_VALUE: Score = 320;
-const ROOK_VALUE: Score = 500;
-const QUEEN_VALUE: Score = 900;
+const PAWN_VALUE: Score = 100i16;
+const KNIGHT_VALUE: Score = 300i16;
+const BISHOP_VALUE: Score = 320i16;
+const ROOK_VALUE: Score = 500i16;
+const QUEEN_VALUE: Score = 900i16;
 
-const PIECE_VALUES: [i32; 6] = [
+const PIECE_VALUES: [i16; 6] = [
     PAWN_VALUE,
     KNIGHT_VALUE,
     BISHOP_VALUE,
     ROOK_VALUE,
     QUEEN_VALUE,
-    40000, // King
+    20000, // King
 ];
 
 // macro_rules! if_debug_search {
@@ -27,17 +27,17 @@ const PIECE_VALUES: [i32; 6] = [
 //     };
 // }
 
-pub fn get_piece_value(piece_type: PieceType) -> i32 {
+pub fn get_piece_value(piece_type: PieceType) -> i16 {
     assert!(piece_type != PieceType::NONE, "Piece must not be NONE");
     PIECE_VALUES[piece_type.as_u8() as usize]
 }
 
 struct EvaluationData {
-    material_score: i32,
-    mop_up_score: i32, // score for endgame material
-    piece_square_score: i32,
-    pawn_score: i32,
-    pawn_shield_score: i32,
+    material_score: i16,
+    mop_up_score: i16, // score for endgame material
+    piece_square_score: i16,
+    pawn_score: i16,
+    pawn_shield_score: i16,
 }
 
 impl EvaluationData {
@@ -51,7 +51,7 @@ impl EvaluationData {
         }
     }
 
-    pub fn sum(&self) -> i32 {
+    pub fn sum(&self) -> i16 {
         self.material_score
             + self.mop_up_score
             + self.piece_square_score
@@ -62,12 +62,12 @@ impl EvaluationData {
 
 struct MaterialInfo {
     pub color: Color,
-    pub material_score: i32,
-    pub _num_pawns: i32,
-    pub _num_knights: i32,
-    pub _num_bishops: i32,
-    pub _num_queens: i32,
-    pub _num_rooks: i32,
+    pub material_score: i16,
+    pub _num_pawns: i16,
+    pub _num_knights: i16,
+    pub _num_bishops: i16,
+    pub _num_queens: i16,
+    pub _num_rooks: i16,
     pub my_pawns: BitBoard,
     pub enemy_pawns: BitBoard,
     pub endgame_t: f32, // Transition from midgame to endgame (0->1)
@@ -76,11 +76,11 @@ struct MaterialInfo {
 impl MaterialInfo {
     fn new(
         color: Color,
-        num_pawns: i32,
-        num_knights: i32,
-        num_bishops: i32,
-        num_queens: i32,
-        num_rooks: i32,
+        num_pawns: i16,
+        num_knights: i16,
+        num_bishops: i16,
+        num_queens: i16,
+        num_rooks: i16,
         my_pawns: BitBoard,
         enemy_pawns: BitBoard,
     ) -> Self {
@@ -92,12 +92,12 @@ impl MaterialInfo {
         material_score += num_queens * QUEEN_VALUE;
 
         // Endgame Transition (0->1)
-        const QUEEN_ENDGAME_WEIGHT: i32 = 45;
-        const ROOK_ENDGAME_WEIGHT: i32 = 20;
-        const BISHOP_ENDGAME_WEIGHT: i32 = 10;
-        const KNIGHT_ENDGAME_WEIGHT: i32 = 10;
+        const QUEEN_ENDGAME_WEIGHT: i16 = 45;
+        const ROOK_ENDGAME_WEIGHT: i16 = 20;
+        const BISHOP_ENDGAME_WEIGHT: i16 = 10;
+        const KNIGHT_ENDGAME_WEIGHT: i16 = 10;
 
-        const ENDGAME_START_WEIGHT: i32 = 2 * ROOK_ENDGAME_WEIGHT
+        const ENDGAME_START_WEIGHT: i16 = 2 * ROOK_ENDGAME_WEIGHT
             + 2 * BISHOP_ENDGAME_WEIGHT
             + 2 * KNIGHT_ENDGAME_WEIGHT
             + QUEEN_ENDGAME_WEIGHT;
@@ -137,7 +137,7 @@ impl Evaluation {
         Evaluation { white_score: EvaluationData::new(), black_score: EvaluationData::new() }
     }
 
-    pub fn evaluate_position(&mut self, pos: &Position) -> i32 {
+    pub fn evaluate_position(&mut self, pos: &Position) -> i16 {
         let white_material = Self::get_material_info(pos, Color::WHITE);
         let black_material = Self::get_material_info(pos, Color::BLACK);
 
@@ -181,11 +181,11 @@ impl Evaluation {
         let enemy_pawns = Piece::get_piece(color.flip(), PieceType::PAWN);
         let enemy_pawns = pos.bitboards[enemy_pawns.as_usize()];
 
-        let num_pawns = my_pawns.count() as i32;
-        let num_knights = pos.bitboards[knight.as_usize()].count() as i32;
-        let num_bishops = pos.bitboards[bishop.as_usize()].count() as i32;
-        let num_rooks = pos.bitboards[rook.as_usize()].count() as i32;
-        let num_queens = pos.bitboards[queen.as_usize()].count() as i32;
+        let num_pawns = my_pawns.count() as i16;
+        let num_knights = pos.bitboards[knight.as_usize()].count() as i16;
+        let num_bishops = pos.bitboards[bishop.as_usize()].count() as i16;
+        let num_rooks = pos.bitboards[rook.as_usize()].count() as i16;
+        let num_queens = pos.bitboards[queen.as_usize()].count() as i16;
 
         MaterialInfo::new(
             color,
@@ -199,8 +199,8 @@ impl Evaluation {
         )
     }
 
-    fn evaluate_piece_square_table(&self, pos: &Position, color: Color, endgame_t: f32) -> i32 {
-        let mut value = 0;
+    fn evaluate_piece_square_table(&self, pos: &Position, color: Color, endgame_t: f32) -> i16 {
+        let mut value = 0i16;
         value += evaluate_table(pos, &KNIGHT_TABLES, PieceType::KNIGHT, color);
         value += evaluate_table(pos, &BISHOP_TABLES, PieceType::BISHOP, color);
         value += evaluate_table(pos, &ROOK_TABLES, PieceType::ROOK, color);
@@ -208,26 +208,26 @@ impl Evaluation {
 
         let pawn_early = evaluate_table(pos, &PAWN_START_TABLES, PieceType::PAWN, color);
         let pawn_late = evaluate_table(pos, &PAWN_END_TABLES, PieceType::PAWN, color);
-        value += (pawn_early as f32 * (1.0 - endgame_t)) as i32;
-        value += (pawn_late as f32 * endgame_t) as i32;
+        value += (pawn_early as f32 * (1.0 - endgame_t)) as i16;
+        value += (pawn_late as f32 * endgame_t) as i16;
 
         let king_early = evaluate_table(pos, &KING_START_TABLES, PieceType::KING, color);
         let king_late = evaluate_table(pos, &KING_END_TABLES, PieceType::KING, color);
-        value += (king_early as f32 * (1.0 - endgame_t)) as i32;
-        value += (king_late as f32 * endgame_t) as i32;
+        value += (king_early as f32 * (1.0 - endgame_t)) as i16;
+        value += (king_late as f32 * endgame_t) as i16;
 
         value
     }
 
-    fn evaluate_pawns(&self, material: &MaterialInfo) -> i32 {
+    fn evaluate_pawns(&self, material: &MaterialInfo) -> i16 {
         let mut score = 0;
         score += Self::evaluate_passed_pawns(material);
         score += Self::evaluate_isolated_pawns(material);
         score
     }
 
-    fn evaluate_passed_pawns(material: &MaterialInfo) -> i32 {
-        const PASSED_PAWN_BONUSES: [i32; 7] = [0, 120, 80, 50, 30, 15, 15];
+    fn evaluate_passed_pawns(material: &MaterialInfo) -> i16 {
+        const PASSED_PAWN_BONUSES: [i16; 7] = [0, 120, 80, 50, 30, 15, 15];
 
         let mut score = 0;
 
@@ -244,8 +244,8 @@ impl Evaluation {
         score
     }
 
-    fn evaluate_isolated_pawns(material: &MaterialInfo) -> i32 {
-        const ISOLATED_PAWN_PENALTY_BY_COUNT: [i32; 9] =
+    fn evaluate_isolated_pawns(material: &MaterialInfo) -> i16 {
+        const ISOLATED_PAWN_PENALTY_BY_COUNT: [i16; 9] =
             [0, -10, -25, -50, -75, -75, -75, -75, -75];
 
         let mut isolated_count = 0;

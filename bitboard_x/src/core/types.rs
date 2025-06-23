@@ -80,6 +80,10 @@ impl PieceType {
     pub const fn as_u8(&self) -> u8 {
         self.0
     }
+
+    pub const fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -131,6 +135,7 @@ impl Piece {
         unsafe { std::mem::transmute(piece_type) }
     }
 
+    #[inline(always)]
     pub fn get_piece(color: Color, piece_type: PieceType) -> Piece {
         let color = color.as_u8();
         debug_assert!(color < COLOR_BOTH);

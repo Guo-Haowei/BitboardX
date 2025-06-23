@@ -6,8 +6,8 @@ use colored::*;
 
 fn is_move_legal(pos: &Position, mv: Move) -> bool {
     let pseudo_moves = move_gen::legal_moves(pos);
-    for lm in pseudo_moves.iter().copied() {
-        if lm == mv {
+    for lm in pseudo_moves.iter() {
+        if *lm == mv {
             return true;
         }
     }
@@ -256,6 +256,7 @@ mod en_passant {
         let mv = Move::new(Square::E2, Square::E4, MoveType::Normal, None);
         assert!(is_move_legal(&pos, mv));
         pos.make_move(mv);
+        assert_eq!(pos.state.en_passant, Some(Square::E3));
 
         let mv = Move::new(Square::F4, Square::E3, MoveType::EnPassant, None);
         assert!(!is_move_legal(&pos, mv));
