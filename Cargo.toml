@@ -1,4 +1,5 @@
 [workspace]
 members = [
-    "bitboard_x"
+    "bitboard_x",
+    "match-analyzer-server",
 ]
