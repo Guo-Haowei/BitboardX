@@ -2,14 +2,19 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
-#[derive(Serialize, Deserialize)]
+use crate::meta;
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MatchMeta {
     player1: String,
     player2: String,
-    result: String,
-    file: String,
+    win: u32,
+    loss: u32,
+    draw: u32,
 }
 
 struct GameMeta {
@@ -25,25 +30,23 @@ struct PlayerResult {
     draw: u32,
 }
 
-fn create_metadata_file(path: &PathBuf) -> Result<(), String> {
+// @TODO: (optional) data base?
+fn create_metadata_file(path: &PathBuf) -> Result<MatchMeta, String> {
     let stem = path.file_stem();
-    eprintln!("Creating metadata file for: {}", path.display());
     if stem.is_none() {
         eprintln!("Failed to get file stem for path: {}", path.display());
         return Err(format!("File {} has no stem ", path.display()));
     }
 
     let meta_path = path.with_extension("json");
-    // 1. If the metadata file already exists, check time modified matches the actual time modified
     if meta_path.exists() {
+        // @TODO:
+        // if exists and modified time matches, return early
+        // otherwise, delete the file and create a new one
         std::fs::remove_file(&meta_path)
             .map_err(|e| format!("Failed to remove existing metadata file: {}", e))?;
     }
 
-    eprintln!("Found result: {}", path.display());
-
-    // 2. If it does not exist, create a new metadata file
-    // @TODO: database
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read PGN file {}: {}", path.display(), e.to_string()))?;
 
@@ -75,9 +78,12 @@ fn create_metadata_file(path: &PathBuf) -> Result<(), String> {
         ));
     }
 
+    let player1 = players[1].trim();
+    let player2 = players[0].trim();
+
     let mut player_results: HashMap<String, PlayerResult> = HashMap::new();
-    player_results.insert(players[0].to_string(), PlayerResult::default());
-    player_results.insert(players[1].to_string(), PlayerResult::default());
+    player_results.insert(player1.to_string(), PlayerResult::default());
+    player_results.insert(player2.to_string(), PlayerResult::default());
 
     for meta in metas.iter() {
         let white = meta.white.trim().to_string();
@@ -104,16 +110,31 @@ fn create_metadata_file(path: &PathBuf) -> Result<(), String> {
         }
     }
 
-    println!("Player {} results: {:?}", players[0], player_results[players[0]]);
-    println!("Player {} results: {:?}", players[1], player_results[players[1]]);
-    println!("-------------------------");
+    let match_meta = MatchMeta {
+        player1: player1.to_string(),
+        player2: player2.to_string(),
+        win: player_results[player1].win,
+        loss: player_results[player1].loss,
+        draw: player_results[player1].draw,
+    };
 
-    Ok(())
+    let json = serde_json::to_string_pretty(&match_meta).expect("Failed to serialize to JSON");
+
+    let mut file = File::create(&meta_path).map_err(|e| {
+        format!("Failed to create metadata file {}: {}", meta_path.display(), e.to_string())
+    })?;
+
+    file.write_all(json.as_bytes()).map_err(|e| {
+        format!("Failed to write to metadata file {}: {}", meta_path.display(), e.to_string())
+    })?;
+
+    Ok(match_meta)
 }
 
-pub fn process_pgn_files(dir: &Path) -> Result<(), String> {
+pub fn process_pgn_files(dir: &Path) -> Result<Vec<MatchMeta>, String> {
     match fs::read_dir(dir) {
         Ok(entries) => {
+            let mut metas = Vec::new();
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path
@@ -121,11 +142,12 @@ pub fn process_pgn_files(dir: &Path) -> Result<(), String> {
                     .and_then(|ext| ext.to_str())
                     .map_or(false, |ext| ext.eq_ignore_ascii_case("pgn"))
                 {
-                    create_metadata_file(&path)?;
+                    let match_meta = create_metadata_file(&path)?;
+                    metas.push(match_meta);
                 }
             }
 
-            Ok(())
+            Ok(metas)
         }
         Err(e) => Err(e.to_string()),
     }

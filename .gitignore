@@ -13,4 +13,5 @@ frontend/chess/
 # user-specific files
 *.log
 *.txt
+*.json
 out.pgn
