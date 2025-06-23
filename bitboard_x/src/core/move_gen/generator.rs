@@ -48,10 +48,38 @@ pub fn pseudo_legal_moves_src_sq(
         Piece::W_ROOK | Piece::B_ROOK => pseudo_legal_move_rook(move_list, sq, my, enemy),
         Piece::W_BISHOP | Piece::B_BISHOP => pseudo_legal_move_bishop(move_list, sq, my, enemy),
         Piece::W_QUEEN | Piece::B_QUEEN => pseudo_legal_move_queen(move_list, sq, my, enemy),
-        Piece::W_KING => pseudo_legal_move_king::<{ Color::WHITE.as_u8() }>(move_list, sq, pos),
-        Piece::B_KING => pseudo_legal_move_king::<{ Color::BLACK.as_u8() }>(move_list, sq, pos),
         _ => panic!("Invalid piece type: {:?}", piece),
     }
+}
+
+/// Pseudo-legal move generation
+pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
+    let mut move_list = MoveList::new();
+
+    let color = pos.state.side_to_move;
+    let king_sq = pos.get_king_square(color);
+    let (start, end) = if color == Color::WHITE {
+        pseudo_legal_move_king::<0>(&mut move_list, king_sq, pos);
+        (Piece::W_START, Piece::W_END)
+    } else {
+        pseudo_legal_move_king::<1>(&mut move_list, king_sq, pos);
+        (Piece::B_START, Piece::B_END)
+    };
+
+    // early return if double check
+    if pos.state.checkers[color.as_usize()].count() == 2 {
+        return move_list;
+    }
+
+    for i in start..end {
+        let piece = Piece::new(i);
+
+        for sq in pos.bitboards[i as usize].iter() {
+            pseudo_legal_moves_src_sq(pos, sq, piece, &mut move_list);
+        }
+    }
+
+    move_list
 }
 
 /* #region */
