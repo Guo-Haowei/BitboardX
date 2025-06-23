@@ -3,7 +3,7 @@ import { isLowerCase, fileRankToSquare } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 import { picker } from './picker';
 import { Listener, EVENT_MAP, Payload } from './message-queue';
-import { WasmMove } from '../../pkg/bitboard_x';
+import { WasmMove } from '../../bitboard_x/pkg/bitboard_x';
 
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
 const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
@@ -18,7 +18,7 @@ function loadPieceImages() {
     const color = isLowerCase(code) ? 'b' : 'w';
     const id = `img-${color}${code.toUpperCase()}`;
     const img = document.getElementById(id) as HTMLImageElement;
-    pieces[code] = img;
+    pieces.set(code, img);
   });
 
   return pieces;
@@ -137,7 +137,7 @@ export class Renderer implements RuntimeModule, Listener {
     }
 
     const tileSize = getTileSize();
-    const img = this.images[piece];
+    const img = this.images.get(piece);
     if (img) {
       const half = tileSize / 2;
       this.ctx.drawImage(img, x - half, y - half, tileSize, tileSize);

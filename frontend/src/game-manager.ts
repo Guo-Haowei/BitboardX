@@ -1,8 +1,8 @@
 import { DEFAULT_FEN } from './constants';
-import { WasmGame } from '../../pkg/bitboard_x';
 import { RuntimeModule, runtime } from './runtime';
 import { Listener, EVENT_MAP } from './message-queue';
 import { Board } from './board';
+import { WasmGame } from '../../bitboard_x/pkg/bitboard_x';
 
 export interface SelectedPiece {
   piece: string;

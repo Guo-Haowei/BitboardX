@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Engine Match Viewer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body class="bg-[#1e1e1e] text-gray-200 font-sans min-h-screen flex flex-col">
+
+  <!-- Menu Bar -->
+  <div class="bg-[#111111] px-6 py-3 border-b border-gray-700 flex gap-10 relative">
+    <div class="relative menu-item cursor-pointer hover:text-white">File
+      <div class="menu-dropdown text-sm">
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Open</div>
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Save</div>
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Exit</div>
+      </div>
+    </div>
+    <div class="relative menu-item cursor-pointer hover:text-white">Engines
+      <div class="menu-dropdown text-sm">
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Select Engine A</div>
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Select Engine B</div>
+      </div>
+    </div>
+    <div class="relative menu-item cursor-pointer hover:text-white">Help
+      <div class="menu-dropdown text-sm">
+        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">About</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App Container -->
+  <div class="flex-1 flex items-center justify-center p-4">
+    <div class="flex gap-6">
+
+      <!-- Chessboard -->
+      <div class="w-[720px] h-[720px] bg-black rounded overflow-hidden shadow-lg relative">
+        <canvas id="chessboard" width="720" height="720" class="w-full h-full"></canvas>
+        <!-- Move Controls -->
+        <div class="absolute bottom-2 right-2 flex gap-2">
+          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">|&lt;</button>
+          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">&lt;</button>
+          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">&gt;</button>
+          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">&gt;|</button>
+        </div>
+      </div>
+
+      <!-- Match Panel -->
+      <div id="match-panel" class="w-[480px] h-[720px] bg-[#1c1c1c] p-6 rounded shadow-inner overflow-y-auto space-y-6">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JS: Draw Chessboard -->
+  <script type="module" src="./src/main.ts"></script>
+</body>
+
+</html>
