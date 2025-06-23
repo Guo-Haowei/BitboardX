@@ -1,7 +1,7 @@
 use actix_cors::Cors;
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::{fs, process::Stdio};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -80,63 +80,6 @@ async fn get_best_move_from_uci(fen: &str) -> Result<String, Box<dyn std::error:
 
 // -------- Main --------
 
-fn create_metadata_file(path: &PathBuf) {
-    let stem = path.file_stem();
-    if stem.is_none() {
-        eprintln!("Failed to get file stem for path: {}", path.display());
-        return;
-    }
-    // let stem = stem.unwrap();
-    let meta_path = path.with_extension("json");
-    eprintln!("Creating metadata file for: {}", meta_path.display());
-    //     let meta_path = path.with_extension("json");
-    //     let meta_json = serde_json::to_string(&metadata)?;
-    //     fs::write(meta_path, meta_json)?;
-    // }
-    // match path.file_stem() {
-    //     Ok(stem) => {
-    //         let metadata = meta::MatchMeta {
-    //             player1: "Player1".to_string(),
-    //             player2: "Player2".to_string(),
-    //             result: "1-0".to_string(),
-    //             file: path.to_string_lossy().to_string(),
-    //         };
-
-    //         let meta_path = path.with_extension("json");
-    //         let meta_json = serde_json::to_string(&metadata)?;
-    //         fs::write(meta_path, meta_json)?;
-    //     }
-    //     None => {
-    //     if let Some(stem_str) = stem.to_str() {
-    //         println!("Base name without extension: {}", stem_str);
-    //     }
-    // } else {
-    //     eprintln!("Failed to get file stem for path: {}", path.display());
-    // }
-    // Ok(())
-}
-
-pub fn process_pgn_files(dir: &Path) -> std::io::Result<()> {
-    match fs::read_dir(dir) {
-        Ok(entries) => {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .map_or(false, |ext| ext.eq_ignore_ascii_case("pgn"))
-                {
-                    create_metadata_file(&path);
-                }
-            }
-
-            Ok(())
-        }
-        Err(e) => Err(e),
-    }
-    // files
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Server running on http://localhost:3000");
@@ -146,7 +89,7 @@ async fn main() -> std::io::Result<()> {
 
     let match_dir = root_path.join("matches");
     let match_dir = match_dir.as_path();
-    process_pgn_files(&match_dir).unwrap();
+    meta::process_pgn_files(&match_dir).unwrap();
 
     HttpServer::new(|| {
         let cors = Cors::default()
