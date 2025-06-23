@@ -2,13 +2,10 @@ import { runtime } from './runtime';
 import { fileRankToSquare } from './utils';
 
 class Picker {
-  private _square: string;
+  private _square = '';
   private _moves: Set<string> | undefined;
-  private _piece: string;
+  private _piece = '';
 
-  public constructor() {
-    this.reset();
-  }
 
   private reset() {
     this._square = '';

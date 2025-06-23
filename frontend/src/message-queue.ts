@@ -34,7 +34,7 @@ export class MessageQueue implements RuntimeModule {
     this.queue = [];
     this.listeners = new Map<string, Listener[]>();
     for (const key of Object.keys(EVENT_MAP)) {
-      const event = (EVENT_MAP as object)[key];
+      const event = EVENT_MAP[key as keyof EventMap];
       this.listeners.set(event, []);
     }
   }
