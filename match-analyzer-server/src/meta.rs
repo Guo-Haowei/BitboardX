@@ -11,9 +11,9 @@ use std::path::{Path, PathBuf};
 pub struct MatchMeta {
     player1: String,
     player2: String,
-    win: u32,
-    loss: u32,
-    draw: u32,
+    wins: u32,
+    losses: u32,
+    draws: u32,
 }
 
 struct GameMeta {
@@ -24,9 +24,9 @@ struct GameMeta {
 
 #[derive(Debug, Default)]
 struct PlayerResult {
-    win: u32,
-    loss: u32,
-    draw: u32,
+    wins: u32,
+    losses: u32,
+    draws: u32,
 }
 
 // @TODO: (optional) data base?
@@ -90,16 +90,16 @@ fn create_metadata_file(path: &PathBuf) -> io::Result<MatchMeta> {
         let black = meta.black.trim().to_string();
         match meta.result.as_str() {
             "1-0" => {
-                player_results.entry(white).and_modify(|r| r.win += 1);
-                player_results.entry(black).and_modify(|r| r.loss += 1);
+                player_results.entry(white).and_modify(|r| r.wins += 1);
+                player_results.entry(black).and_modify(|r| r.losses += 1);
             }
             "0-1" => {
-                player_results.entry(white).and_modify(|r| r.loss += 1);
-                player_results.entry(black).and_modify(|r| r.win += 1);
+                player_results.entry(white).and_modify(|r| r.losses += 1);
+                player_results.entry(black).and_modify(|r| r.wins += 1);
             }
             "1/2-1/2" => {
-                player_results.entry(white).and_modify(|r| r.draw += 1);
-                player_results.entry(black).and_modify(|r| r.draw += 1);
+                player_results.entry(white).and_modify(|r| r.draws += 1);
+                player_results.entry(black).and_modify(|r| r.draws += 1);
             }
             _ => {
                 panic!(
@@ -113,9 +113,9 @@ fn create_metadata_file(path: &PathBuf) -> io::Result<MatchMeta> {
     let match_meta = MatchMeta {
         player1: player1.to_string(),
         player2: player2.to_string(),
-        win: player_results[player1].win,
-        loss: player_results[player1].loss,
-        draw: player_results[player1].draw,
+        wins: player_results[player1].wins,
+        losses: player_results[player1].losses,
+        draws: player_results[player1].draws,
     };
 
     let json = serde_json::to_string_pretty(&match_meta).expect("Failed to serialize to JSON");

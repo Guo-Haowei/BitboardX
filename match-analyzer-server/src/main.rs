@@ -29,7 +29,7 @@ async fn get_meta() -> impl Responder {
     let match_dir = Path::new(get_root_path()).join("matches");
     let match_dir = match_dir.as_path();
     let data = meta::get_meta_impl(&match_dir).unwrap();
-    println!("Meta data: {:?}", data);
+    // println!("Meta data: {:?}", data);
     HttpResponse::Ok().json(data)
 }
 
