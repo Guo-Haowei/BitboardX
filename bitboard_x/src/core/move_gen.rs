@@ -4,6 +4,7 @@ use super::types::*;
 mod generator;
 mod validation;
 
+pub use generator::PAWN_EN_PASSANT_MASKS;
 pub use generator::calc_attack_map_and_checker;
 pub use generator::pseudo_legal_moves;
 

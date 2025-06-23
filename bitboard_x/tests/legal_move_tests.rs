@@ -256,6 +256,7 @@ mod en_passant {
         let mv = Move::new(Square::E2, Square::E4, MoveType::Normal, None);
         assert!(is_move_legal(&pos, mv));
         pos.make_move(mv);
+        assert_eq!(pos.state.en_passant, Some(Square::E3));
 
         let mv = Move::new(Square::F4, Square::E3, MoveType::EnPassant, None);
         assert!(!is_move_legal(&pos, mv));

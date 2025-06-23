@@ -113,65 +113,40 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
 fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Position) -> BitBoard {
     let (_file, rank) = sq.file_rank();
     let bb = sq.to_bitboard();
-    let mut moves = BitBoard::new();
 
     let opponent = COLOR ^ 1;
 
     let is_white = COLOR == Color::WHITE.as_u8();
     let is_black = COLOR != Color::WHITE.as_u8();
 
-    if !ATTACK_MASK {
-        // Handle forward moves
-        let next_bb = if is_white { bb.shift_north() } else { bb.shift_south() };
-
-        if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
-            moves |= next_bb;
-        }
-
-        if (is_white && rank == Rank::_2 || is_black && rank == Rank::_7) && moves.any() {
-            let next_bb = if is_white { next_bb.shift_north() } else { next_bb.shift_south() };
-            if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
-                moves |= next_bb;
-            }
-        }
-
-        // Handle en passant
-        moves |= move_mask_pawn_ep::<COLOR>(pos, sq);
-    }
-
     let attack_mask = PAWM_ATTACK_MASKS[COLOR as usize][sq.as_usize()];
 
-    moves |= if ATTACK_MASK {
+    let attacks = if ATTACK_MASK {
         attack_mask
     } else {
         attack_mask & pos.state.occupancies[opponent as usize]
     };
 
-    moves
-}
+    if ATTACK_MASK {
+        return attacks;
+    }
 
-fn move_mask_pawn_ep<const COLOR: u8>(pos: &Position, sq: Square) -> BitBoard {
-    // Handle en passant
-    let (file, rank) = sq.file_rank();
-    let is_white = COLOR == Color::WHITE.as_u8();
-    let is_black = COLOR != Color::WHITE.as_u8();
+    // Handle forward moves
+    let mut moves = BitBoard::new();
+    let next_bb = if is_white { bb.shift_north() } else { bb.shift_south() };
 
-    if let Some(ep_sq) = pos.state.en_passant {
-        debug_assert!(pos.get_piece_at(ep_sq) == Piece::NONE, "En passant square must be empty");
-        let (ep_file, ep_rank) = ep_sq.file_rank();
-        if file.diff(ep_file).abs() == 1 {
-            if is_white && rank == Rank::_5 && ep_rank == Rank::_6 {
-                debug_assert!(pos.get_piece_at(Square::new(ep_sq.as_u8() - 8)) == Piece::B_PAWN);
-                return ep_sq.to_bitboard();
-            }
-            if is_black && rank == Rank::_4 && ep_rank == Rank::_3 {
-                debug_assert!(pos.get_piece_at(Square::new(ep_sq.as_u8() + 8)) == Piece::W_PAWN);
-                return ep_sq.to_bitboard();
-            }
+    if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
+        moves |= next_bb;
+    }
+
+    if (is_white && rank == Rank::_2 || is_black && rank == Rank::_7) && moves.any() {
+        let next_bb = if is_white { next_bb.shift_north() } else { next_bb.shift_south() };
+        if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
+            moves |= next_bb;
         }
     }
 
-    return BitBoard::new();
+    moves | attacks
 }
 
 fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square, pos: &Position) {
@@ -186,10 +161,15 @@ fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square,
                 move_list.add(Move::new(sq, dst_sq, MoveType::Promotion, Some(promotion)));
             }
         } else {
-            let is_ep_capture =
-                check_if_eq_capture::<COLOR>(pos, sq, dst_sq, pos.get_piece_at(dst_sq));
-            let move_type = if is_ep_capture { MoveType::EnPassant } else { MoveType::Normal };
-            move_list.add(Move::new(sq, dst_sq, move_type, None));
+            move_list.add(Move::new(sq, dst_sq, MoveType::Normal, None));
+        }
+    }
+
+    if let Some(ep_sq) = pos.state.en_passant {
+        let attack_mask = pawn_mask::<{ COLOR }, true>(sq, pos);
+        // if attach mask and ep square overlap, then it's an en passant capture
+        if attack_mask.test_sq(ep_sq) {
+            move_list.add(Move::new(sq, ep_sq, MoveType::EnPassant, None));
         }
     }
 }
@@ -202,49 +182,6 @@ fn check_if_promotion<const COLOR: u8>(dst_sq: Square) -> bool {
         Rank::_1 if COLOR == Color::BLACK.as_u8() => true,
         _ => false,
     }
-}
-
-fn check_if_eq_capture<const COLOR: u8>(
-    pos: &Position,
-    src_sq: Square,
-    dst_sq: Square,
-    to: Piece,
-) -> bool {
-    if to.get_type() != PieceType::NONE {
-        return false;
-    }
-
-    // 8 . . . . . k . . black pawn c7c5, c6 is empty, c5 has black pawn
-    // 7 . . . . . . . .
-    // 6 . . . . . . . .
-    // 5 . . p P . . . .
-    // 4 . . . . . . . .
-    // 3 . . . . . . . .
-    // 2 . . . . . . . .
-    // 1 . . . . K . . .
-    //   a b c d e f g h
-
-    // if the to square is empty, but it still moves diagonally, then
-    let (src_file, src_rank) = src_sq.file_rank();
-    let (dst_file, dst_rank) = dst_sq.file_rank();
-    if src_file == dst_file {
-        return false;
-    }
-    debug_assert!(src_file.diff(dst_file).abs() == 1);
-    debug_assert!(src_rank.diff(dst_rank).abs() == 1);
-
-    if cfg!(debug_assertions) {
-        let color = Color::new(COLOR);
-        let enemy = if color == Color::WHITE { Piece::B_PAWN } else { Piece::W_PAWN };
-        let enemy_sq = Square::make(dst_file, src_rank);
-
-        debug_assert!(
-            pos.bitboards[enemy.as_usize()].test(enemy_sq.as_u8()),
-            "En passant capture must have an enemy pawn on the square to capture"
-        );
-    }
-
-    true
 }
 
 /* #endregion */
@@ -675,6 +612,19 @@ const fn build_pawn_attack_masks() -> [[BitBoard; 64]; 2] {
     masks
 }
 
+const fn build_pawn_en_passant_mask(file: u8, rank: u8) -> BitBoard {
+    let mut mask = BitBoard::new();
+
+    if file > 0 {
+        mask.set_sq(Square::make(File(file - 1), Rank(rank)));
+    }
+    if file < 7 {
+        mask.set_sq(Square::make(File(file + 1), Rank(rank)));
+    }
+
+    mask
+}
+
 const fn build_knight_mask(file: u8, rank: u8) -> BitBoard {
     let mut mask = BitBoard::new();
 
@@ -718,6 +668,23 @@ const fn build_king_mask(file: u8, rank: u8) -> BitBoard {
 }
 
 const PAWM_ATTACK_MASKS: [[BitBoard; 64]; 2] = build_pawn_attack_masks();
+
+pub const PAWN_EN_PASSANT_MASKS: [[BitBoard; 64]; 2] = {
+    let mut masks = [[BitBoard::new(); 64]; 2];
+    let mut sq = 0;
+    while sq < 64 {
+        let file = sq % 8;
+        let rank = sq / 8;
+        if rank == 3 {
+            masks[0][sq] = build_pawn_en_passant_mask(file as u8, 3);
+        }
+        if rank == 4 {
+            masks[1][sq] = build_pawn_en_passant_mask(file as u8, 4);
+        }
+        sq += 1;
+    }
+    masks
+};
 
 const KNIGHT_MASKS: [BitBoard; 64] = {
     let mut masks = [BitBoard::new(); 64];
@@ -784,29 +751,3 @@ const KING_CASTLING_ROOK_SQ: [Square; 4] = [
     Square::H8, // Black kingside
     Square::A8, // Black queenside
 ];
-
-//     if (pos.state.castling_rights & CastlingRight::K != 0)
-//         && move_mask_castle_check::<COLOR>(pos, sq, Square::G1, Square::H1)
-//     {
-//         assert!(sq == Square::E1);
-//         moves.set_sq(Square::G1);
-//     }
-//     if (pos.state.castling_rights & CastlingRight::Q != 0)
-//         && move_mask_castle_check::<COLOR>(pos, sq, Square::C1, Square::A1)
-//     {
-//         assert!(sq == Square::E1);
-//         moves.set_sq(Square::C1);
-//     }
-// } else {
-//     if (pos.state.castling_rights & CastlingRight::k != 0)
-//         && move_mask_castle_check::<COLOR>(pos, sq, Square::G8, Square::H8)
-//     {
-//         assert!(sq == Square::E8);
-//         moves.set_sq(Square::G8);
-//     }
-//     if (pos.state.castling_rights & CastlingRight::q != 0)
-//         && move_mask_castle_check::<COLOR>(pos, sq, Square::C8, Square::A8)
-//     {
-//         assert!(sq == Square::E8);
-//         moves.set_sq(Square::C8);
-//     }

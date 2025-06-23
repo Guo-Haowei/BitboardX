@@ -1,4 +1,5 @@
 use super::PositionState;
+use crate::core::move_gen::PAWN_EN_PASSANT_MASKS;
 use crate::core::position::*;
 
 // Assume passed in moves are legal
@@ -32,26 +33,17 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
 
     // check if the move will generate an en passant square
     let mut en_passant_sq: Option<Square> = None;
-    loop {
-        if !is_mover_pawn {
-            break;
-        }
+    if is_mover_pawn {
         let dy = dst_rank.diff(src_rank).abs();
         debug_assert!(dy <= 2, "Pawn move must be 1 or 2 squares");
-        if dy == 1 {
-            break;
+        if dy == 2 {
+            let enemy_pawns = pos.bitboards[enemy_pawn.as_usize()];
+            if (PAWN_EN_PASSANT_MASKS[mover_color.as_usize()][dst_sq.as_usize()] & enemy_pawns)
+                .any()
+            {
+                en_passant_sq = Some(Square::make(src_file, Rank((src_rank.0 + dst_rank.0) / 2)));
+            }
         }
-        let enemy_pawns = pos.bitboards[enemy_pawn.as_usize()];
-        let dst_sq_bb = dst_sq.to_bitboard();
-        let east = dst_sq_bb.shift_east();
-        let west = dst_sq_bb.shift_west();
-
-        // if there's an enemy pawn on the east or west square, we can generate an en passant square
-        if (east & enemy_pawns).any() || (west & enemy_pawns).any() {
-            en_passant_sq = Some(Square::make(src_file, Rank((src_rank.0 + dst_rank.0) / 2)));
-        }
-
-        break;
     }
 
     // -------------- Update Board Start --------------
