@@ -1,4 +1,4 @@
-use crate::core::position::{Position, SmallSquareList};
+use crate::core::position::{CheckerList, Position, SmallSquareList};
 use crate::core::types::bitboard::*;
 use crate::core::types::*;
 use crate::utils;
@@ -51,44 +51,6 @@ pub fn pseudo_legal_moves_src_sq(
         Piece::W_KING => pseudo_legal_move_king::<{ Color::WHITE.as_u8() }>(move_list, sq, pos),
         Piece::B_KING => pseudo_legal_move_king::<{ Color::BLACK.as_u8() }>(move_list, sq, pos),
         _ => panic!("Invalid piece type: {:?}", piece),
-    }
-}
-
-/// Computes the attack mask for a given piece on a specific square.
-///
-/// Returns a `BitBoard` representing all squares attacked by the piece from `sq`
-/// on the current board position `pos`. Unlike move generation, the attack mask
-/// includes squares occupied by friendly pieces since attacks consider threats,
-/// not legal moves.
-///
-/// # Arguments
-///
-/// * `pos` - The current board position.
-/// * `sq` - The square where the piece is located.
-/// * `piece` - The type of piece whose attacks are being calculated.
-///
-/// # Returns
-///
-/// A `BitBoard` with bits set for each square attacked by the piece.
-pub fn attack_mask_src_sq(pos: &Position, sq: Square, piece: Piece) -> BitBoard {
-    let color = piece.color();
-
-    let my_occupancy = pos.state.occupancies[color.as_usize()];
-    let enemy_occupancy = pos.state.occupancies[color.flip().as_usize()];
-
-    match piece {
-        Piece::W_PAWN => pawn_mask::<{ Color::WHITE.as_u8() }, true>(sq, pos),
-        Piece::B_PAWN => pawn_mask::<{ Color::BLACK.as_u8() }, true>(sq, pos),
-        Piece::W_ROOK | Piece::B_ROOK => rook_mask::<true>(sq, my_occupancy, enemy_occupancy),
-        Piece::W_BISHOP | Piece::B_BISHOP => bishop_mask::<true>(sq, my_occupancy, enemy_occupancy),
-        Piece::W_QUEEN | Piece::B_QUEEN => queen_mask::<true>(sq, my_occupancy, enemy_occupancy),
-        Piece::W_KNIGHT | Piece::B_KNIGHT => knight_mask::<true>(sq, my_occupancy),
-        Piece::W_KING => king_mask::<{ Color::WHITE.as_u8() }, true>(sq, pos),
-        Piece::B_KING => king_mask::<{ Color::BLACK.as_u8() }, true>(sq, pos),
-        Piece::NONE => BitBoard::new(),
-        _ => {
-            panic!("Invalid piece type: {:?}", piece);
-        }
     }
 }
 
@@ -642,3 +604,87 @@ pub fn pseudo_legal_move_king<const COLOR: u8>(
 }
 
 /* #endregion */
+
+pub fn calc_attack_map_and_checker<const COLOR: u8>(pos: &mut Position) -> (BitBoard, CheckerList) {
+    let enemy_king = if COLOR == 0 { Piece::B_KING } else { Piece::W_KING };
+    let enemy_king_mask = pos.bitboards[enemy_king.as_usize()];
+
+    let pawn = if COLOR == 0 { Piece::W_PAWN } else { Piece::B_PAWN };
+    let knight = if COLOR == 0 { Piece::W_KNIGHT } else { Piece::B_KNIGHT };
+    let bishop = if COLOR == 0 { Piece::W_BISHOP } else { Piece::B_BISHOP };
+    let rook = if COLOR == 0 { Piece::W_ROOK } else { Piece::B_ROOK };
+    let queen = if COLOR == 0 { Piece::W_QUEEN } else { Piece::B_QUEEN };
+    let king = if COLOR == 0 { Piece::W_KING } else { Piece::B_KING };
+
+    let my_occupancy = pos.state.occupancies[COLOR as usize];
+    let enemy_occupancy = pos.state.occupancies[(COLOR ^ 1) as usize];
+
+    let mut masks = [BitBoard::new(); 6];
+
+    let mut checkers = CheckerList::new();
+
+    // pawn
+    let mask = &mut masks[PieceType::PAWN.as_usize()];
+    for sq in pos.bitboards[pawn.as_usize()].iter() {
+        let sq_attack_mask = pawn_mask::<{ COLOR }, true>(sq, pos);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // knight
+    let mask = &mut masks[PieceType::KNIGHT.as_usize()];
+    for sq in pos.bitboards[knight.as_usize()].iter() {
+        let sq_attack_mask = knight_mask::<true>(sq, my_occupancy);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // bishop
+    let mask = &mut masks[PieceType::BISHOP.as_usize()];
+    for sq in pos.bitboards[bishop.as_usize()].iter() {
+        let sq_attack_mask = bishop_mask::<true>(sq, my_occupancy, enemy_occupancy);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // rook
+    let mask = &mut masks[PieceType::ROOK.as_usize()];
+    for sq in pos.bitboards[rook.as_usize()].iter() {
+        let sq_attack_mask = rook_mask::<true>(sq, my_occupancy, enemy_occupancy);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // queen
+    let mask = &mut masks[PieceType::QUEEN.as_usize()];
+    for sq in pos.bitboards[queen.as_usize()].iter() {
+        let sq_attack_mask = queen_mask::<true>(sq, my_occupancy, enemy_occupancy);
+        *mask |= sq_attack_mask;
+        if (sq_attack_mask & enemy_king_mask).any() {
+            checkers.add(sq);
+        }
+    }
+
+    // king
+    let mask = &mut masks[PieceType::KING.as_usize()];
+    for sq in pos.bitboards[king.as_usize()].iter() {
+        *mask |= king_mask::<{ COLOR }, true>(sq, pos);
+
+        // not possible to check the king, so no need to check for overlap
+    }
+
+    let mut final_mask = BitBoard::new();
+    for mask in masks.iter().copied() {
+        final_mask |= mask;
+    }
+
+    (final_mask, checkers)
+}

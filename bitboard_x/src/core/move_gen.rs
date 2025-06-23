@@ -1,10 +1,10 @@
-use crate::core::position::CheckerList;
-
 use super::position::Position;
 use super::types::*;
 
 mod generator;
 mod validation;
+
+pub use generator::calc_attack_map_and_checker;
 
 /// Pseudo-legal move generation
 pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
@@ -64,31 +64,4 @@ pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
 
 pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
     generator::generate_pin_map(pos, color)
-}
-
-pub fn calc_attack_map_impl(
-    pos: &Position,
-    piece: Piece,
-    opponent_king: Square,
-    checkers: &mut CheckerList,
-) -> BitBoard {
-    let mut attack_map = BitBoard::new();
-
-    let color = piece.color();
-    for sq in pos.bitboards[piece.as_usize()].iter() {
-        let attack_mask = generator::attack_mask_src_sq(pos, sq, piece);
-
-        if attack_mask.test(opponent_king.as_u8()) {
-            debug_assert!(
-                pos.state.occupancies[color.flip().as_usize()].test(opponent_king.as_u8())
-            );
-            debug_assert!(pos.get_color_at(opponent_king) == piece.color().flip());
-
-            checkers.add(sq);
-        }
-
-        attack_map |= attack_mask;
-    }
-
-    attack_map
 }

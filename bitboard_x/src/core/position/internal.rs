@@ -175,29 +175,6 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &PositionState) {
     pos.state = *undo_state;
 }
 
-fn update_attack_map_and_checker(pos: &mut Position) {
-    let mut checkers: [CheckerList; Color::COUNT] = [CheckerList::new(); Color::COUNT];
-
-    for color in [Color::WHITE, Color::BLACK] {
-        let mut attack_mask = BitBoard::new();
-        let opponent = color.flip();
-        let king_sq = pos.get_king_square(opponent);
-        for i in 0..PieceType::COUNT {
-            let piece_type = unsafe { std::mem::transmute::<u8, PieceType>(i as u8) };
-            let piece = Piece::get_piece(color, piece_type);
-            attack_mask |= move_gen::calc_attack_map_impl(
-                pos,
-                piece,
-                king_sq,
-                &mut checkers[opponent.as_usize()],
-            );
-        }
-        pos.state.attack_mask[color.as_usize()] = attack_mask;
-    }
-
-    pos.state.checkers = checkers;
-}
-
 pub fn update_cache(pos: &mut Position) {
     // update occupancies
     pos.state.occupancies[Color::WHITE.as_usize()] = pos.bitboards[Piece::W_PAWN.as_usize()]
@@ -216,7 +193,16 @@ pub fn update_cache(pos: &mut Position) {
         | pos.state.occupancies[Color::BLACK.as_usize()];
 
     // update attack maps
-    update_attack_map_and_checker(pos);
+    let (white_attack_map, white_checkers) = move_gen::calc_attack_map_and_checker::<0>(pos);
+    let (black_attack_map, black_checkers) = move_gen::calc_attack_map_and_checker::<1>(pos);
+
+    pos.state.attack_mask[Color::WHITE.as_usize()] = white_attack_map;
+    pos.state.attack_mask[Color::BLACK.as_usize()] = black_attack_map;
+    // note that for black to move, it needs to check if there are any white checkers
+    pos.state.checkers[Color::WHITE.as_usize()] = black_checkers;
+    pos.state.checkers[Color::BLACK.as_usize()] = white_checkers;
+    // pos.state.checkers[Color::WHITE.as_usize()] = white_checkers;
+    // pos.state.checkers[Color::BLACK.as_usize()] = black_checkers;
 
     // maybe only need to update the side to move attack map?
     pos.state.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);
