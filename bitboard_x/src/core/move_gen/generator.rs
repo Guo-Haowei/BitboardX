@@ -111,13 +111,8 @@ pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
 /// - SE / SW → Diagonal captures
 
 fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Position) -> BitBoard {
-    let (_file, rank) = sq.file_rank();
-    let bb = sq.to_bitboard();
-
     let opponent = COLOR ^ 1;
-
-    let is_white = COLOR == Color::WHITE.as_u8();
-    let is_black = COLOR != Color::WHITE.as_u8();
+    let is_white = COLOR == 0;
 
     let attack_mask = PAWM_ATTACK_MASKS[COLOR as usize][sq.as_usize()];
 
@@ -131,29 +126,26 @@ fn pawn_mask<const COLOR: u8, const ATTACK_MASK: bool>(sq: Square, pos: &Positio
         return attacks;
     }
 
-    // Handle forward moves
-    let mut moves = BitBoard::new();
-    let next_bb = if is_white { bb.shift_north() } else { bb.shift_south() };
+    let offset = if is_white { 8i8 } else { -8i8 };
+    let rank = if is_white { BitBoard::MASK_4 } else { BitBoard::MASK_5 };
+    let empty_mask = !pos.state.occupancies[2].get();
+    let mut single_push_mask = 1u64 << (sq.as_u8() as i8 + offset);
+    single_push_mask &= empty_mask;
+    // if can't single push, then single push is 0,
+    // double push mask will never land on rank 4 or 5
+    let mut double_push_mask = if is_white { single_push_mask << 8 } else { single_push_mask >> 8 };
+    double_push_mask &= empty_mask & rank;
 
-    if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
-        moves |= next_bb;
-    }
-
-    if (is_white && rank == Rank::_2 || is_black && rank == Rank::_7) && moves.any() {
-        let next_bb = if is_white { next_bb.shift_north() } else { next_bb.shift_south() };
-        if (next_bb & pos.state.occupancies[Color::BOTH.as_usize()]).none() {
-            moves |= next_bb;
-        }
-    }
-
-    moves | attacks
+    BitBoard::from(single_push_mask | double_push_mask) | attacks
 }
 
 fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square, pos: &Position) {
     let mask = pawn_mask::<{ COLOR }, false>(sq, pos);
 
     for dst_sq in mask.iter() {
-        if check_if_promotion::<COLOR>(dst_sq) {
+        let sq_mask = 1u64 << dst_sq.as_u8();
+        let promo_rank = if COLOR == 0 { BitBoard::MASK_8 } else { BitBoard::MASK_1 };
+        if sq_mask & promo_rank != 0 {
             // Promotion move
             let promotion_types =
                 [PieceType::QUEEN, PieceType::ROOK, PieceType::BISHOP, PieceType::KNIGHT];
@@ -171,16 +163,6 @@ fn pseudo_legal_move_pawn<const COLOR: u8>(move_list: &mut MoveList, sq: Square,
         if attack_mask.test_sq(ep_sq) {
             move_list.add(Move::new(sq, ep_sq, MoveType::EnPassant, None));
         }
-    }
-}
-
-fn check_if_promotion<const COLOR: u8>(dst_sq: Square) -> bool {
-    let (_, rank) = dst_sq.file_rank();
-
-    match rank {
-        Rank::_8 if COLOR == Color::WHITE.as_u8() => true,
-        Rank::_1 if COLOR == Color::BLACK.as_u8() => true,
-        _ => false,
     }
 }
 
