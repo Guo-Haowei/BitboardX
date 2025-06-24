@@ -37,22 +37,39 @@ function writeMatchHTML(matchData: MatchData): string {
 }
 
 async function loadMeta() {
-  try {
-    const response = await fetch('http://localhost:3000/meta');
-    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-    console.log(`Response status: ${response.status}`);
-
-    const data = await response.json(); // assuming it's an array of { player1, player2, result, file }
-
-    let matchesHTML = '';
-    data.forEach((match: MatchData) => {
-      matchesHTML += writeMatchHTML(match);
-    });
+  [{
+    player1: 'Player A',
+    player2: 'Player B',
+    wins: 60,
+    losses: 30,
+    draws: 10
+  }, {
+    player1: 'Player C',
+    player2: 'Player D',
+    wins: 50,
+    losses: 40,
+    draws: 10
+  }].forEach(match => {
+    const matchHTML = writeMatchHTML(match);
     const matchPanel = document.getElementById('match-panel') as HTMLDivElement;
-    matchPanel.innerHTML = matchesHTML;
-  } catch (err) {
-    console.error('Failed to load meta:', err);
-  }
+    matchPanel.innerHTML += matchHTML;
+  });
+  // try {
+  //   const response = await fetch('http://localhost:3000/meta');
+  //   if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+  //   console.log(`Response status: ${response.status}`);
+
+  //   const data = await response.json(); // assuming it's an array of { player1, player2, result, file }
+
+  //   let matchesHTML = '';
+  //   data.forEach((match: MatchData) => {
+  //     matchesHTML += writeMatchHTML(match);
+  //   });
+  //   const matchPanel = document.getElementById('match-panel') as HTMLDivElement;
+  //   matchPanel.innerHTML = matchesHTML;
+  // } catch (err) {
+  //   console.error('Failed to load meta:', err);
+  // }
 }
 
 window.onload = loadMeta;
