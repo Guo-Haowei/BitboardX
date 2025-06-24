@@ -111,13 +111,45 @@ function initSelectEngineButton(color: string) {
 initSelectEngineButton('white');
 initSelectEngineButton('black');
 
+function connect() {
+  let reconnectDelay = 1000; // 1 second
+  const socket = new WebSocket("ws://localhost:3000");
 
-const socket = new WebSocket("ws://localhost:3000");
+  socket.onopen = () => {
+    console.log("[WebSocket] Connected");
+    reconnectDelay = 1000; // Reset delay after successful connect
+  };
 
-socket.onopen = () => {
-  socket.send("start");
-};
+  socket.onmessage = (event) => {
+    console.log("[WebSocket] Message:", event.data);
+  };
 
-socket.onmessage = (event) => {
-  console.log("Move:", event.data);
-};
+  socket.onclose = () => {
+    console.warn("[WebSocket] Disconnected. Reconnecting in", reconnectDelay, "ms");
+    setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, 10000); // exponential backoff up to 10s
+  };
+
+  socket.onerror = (err) => {
+    console.error("[WebSocket] Error:", err);
+    socket?.close(); // Ensure close triggers reconnect
+  };
+
+  return socket;
+}
+
+const socket = connect();
+
+document.getElementById('match-button')?.addEventListener('click', () => {
+  const whitePlayer = (document.getElementById('select-white') as HTMLDivElement).textContent;
+  const blackPlayer = (document.getElementById('select-black') as HTMLDivElement).textContent;
+
+  console.log('Starting match with players:', whitePlayer, blackPlayer);
+
+  if (!whitePlayer || !blackPlayer) {
+    alert('Please select both players before starting the match.');
+    return;
+  }
+
+  socket.send(`match:${whitePlayer}:${blackPlayer}`);
+});
