@@ -271,10 +271,10 @@ impl Evaluation {
         let mask = KING_PAWN_SHIELD_MASKS[color.as_usize()][king_sq.as_usize()];
         let count = material.my_pawns & mask;
 
-        let missing = mask.count() as i16 - count.count() as i16;
+        // let missing = mask.count() as i16 - count.count() as i16;
 
-        const MISSING_PAWN_PENALTIES: i16 = -15;
-        missing * MISSING_PAWN_PENALTIES
+        const MISSING_PAWN_PENALTIES: i16 = 10;
+        count.count() as i16 * MISSING_PAWN_PENALTIES
     }
 
     fn evaluate_isolated_pawns(material: &MaterialInfo) -> i16 {
