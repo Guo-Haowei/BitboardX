@@ -177,6 +177,14 @@ pub fn update_cache(pos: &mut Position) {
     pos.state.occupancies[Color::BOTH.as_usize()] = pos.state.occupancies[Color::WHITE.as_usize()]
         | pos.state.occupancies[Color::BLACK.as_usize()];
 
+    // update the king squares
+    let white_king_mask = pos.bitboards[Piece::W_KING.as_usize()].get();
+    let black_king_mask = pos.bitboards[Piece::B_KING.as_usize()].get();
+    debug_assert!(white_king_mask.count_ones() == 1);
+    debug_assert!(black_king_mask.count_ones() == 1);
+    pos.state.king_squares[0] = Square::new(white_king_mask.trailing_zeros() as u8);
+    pos.state.king_squares[1] = Square::new(black_king_mask.trailing_zeros() as u8);
+
     // update attack maps
     let (white_attack_map, white_checkers) = move_gen::calc_attack_map_and_checker::<0>(pos);
     let (black_attack_map, black_checkers) = move_gen::calc_attack_map_and_checker::<1>(pos);

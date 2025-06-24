@@ -54,6 +54,8 @@ pub struct UndoState {
     pub pin_map: [BitBoard; Color::COUNT],
     pub checkers: [CheckerList; Color::COUNT],
     pub hash: ZobristHash,
+
+    pub king_squares: [Square; Color::COUNT],
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -105,6 +107,7 @@ impl Position {
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
             hash: ZobristHash(0),
+            king_squares: [Square::NONE; Color::COUNT],
         };
 
         let mut pos = Position { bitboards, side_to_move, state };
@@ -178,12 +181,8 @@ impl Position {
         if is_white { Color::WHITE } else { Color::BLACK }
     }
 
-    // @TODO: cache king square
     pub fn get_king_square(&self, color: Color) -> Square {
-        let piece = Piece::get_piece(color, PieceType::KING);
-        let bb = self.bitboards[piece.as_usize()];
-        debug_assert!(bb.any(), "No king found for color {:?}", color);
-        bb.to_square().unwrap()
+        self.state.king_squares[color.as_usize()]
     }
 
     pub fn is_square_pinned(&self, sq: Square, color: Color) -> bool {
