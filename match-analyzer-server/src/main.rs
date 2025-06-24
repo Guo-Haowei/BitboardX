@@ -1,5 +1,6 @@
 use actix_cors::Cors;
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
+use async_std::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::{fs, process::Stdio};
@@ -89,6 +90,8 @@ fn get_root_path() -> &'static str {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    run_match().await.expect("Failed to run match");
+
     println!("Server running on http://localhost:3000");
 
     HttpServer::new(|| {
@@ -103,4 +106,48 @@ async fn main() -> std::io::Result<()> {
     .bind(("127.0.0.1", 3000))?
     .run()
     .await
+}
+
+const PROJECT_ROOT: &str = env!("CARGO_MANIFEST_DIR");
+
+pub async fn run_match() -> Result<(), Box<dyn std::error::Error>> {
+    use async_process::Stdio;
+    use async_std::io::{BufReader, prelude::*};
+
+    let engine_1 = "BitboardX_v0.1.5".to_string();
+    let engine_2 = "BitboardX_v0.1.10".to_string();
+
+    // Replace with your actual executable and arguments
+    let args = [
+        "-engine".to_string(),
+        format!("name={}", engine_1), // first engine
+        format!("cmd={}/../releases/{}.exe", PROJECT_ROOT, engine_1),
+        "-engine".to_string(),
+        format!("name={}", engine_2), // second engine
+        format!("cmd={}/../releases/{}.exe", PROJECT_ROOT, engine_2), // second engine
+        "-each".to_string(),
+        "proto=uci".to_string(),
+        "tc=inf".to_string(),
+        "-rounds".to_string(),
+        "10".to_string(),
+        "-debug".to_string(),
+        "all".to_string(),
+    ];
+
+    let mut child = async_process::Command::new("cutechess-cli.exe")
+        .args(&args)
+        .stdout(Stdio::piped())
+        // .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to execute process");
+
+    let stdout = child.stdout.take().expect("Failed to capture stdout");
+
+    let mut reader = BufReader::new(stdout).lines();
+    while let Some(line) = reader.next().await {
+        println!(">> {}", line?);
+    }
+
+    child.status().await?;
+    Ok(())
 }
