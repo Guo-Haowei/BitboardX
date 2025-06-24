@@ -55,7 +55,7 @@ pub fn pseudo_legal_moves_src_sq(
 pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
     let mut move_list = MoveList::new();
 
-    let color = pos.state.side_to_move;
+    let color = pos.side_to_move;
     let king_sq = pos.get_king_square(color);
     let (start, end) = if color == Color::WHITE {
         pseudo_legal_move_king::<0>(&mut move_list, king_sq, pos);

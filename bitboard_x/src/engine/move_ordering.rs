@@ -46,7 +46,7 @@ pub fn sort_moves(
         let move_type = mv.get_type();
         let src_sq = mv.src_sq();
         let dst_sq = mv.dst_sq();
-        let color = pos.state.side_to_move;
+        let color = pos.side_to_move;
         let opponent = color.flip();
         let src_piece = pos.get_piece_at(src_sq);
         let captured_piece = if move_type == MoveType::EnPassant {

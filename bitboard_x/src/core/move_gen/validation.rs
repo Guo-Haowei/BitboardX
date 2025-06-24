@@ -48,7 +48,7 @@ use crate::utils;
 pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
     let mover = pos.get_piece_at(mv.src_sq());
     let mover_type = mover.get_type();
-    let mover_color = pos.state.side_to_move;
+    let mover_color = pos.side_to_move;
     debug_assert!(mover_type != PieceType::NONE, "Mover must be a valid piece");
     debug_assert!(mover.color() == mover_color, "Mover color must match position side to move");
     let attacker_color = mover_color.flip();

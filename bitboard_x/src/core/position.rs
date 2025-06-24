@@ -41,8 +41,7 @@ impl CheckerList {
 // @TODO store in undo state
 
 #[derive(Debug, Clone, Copy)]
-pub struct PositionState {
-    pub side_to_move: Color,
+pub struct UndoState {
     pub castling_rights: u8,
     pub en_passant: Option<Square>,
     pub halfmove_clock: u32,
@@ -62,7 +61,8 @@ pub struct Position {
     /// Data used to serialize/deserialize FEN.
     pub bitboards: [BitBoard; Piece::COUNT],
 
-    pub state: PositionState,
+    pub side_to_move: Color,
+    pub state: UndoState,
 }
 
 impl Position {
@@ -94,8 +94,7 @@ impl Position {
         let halfmove_clock = utils::parse_halfmove_clock(parts[4])?;
         let fullmove_number = utils::parse_fullmove_number(parts[5])?;
 
-        let state = PositionState {
-            side_to_move,
+        let state = UndoState {
             castling_rights: castling,
             en_passant,
             halfmove_clock,
@@ -108,7 +107,7 @@ impl Position {
             hash: ZobristHash(0),
         };
 
-        let mut pos = Position { bitboards, state };
+        let mut pos = Position { bitboards, side_to_move, state };
         internal::update_cache(&mut pos);
 
         Ok(pos)
@@ -130,7 +129,7 @@ impl Position {
     }
 
     pub fn white_to_move(&self) -> bool {
-        self.state.side_to_move == Color::WHITE
+        self.side_to_move == Color::WHITE
     }
 
     pub fn get_piece_at(&self, sq: Square) -> Piece {
@@ -193,7 +192,7 @@ impl Position {
     }
 
     pub fn is_in_check(&self) -> bool {
-        let color = self.state.side_to_move;
+        let color = self.side_to_move;
         let checker_count = self.state.checkers[color.as_usize()].count();
 
         if cfg!(debug_assertions) && checker_count != 0 {
@@ -209,11 +208,11 @@ impl Position {
         checker_count != 0
     }
 
-    pub fn make_move(&mut self, mv: Move) -> PositionState {
+    pub fn make_move(&mut self, mv: Move) -> UndoState {
         internal::make_move(self, mv)
     }
 
-    pub fn unmake_move(&mut self, mv: Move, undo_state: &PositionState) {
+    pub fn unmake_move(&mut self, mv: Move, undo_state: &UndoState) {
         internal::unmake_move(self, mv, undo_state)
     }
 }
@@ -231,7 +230,7 @@ mod tests {
         assert!(pos.bitboards[Piece::W_ROOK.as_usize()].equal(0x0000000000000081u64));
         assert!(pos.bitboards[Piece::B_ROOK.as_usize()].equal(0x8100000000000000u64));
 
-        assert_eq!(pos.state.side_to_move, Color::WHITE);
+        assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.state.castling_rights, CastlingRight::KQkq);
         assert!(pos.state.en_passant.is_none());
         assert_eq!(pos.state.halfmove_clock, 0);
@@ -244,7 +243,7 @@ mod tests {
         const FEN: &str = "r1bqk2r/pp1n1ppp/2pbpn2/8/3P4/2N1BN2/PPP2PPP/R2QKB1R w Kq - 6 7";
         let pos = Position::from_fen(FEN).unwrap();
 
-        assert_eq!(pos.state.side_to_move, Color::WHITE);
+        assert_eq!(pos.side_to_move, Color::WHITE);
         assert_eq!(pos.state.castling_rights, CastlingRight::K | CastlingRight::q);
         assert!(pos.state.en_passant.is_none());
         assert_eq!(pos.state.halfmove_clock, 6);
