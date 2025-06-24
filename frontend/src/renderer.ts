@@ -4,25 +4,12 @@ import { RuntimeModule, runtime } from './runtime';
 import { picker } from './picker';
 import { Listener, EVENT_MAP, Payload } from './message-queue';
 import { WasmMove } from '../../bitboard_x/pkg/bitboard_x';
+import { PIECE_RES } from './chess';
 
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
 const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
 const YELLOW_COLOR_1 = 'rgba(150, 150, 0, 0.5)';
 const YELLOW_COLOR_2 = 'rgba(200, 200, 0, 0.5)';
-
-function loadPieceImages() {
-  const pieces = new Map<string, HTMLImageElement>();
-  const pieceCodes = ['P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'];
-
-  pieceCodes.forEach(code => {
-    const color = isLowerCase(code) ? 'b' : 'w';
-    const id = `img-${color}${code.toUpperCase()}`;
-    const img = document.getElementById(id) as HTMLImageElement;
-    pieces.set(code, img);
-  });
-
-  return pieces;
-}
 
 function getTileSize() {
   return runtime.display.tileSize;
@@ -35,7 +22,7 @@ export class Renderer implements RuntimeModule, Listener {
 
   public constructor() {
     this.ctx = null;
-    this.images = loadPieceImages();
+    this.images = PIECE_RES;
     this.lastMove = null;
   }
 

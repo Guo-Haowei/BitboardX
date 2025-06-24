@@ -1,5 +1,6 @@
 import { runtime } from './runtime';
 import init, { name } from '../../bitboard_x/pkg/bitboard_x';
+import { initializeChess } from './chess';
 
 function tick() {
   runtime.tick();
@@ -17,4 +18,6 @@ async function run() {
   }
 };
 
-run();
+initializeChess(() => {
+  run();
+});
