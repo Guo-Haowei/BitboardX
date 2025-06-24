@@ -88,18 +88,36 @@ function drawBoard() {
 }
 drawBoard();
 
-const selectEngineBox = document.getElementById('select-engine-box') as HTMLDivElement;
-const selectEngineInput = document.getElementById('select-engine-input') as HTMLInputElement;
 
-selectEngineBox.addEventListener('click', () => {
-  selectEngineInput.click();
-});
+function initSelectEngineButton(color: string) {
+  const button = document.getElementById(`select-${color}`) as HTMLDivElement;
+  const fileInput = document.getElementById(`${color}-player-input`) as HTMLInputElement;
+  // const displayName = document.getElementById(`${color}-player`) as HTMLSpanElement;
 
-selectEngineInput.addEventListener('change', (e) => {
-  const input = e.target as HTMLInputElement;
-  if (!input.files) return;
+  button.addEventListener('click', () => {
+    fileInput.click();
+  });
 
-  const files = Array.from(input.files);
-  const fileNames = files.map(file => file.name).join(", ");
-  console.log("Selected files:", fileNames);
-});
+  fileInput.addEventListener('change', (e) => {
+    const input = e.target as HTMLInputElement;
+    if (!input.files) return;
+
+    const file = Array.from(input.files)[0];
+    const name = file.name.split('.').slice(0, -1).join('.');
+    button.textContent = name;
+  });
+}
+
+initSelectEngineButton('white');
+initSelectEngineButton('black');
+
+
+const socket = new WebSocket("ws://localhost:3000");
+
+socket.onopen = () => {
+  socket.send("start");
+};
+
+socket.onmessage = (event) => {
+  console.log("Move:", event.data);
+};
