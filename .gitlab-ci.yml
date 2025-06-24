@@ -10,8 +10,9 @@ unit-test:
 deploy:
   stage: deploy
   script:
+    - cd bitboard_x
     - wasm-pack build --target web
-    - cd frontend
+    - cd ../frontend
     - npm install
     - npm run build
   artifacts:

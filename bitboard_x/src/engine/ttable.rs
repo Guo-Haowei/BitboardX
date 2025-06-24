@@ -117,7 +117,7 @@ impl<const N: usize> TranspositionTable<N> {
     }
 }
 
-const DEFAULT_TT_SIZE_IN_BYTE: usize = 32 * 1024 * 1024; // 32 MB
+const DEFAULT_TT_SIZE_IN_BYTE: usize = 64 * 1024 * 1024; // 32 MB
 
 pub type TTable = TranspositionTable<{ DEFAULT_TT_SIZE_IN_BYTE / std::mem::size_of::<TTEntry>() }>;
 

@@ -9,8 +9,7 @@ def main():
         sys.exit(1)
 
     # Step 1: Build the Rust project
-    print('Building Rust project with `cargo build --release`...')
-    result = subprocess.run(['cargo', 'build', '--release'])
+    result = subprocess.run(['cargo', 'build', '--release', '--bin', 'BitboardX'])
     if result.returncode != 0:
         print('Cargo build failed.')
         sys.exit(1)
@@ -19,7 +18,7 @@ def main():
     target_dir = os.path.join('target', 'release')
     release_folder = 'releases'
     exe_name = f'BitboardX_{sys.argv[1]}'
-    exe_path = os.path.join(target_dir, 'uci.exe')
+    exe_path = os.path.join(target_dir, 'BitboardX.exe')
     new_exe_path = os.path.join(release_folder, f'{exe_name}.exe')
     print(f'Renaming executable from {exe_path} to {new_exe_path}...')
     if os.path.exists(new_exe_path):

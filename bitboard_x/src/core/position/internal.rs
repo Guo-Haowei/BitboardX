@@ -1,9 +1,9 @@
-use super::PositionState;
+use super::UndoState;
 use crate::core::move_gen::PAWN_EN_PASSANT_MASKS;
 use crate::core::position::*;
 
 // Assume passed in moves are legal
-pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
+pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
     // borrow the position immutably because we are just checking the move at this point, no actual moving
     let pos: &Position = _pos;
 
@@ -22,10 +22,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
     let (dst_file, dst_rank) = dst_sq.file_rank();
 
     debug_assert!(src_piece != Piece::NONE, "No piece found on 'from' square");
-    debug_assert!(
-        pos.state.side_to_move == mover_color,
-        "Trying to move a piece of the wrong color"
-    );
+    debug_assert!(pos.side_to_move == mover_color, "Trying to move a piece of the wrong color");
 
     // check if the move will change the castling rights
     let castling_rights =
@@ -52,7 +49,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
     pos.state.captured_piece = dst_piece;
     let undo_state = pos.state;
 
-    debug_assert!(pos.state.occupancies[pos.state.side_to_move.as_usize()].test(src_sq.as_u8()));
+    debug_assert!(pos.state.occupancies[pos.side_to_move.as_usize()].test(src_sq.as_u8()));
 
     move_piece(&mut pos.bitboards[src_piece_idx], src_sq, dst_sq);
 
@@ -96,7 +93,8 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
 
     // -------------- Update Board End --------------
 
-    pos.state.side_to_move = pos.state.side_to_move.flip();
+    pos.side_to_move = pos.side_to_move.flip();
+
     pos.state.castling_rights = castling_rights;
     pos.state.en_passant = en_passant_sq;
     pos.state.fullmove_number += if mover_color == Color::WHITE { 0 } else { 1 };
@@ -112,7 +110,7 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> PositionState {
     undo_state
 }
 
-pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &PositionState) {
+pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
     // Keep in mind that the move is already applied to the position
     let src_sq = mv.src_sq();
     let dst_sq = mv.dst_sq();
@@ -157,6 +155,8 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &PositionState) {
         _ => {}
     }
 
+    pos.side_to_move = pos.side_to_move.flip();
+
     pos.state = *undo_state;
 }
 
@@ -176,6 +176,14 @@ pub fn update_cache(pos: &mut Position) {
         | pos.bitboards[Piece::B_KING.as_usize()];
     pos.state.occupancies[Color::BOTH.as_usize()] = pos.state.occupancies[Color::WHITE.as_usize()]
         | pos.state.occupancies[Color::BLACK.as_usize()];
+
+    // update the king squares
+    let white_king_mask = pos.bitboards[Piece::W_KING.as_usize()].get();
+    let black_king_mask = pos.bitboards[Piece::B_KING.as_usize()].get();
+    debug_assert!(white_king_mask.count_ones() == 1);
+    debug_assert!(black_king_mask.count_ones() == 1);
+    pos.state.king_squares[0] = Square::new(white_king_mask.trailing_zeros() as u8);
+    pos.state.king_squares[1] = Square::new(black_king_mask.trailing_zeros() as u8);
 
     // update attack maps
     let (white_attack_map, white_checkers) = move_gen::calc_attack_map_and_checker::<0>(pos);

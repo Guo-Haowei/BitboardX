@@ -13,46 +13,65 @@
 
   <!-- Menu Bar -->
   <div class="bg-[#111111] px-6 py-3 border-b border-gray-700 flex gap-10 relative">
-    <div class="relative menu-item cursor-pointer hover:text-white">File
-      <div class="menu-dropdown text-sm">
-        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Open</div>
-        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Save</div>
-        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Exit</div>
-      </div>
-    </div>
-    <div class="relative menu-item cursor-pointer hover:text-white">Engines
-      <div class="menu-dropdown text-sm">
-        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Select Engine A</div>
-        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">Select Engine B</div>
-      </div>
-    </div>
-    <div class="relative menu-item cursor-pointer hover:text-white">Help
-      <div class="menu-dropdown text-sm">
-        <div class="px-4 py-2 hover:bg-gray-600 cursor-pointer">About</div>
-      </div>
-    </div>
+    <div id="select-white" class="relative menu-item cursor-pointer hover:text-white">BitboardX_v0.1.5</div>
+    <!-- <div id="select-white" class="relative menu-item cursor-pointer hover:text-white">Select Player 1</div> -->
+    <input id="white-player-input" type="file" style="display: none;" />
+    <p>vs</p>
+    <div id="select-black" class="relative menu-item cursor-pointer hover:text-white">BitboardX_v0.1.10</div>
+    <!-- <div id="select-black" class="relative menu-item cursor-pointer hover:text-white">Select Player 2</div> -->
+    <input id="black-player-input" type="file" style="display: none;" />
+    <div id="match-button" class="relative menu-item cursor-pointer hover:text-white">Start Match</div>
   </div>
 
   <!-- Main App Container -->
   <div class="flex-1 flex items-center justify-center p-4">
     <div class="flex gap-6">
 
-      <!-- Chessboard -->
-      <div class="w-[720px] h-[720px] bg-black rounded overflow-hidden shadow-lg relative">
-        <canvas id="chessboard" width="720" height="720" class="w-full h-full"></canvas>
-        <!-- Move Controls -->
-        <div class="absolute bottom-2 right-2 flex gap-2">
-          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">|&lt;</button>
-          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">&lt;</button>
-          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">&gt;</button>
-          <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">&gt;|</button>
+      <!-- Chessboard and Status Bar -->
+      <div class="flex flex-col">
+        <!-- Status Bar (above the board) -->
+        <div class="w-[720px] flex justify-between items-center text-sm px-4 py-2 bg-[#dcdcdc] text-gray-800 rounded-t">
+          <div class="flex items-center gap-2">
+            <img src="https://lichess1.org/assets/piece/cburnett/wK.svg" alt="White King" width="24" />
+            <div id="white-player"></div>
+          </div>
+
+          <!-- image source: https://icons8.com/icons/set/media-controls--style-ios -->
+          <div class="flex gap-3 items-center text-lg">
+            <div id="white-player" class="hover:bg-gray-600 cursor-pointer px-2 py-1 rounded">
+              <img src="https://img.icons8.com/?size=100&id=411&format=png&color=000000" alt="Start Position" width="24"
+                height="24" class="cursor-pointer hover:opacity-80" />
+            </div>
+            <div id="white-player" class="hover:bg-gray-600 cursor-pointer px-2 py-1 rounded">
+              <img src="https://img.icons8.com/?size=100&id=407&format=png&color=000000" alt="Prev Position" width="24"
+                height="24" class="cursor-pointer hover:opacity-80" />
+            </div>
+            <div id="white-player" class="hover:bg-gray-600 cursor-pointer px-2 py-1 rounded">
+              <img src="https://img.icons8.com/?size=100&id=405&format=png&color=000000" alt="Next Position" width="24"
+                height="24" class="cursor-pointer hover:opacity-80" />
+            </div>
+            <div id="white-player" class="hover:bg-gray-600 cursor-pointer px-2 py-1 rounded">
+              <img src="https://img.icons8.com/?size=100&id=409&format=png&color=000000" alt="End Position" width="24"
+                height="24" class="cursor-pointer hover:opacity-80" />
+            </div>
+          </div>
+
+          <!-- Black Player (right) -->
+          <div class="flex items-center gap-2">
+            <div id="black-player"></div>
+            <img src="https://lichess1.org/assets/piece/cburnett/bK.svg" alt="Black King" width="24" />
+          </div>
+        </div>
+
+        <!-- Chessboard -->
+        <div class="w-[720px] h-[720px] bg-black rounded-b overflow-hidden shadow-lg relative">
+          <canvas id="chessboard" width="720" height="720" class="w-full h-full"></canvas>
         </div>
       </div>
 
       <!-- Match Panel -->
       <div id="match-panel" class="w-[480px] h-[720px] bg-[#1c1c1c] p-6 rounded shadow-inner overflow-y-auto space-y-6">
       </div>
-
     </div>
   </div>
 

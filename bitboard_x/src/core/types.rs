@@ -37,7 +37,7 @@ impl Color {
     }
 
     pub const fn flip(&self) -> Color {
-        assert!((self.is_white() ^ self.is_black()), "Invalid color");
+        debug_assert!((self.is_white() ^ self.is_black()));
         Color(self.0 ^ 1)
     }
 

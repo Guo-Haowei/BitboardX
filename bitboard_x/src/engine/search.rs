@@ -1,8 +1,8 @@
-use crate::core::position::{Position, PositionState};
+use crate::core::position::{Position, UndoState};
 use crate::core::{move_gen, types::*};
 use crate::engine::Engine;
 use crate::engine::book::*;
-use crate::engine::eval::Evaluation;
+use crate::engine::evaluation::Evaluation;
 use crate::engine::move_ordering::sort_moves;
 use crate::engine::ttable::NodeType;
 use crate::utils;
@@ -57,12 +57,12 @@ impl SearchContext {
         self.killer_moves[ply as usize].contains(&Some(mv))
     }
 
-    fn make_move(&mut self, pos: &mut Position, mv: Move) -> PositionState {
+    fn make_move(&mut self, pos: &mut Position, mv: Move) -> UndoState {
         let undo_state = pos.make_move(mv);
         undo_state
     }
 
-    fn unmake_move(&mut self, pos: &mut Position, mv: Move, undo_state: &PositionState) {
+    fn unmake_move(&mut self, pos: &mut Position, mv: Move, undo_state: &UndoState) {
         pos.unmake_move(mv, undo_state);
     }
 

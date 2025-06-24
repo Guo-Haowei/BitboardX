@@ -37,22 +37,39 @@ function writeMatchHTML(matchData: MatchData): string {
 }
 
 async function loadMeta() {
-  try {
-    const response = await fetch('http://localhost:3000/meta');
-    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-    console.log(`Response status: ${response.status}`);
-
-    const data = await response.json(); // assuming it's an array of { player1, player2, result, file }
-
-    let matchesHTML = '';
-    data.forEach((match: MatchData) => {
-      matchesHTML += writeMatchHTML(match);
-    });
+  [{
+    player1: 'Player A',
+    player2: 'Player B',
+    wins: 60,
+    losses: 30,
+    draws: 10
+  }, {
+    player1: 'Player C',
+    player2: 'Player D',
+    wins: 50,
+    losses: 40,
+    draws: 10
+  }].forEach(match => {
+    const matchHTML = writeMatchHTML(match);
     const matchPanel = document.getElementById('match-panel') as HTMLDivElement;
-    matchPanel.innerHTML = matchesHTML;
-  } catch (err) {
-    console.error('Failed to load meta:', err);
-  }
+    matchPanel.innerHTML += matchHTML;
+  });
+  // try {
+  //   const response = await fetch('http://localhost:3000/meta');
+  //   if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+  //   console.log(`Response status: ${response.status}`);
+
+  //   const data = await response.json(); // assuming it's an array of { player1, player2, result, file }
+
+  //   let matchesHTML = '';
+  //   data.forEach((match: MatchData) => {
+  //     matchesHTML += writeMatchHTML(match);
+  //   });
+  //   const matchPanel = document.getElementById('match-panel') as HTMLDivElement;
+  //   matchPanel.innerHTML = matchesHTML;
+  // } catch (err) {
+  //   console.error('Failed to load meta:', err);
+  // }
 }
 
 window.onload = loadMeta;
@@ -70,3 +87,69 @@ function drawBoard() {
   }
 }
 drawBoard();
+
+
+function initSelectEngineButton(color: string) {
+  const button = document.getElementById(`select-${color}`) as HTMLDivElement;
+  const fileInput = document.getElementById(`${color}-player-input`) as HTMLInputElement;
+  // const displayName = document.getElementById(`${color}-player`) as HTMLSpanElement;
+
+  button.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    const input = e.target as HTMLInputElement;
+    if (!input.files) return;
+
+    const file = Array.from(input.files)[0];
+    const name = file.name.split('.').slice(0, -1).join('.');
+    button.textContent = name;
+  });
+}
+
+initSelectEngineButton('white');
+initSelectEngineButton('black');
+
+function connect() {
+  let reconnectDelay = 1000; // 1 second
+  const socket = new WebSocket("ws://localhost:3000");
+
+  socket.onopen = () => {
+    console.log("[WebSocket] Connected");
+    reconnectDelay = 1000; // Reset delay after successful connect
+  };
+
+  socket.onmessage = (event) => {
+    console.log("[WebSocket] Message:", event.data);
+  };
+
+  socket.onclose = () => {
+    console.warn("[WebSocket] Disconnected. Reconnecting in", reconnectDelay, "ms");
+    setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, 10000); // exponential backoff up to 10s
+  };
+
+  socket.onerror = (err) => {
+    console.error("[WebSocket] Error:", err);
+    socket?.close(); // Ensure close triggers reconnect
+  };
+
+  return socket;
+}
+
+const socket = connect();
+
+document.getElementById('match-button')?.addEventListener('click', () => {
+  const whitePlayer = (document.getElementById('select-white') as HTMLDivElement).textContent;
+  const blackPlayer = (document.getElementById('select-black') as HTMLDivElement).textContent;
+
+  console.log('Starting match with players:', whitePlayer, blackPlayer);
+
+  if (!whitePlayer || !blackPlayer) {
+    alert('Please select both players before starting the match.');
+    return;
+  }
+
+  socket.send(`match:${whitePlayer}:${blackPlayer}`);
+});

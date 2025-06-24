@@ -16,7 +16,7 @@ pub fn zobrist_hash(pos: &Position) -> ZobristHash {
 
     hash_pieces(&mut weed, pos);
     hash_en_passant(&mut weed, pos.state.en_passant);
-    hash_color_to_move(&mut weed, pos.state.side_to_move);
+    hash_color_to_move(&mut weed, pos.side_to_move);
     hash_castling_rights(&mut weed, pos.state.castling_rights);
 
     ZobristHash(weed)
