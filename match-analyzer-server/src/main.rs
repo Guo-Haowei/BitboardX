@@ -116,22 +116,25 @@ pub async fn run_match() -> Result<(), Box<dyn std::error::Error>> {
 
     let engine_1 = "BitboardX_v0.1.5".to_string();
     let engine_2 = "BitboardX_v0.1.10".to_string();
+    let engine_1_name = format!("name={}", engine_1);
+    let engine_2_name = format!("name={}", engine_2);
+    let engine_1_cmd = format!("cmd={}/engines/{}.exe", PROJECT_ROOT, engine_1);
+    let engine_2_cmd = format!("cmd={}/engines/{}.exe", PROJECT_ROOT, engine_2);
 
-    // Replace with your actual executable and arguments
     let args = [
-        "-engine".to_string(),
-        format!("name={}", engine_1), // first engine
-        format!("cmd={}/../releases/{}.exe", PROJECT_ROOT, engine_1),
-        "-engine".to_string(),
-        format!("name={}", engine_2), // second engine
-        format!("cmd={}/../releases/{}.exe", PROJECT_ROOT, engine_2), // second engine
-        "-each".to_string(),
-        "proto=uci".to_string(),
-        "tc=inf".to_string(),
-        "-rounds".to_string(),
-        "10".to_string(),
-        "-debug".to_string(),
-        "all".to_string(),
+        "-engine",
+        engine_1_name.as_str(),
+        engine_1_cmd.as_str(),
+        "-engine",
+        engine_2_name.as_str(),
+        engine_2_cmd.as_str(),
+        "-each",
+        "proto=uci",
+        "tc=inf",
+        "-rounds",
+        "10",
+        "-debug",
+        "all",
     ];
 
     let mut child = async_process::Command::new("cutechess-cli.exe")

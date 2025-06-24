@@ -70,3 +70,19 @@ function drawBoard() {
   }
 }
 drawBoard();
+
+const selectEngineBox = document.getElementById('select-engine-box') as HTMLDivElement;
+const selectEngineInput = document.getElementById('select-engine-input') as HTMLInputElement;
+
+selectEngineBox.addEventListener('click', () => {
+  selectEngineInput.click();
+});
+
+selectEngineInput.addEventListener('change', (e) => {
+  const input = e.target as HTMLInputElement;
+  if (!input.files) return;
+
+  const files = Array.from(input.files);
+  const fileNames = files.map(file => file.name).join(", ");
+  console.log("Selected files:", fileNames);
+});
