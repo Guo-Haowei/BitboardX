@@ -2,7 +2,7 @@ use crate::core::position::{Position, PositionState};
 use crate::core::{move_gen, types::*};
 use crate::engine::Engine;
 use crate::engine::book::*;
-use crate::engine::eval::Evaluation;
+use crate::engine::evaluation::Evaluation;
 use crate::engine::move_ordering::sort_moves;
 use crate::engine::ttable::NodeType;
 use crate::utils;

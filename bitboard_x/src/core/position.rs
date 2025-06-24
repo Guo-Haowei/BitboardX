@@ -179,6 +179,7 @@ impl Position {
         if is_white { Color::WHITE } else { Color::BLACK }
     }
 
+    // @TODO: cache king square
     pub fn get_king_square(&self, color: Color) -> Square {
         let piece = Piece::get_piece(color, PieceType::KING);
         let bb = self.bitboards[piece.as_usize()];

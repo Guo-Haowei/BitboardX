@@ -123,8 +123,6 @@ impl MaterialInfo {
     }
 }
 
-// const KING_PAWN_SHIELD_SCORES: [i32; 6] = [4, 7, 4, 3, 6, 3];
-
 // const ENDGAME_MATERIAL_START: i32 = ROOK_VALUE * 2 + BISHOP_VALUE + KNIGHT_VALUE;
 
 pub struct Evaluation {
@@ -154,6 +152,19 @@ impl Evaluation {
         // Evaluate pawns (passed, isolated, sheild)
         self.white_score.pawn_score = self.evaluate_pawns(&white_material);
         self.black_score.pawn_score = self.evaluate_pawns(&black_material);
+
+        self.white_score.pawn_shield_score = Self::evaluate_king_pawn_shield(
+            Color::WHITE,
+            pos.get_king_square(Color::WHITE),
+            &white_material,
+            &black_material,
+        );
+        self.black_score.pawn_shield_score = Self::evaluate_king_pawn_shield(
+            Color::BLACK,
+            pos.get_king_square(Color::BLACK),
+            &black_material,
+            &white_material,
+        );
 
         // Push the king to edge of the board in endgame (for endgame checkmate)
 
@@ -242,6 +253,28 @@ impl Evaluation {
         }
 
         score
+    }
+
+    fn evaluate_king_pawn_shield(
+        color: Color,
+        king_sq: Square,
+        material: &MaterialInfo,
+        enemy_material: &MaterialInfo,
+    ) -> i16 {
+        // @TODO: use a better score system
+        // const KING_PAWN_SHIELD_SCORES: [i32; 6] = [4, 7, 4, 3, 6, 3];
+        if enemy_material.endgame_t >= 1.0 {
+            // In endgame, king pawn shield is not important
+            return 0;
+        }
+
+        let mask = KING_PAWN_SHIELD_MASKS[color.as_usize()][king_sq.as_usize()];
+        let count = material.my_pawns & mask;
+
+        let missing = mask.count() as i16 - count.count() as i16;
+
+        const MISSING_PAWN_PENALTIES: i16 = -15;
+        missing * MISSING_PAWN_PENALTIES
     }
 
     fn evaluate_isolated_pawns(material: &MaterialInfo) -> i16 {
@@ -354,6 +387,42 @@ const PASSED_PAWN_MASKS: [[BitBoard; 64]; 2] = [
     passed_pawn_mask_all::<false>(), // White
 ];
 
+const fn king_pawn_sheild_mask<const IS_WHITE: bool>(sq: u8) -> BitBoard {
+    let f = (sq % 8) as i8;
+    let r = (sq / 8) as i8;
+    if IS_WHITE && r != 0 || !IS_WHITE && r != 7 {
+        return BitBoard::new();
+    }
+
+    let mut mask = 0u64;
+    let files = [f - 1, f, f + 1];
+    let dr = if IS_WHITE { 1 } else { -1 };
+
+    let mut i = 0;
+    while i < 3 {
+        let f = files[i];
+        if f >= 0 && f < 8 {
+            let sq = f + (r + dr) * 8;
+            mask |= 1u64 << sq;
+        }
+        i += 1;
+    }
+
+    BitBoard::from(mask)
+}
+
+const KING_PAWN_SHIELD_MASKS: [[BitBoard; 64]; 2] = {
+    let mut masks = [[BitBoard::new(); 64], [BitBoard::new(); 64]];
+    let mut sq = 0u8;
+    while sq < 64 {
+        masks[Color::WHITE.as_usize()][sq as usize] = king_pawn_sheild_mask::<true>(sq);
+        masks[Color::BLACK.as_usize()][sq as usize] = king_pawn_sheild_mask::<false>(sq);
+        sq += 1;
+    }
+
+    masks
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -415,5 +484,51 @@ mod tests {
         let black_material = Evaluation::get_material_info(&pos, Color::BLACK);
         assert_eq!(Evaluation::evaluate_isolated_pawns(&white_material), -50);
         assert_eq!(Evaluation::evaluate_isolated_pawns(&black_material), -10);
+    }
+
+    #[test]
+    fn test_pawn_shield_mask() {
+        const G1_MASK: BitBoard = KING_PAWN_SHIELD_MASKS[0][Square::G1.as_usize()];
+        const A1_MASK: BitBoard = KING_PAWN_SHIELD_MASKS[0][Square::A1.as_usize()];
+        const E8_MASK: BitBoard = KING_PAWN_SHIELD_MASKS[1][Square::E8.as_usize()];
+
+        assert_eq!(
+            G1_MASK.to_string(),
+            r#"0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 1 1 1
+0 0 0 0 0 0 0 0
+"#
+        );
+
+        assert_eq!(
+            A1_MASK.to_string(),
+            r#"0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+1 1 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+"#
+        );
+
+        assert_eq!(
+            E8_MASK.to_string(),
+            r#"0 0 0 0 0 0 0 0
+0 0 0 1 1 1 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0
+"#
+        );
     }
 }
