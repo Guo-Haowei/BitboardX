@@ -5,6 +5,7 @@ import { picker } from './picker';
 import { Listener, EVENT_MAP, Payload } from './message-queue';
 import { WasmMove } from '../../bitboard_x/pkg/bitboard_x';
 import { PIECE_RES } from './chess';
+import { ChessBoard } from './controller';
 
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
 const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
@@ -18,12 +19,11 @@ function getTileSize() {
 export class Renderer implements RuntimeModule, Listener {
   private ctx: CanvasRenderingContext2D | null;
   private images: Map<string, HTMLImageElement>;
-  private lastMove: string | null;
+  private lastMove: WasmMove | null = null;
 
   public constructor() {
     this.ctx = null;
     this.images = PIECE_RES;
-    this.lastMove = null;
   }
 
   public init(): boolean {
@@ -44,21 +44,23 @@ export class Renderer implements RuntimeModule, Listener {
   public handleMessage(event: string, payload?: Payload) {
     switch (event) {
       case EVENT_MAP.MOVE: {
-        this.lastMove = payload as string || null;
+        this.lastMove = payload as WasmMove;
       } break;
       default: break;
     }
   }
 
-  public tick() {
+  async draw(board: ChessBoard) {
     const canvas = runtime.display.canvas;
     const { ctx } = this;
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-      ctx.font = `${runtime.display.tileSize / 2}px Arial`
-      this.drawBoard();
-      this.drawPieces(runtime.gameManager.board.board);
+    if (!ctx) {
+      return;
     }
+
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    ctx.font = `${runtime.display.tileSize / 2}px Arial`
+    this.drawBoard();
+    this.drawPieces(board);
   }
 
   private fillSquare(col: number, row: number, color: string) {
@@ -135,7 +137,7 @@ export class Renderer implements RuntimeModule, Listener {
     }
   }
 
-  private drawPieces(board: string) {
+  private drawPieces(board: ChessBoard) {
     if (!this.ctx) {
       return;
     }
@@ -153,10 +155,12 @@ export class Renderer implements RuntimeModule, Listener {
       this.drawPiece(piece, x, y);
     }
 
+    const boardString = board.position.board_string();
+
     for (let row = 0; row < BOARD_SIZE; ++row) {
       for (let col = 0; col < BOARD_SIZE; ++col) {
         const idx = (7 - row) * BOARD_SIZE + col;
-        const piece = board[idx];
+        const piece = boardString[idx];
         if (piece === '.') {
           continue;
         }

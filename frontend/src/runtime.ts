@@ -1,20 +1,19 @@
 import { AnimationManager } from './animation-manager';
 import { Display } from './display';
-import { GameManager } from './game-manager';
 import { MessageQueue } from './message-queue';
 import { Renderer } from './renderer';
+import { GameController, BotPlayer } from './controller';
 
 export interface RuntimeModule {
   init(): boolean;
-  tick(): void;
 }
 
 class Runtime {
   public display: Display;
   public renderer: Renderer;
-  public gameManager: GameManager;
   public messageQueue: MessageQueue;
   public animationManager: AnimationManager;
+  public gameController: GameController | null = null;
 
   private modules: RuntimeModule[];
 
@@ -23,12 +22,10 @@ class Runtime {
     this.animationManager = new AnimationManager();
     this.display = new Display();
     this.renderer = new Renderer();
-    this.gameManager = new GameManager();
     this.modules = [
       this.animationManager,
       this.display,
       this.renderer,
-      this.gameManager,
       this.messageQueue,
     ];
   }
@@ -43,14 +40,20 @@ class Runtime {
         return false;
       }
     }
+
+    this.gameController = new GameController(
+      new BotPlayer(), // White player
+      new BotPlayer(), // Black player
+    );
+
     return true;
   }
 
-  public tick(): void {
-    for (const module of this.modules) {
-      module.tick();
-    }
-  }
+  // public tick(): void {
+  //   for (const module of this.modules) {
+  //     module.tick();
+  //   }
+  // }
 }
 
 export const runtime = new Runtime();

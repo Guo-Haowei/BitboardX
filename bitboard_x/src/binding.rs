@@ -100,6 +100,10 @@ impl WasmPosition {
         utils::debug_string(&self.pos)
     }
 
+    pub fn board_string(&self) -> String {
+        utils::board_string(&self.pos)
+    }
+
     pub fn legal_moves(&self) -> Vec<String> {
         self.legal_moves.iter().map(|mv| mv.to_string()).collect()
     }

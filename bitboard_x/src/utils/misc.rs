@@ -60,6 +60,20 @@ pub fn parse_move(input: &str) -> Option<Move> {
     None
 }
 
+pub fn board_string(pos: &Position) -> String {
+    let mut vec = vec![b'.'; 64];
+
+    for i in Piece::W_PAWN.as_usize()..=Piece::B_KING.as_usize() {
+        let piece = Piece::new(i as u8);
+        for sq in pos.bitboards[piece.as_usize()].iter() {
+            let idx = sq.as_usize();
+            vec[idx] = piece.to_char() as u8;
+        }
+    }
+
+    String::from_utf8(vec).unwrap()
+}
+
 pub fn debug_string(pos: &Position) -> String {
     let mut s = String::new();
     for rank in (0..8).rev() {
