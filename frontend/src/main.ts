@@ -1,18 +1,36 @@
-import { runtime } from './runtime';
-import init, { name } from '../../bitboard_x/pkg/bitboard_x';
-import { initializeChess } from './chess';
+import * as Chess from './chess';
 
+function createGame() {
+  const selectPlayer = (player: string) => {
+    const element = document.querySelector(`input[name="${player}"]:checked`);
+    if (element && element instanceof HTMLInputElement) {
+      if (element.value === 'bot') return new Chess.BotPlayer();
+      if (element.value === 'human') return new Chess.UIPlayer();
+    }
 
-async function run() {
-  await init();
+    throw new Error(`Invalid player: ${player}`);
+  };
 
-  console.log(`Running ${name()}`);
+  const whitePlayer = selectPlayer('white-player');
+  const blackPlayer = selectPlayer('black-player');
 
-  if (runtime.init()) {
-    await runtime.gameController?.start();
-  }
-};
+  return Chess.createGame(
+    whitePlayer,
+    blackPlayer,
+    document.getElementById('fen-input')?.textContent || undefined
+  );
+}
 
-initializeChess(() => {
-  run();
+Chess.initialize(() => {
+  let controller = createGame();
+  document.getElementById('start-button')?.addEventListener('click', () => {
+    if (controller) {
+      controller.stop(); // gracefully cancel current game
+    }
+
+    controller = createGame();
+    controller.start();
+  });
+
+  controller.start();
 });
