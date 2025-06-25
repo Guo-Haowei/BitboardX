@@ -90,15 +90,15 @@ export class Renderer implements RuntimeModule, Listener {
         } else if (moves && moves.has(sq)) {
           this.fillSquare(col, row, RED_COLOR);
         }
-        // if (this.lastMove) {
-        //   const src = this.lastMove.src_sq();
-        //   const dst = this.lastMove.dst_sq();
-        //   if (sq === src) {
-        //     this.fillSquare(col, row, YELLOW_COLOR_1);
-        //   } else if (sq === dst) {
-        //     this.fillSquare(col, row, YELLOW_COLOR_2);
-        //   }
-        // }
+        if (this.lastMove) {
+          const src = this.lastMove.src_sq();
+          const dst = this.lastMove.dst_sq();
+          if (sq === src) {
+            this.fillSquare(col, row, YELLOW_COLOR_1);
+          } else if (sq === dst) {
+            this.fillSquare(col, row, YELLOW_COLOR_2);
+          }
+        }
       }
     }
 

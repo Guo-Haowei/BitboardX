@@ -2,7 +2,7 @@ import { DEFAULT_FEN } from './constants';
 import { RuntimeModule, runtime } from './runtime';
 import { Listener, EVENT_MAP } from './message-queue';
 import { Board } from './board';
-import { WasmPosition, WasmEngine } from '../../bitboard_x/pkg/bitboard_x';
+import { WasmPosition, WasmEngine, WasmMove } from '../../bitboard_x/pkg/bitboard_x';
 
 export interface SelectedPiece {
   piece: string;
@@ -33,7 +33,7 @@ class BotPlayer implements Player {
     const bestMove = this.engine.best_move(searchDepth);
 
     if (bestMove) {
-      return bestMove.to_string();
+      return bestMove;
     }
     throw new Error("No best move found");
 
@@ -43,13 +43,15 @@ class BotPlayer implements Player {
 class ChessBoard {
   position: WasmPosition;
   legalMoves: string[] = [];
-  private _history: string;
+  initialPos: string;
+  history: WasmMove[];
 
   constructor(fen: string | undefined) {
     this.position = new WasmPosition(fen || DEFAULT_FEN);
-    const initialPosition = fen ? `fen ${fen}` : 'startpos';
-    this._history = `position ${initialPosition} moves`;
     this.legalMoves = this.position.legal_moves();
+
+    this.initialPos = fen ? `fen ${fen}` : 'startpos';
+    this.history = [];
   }
 
   isGameOver(): boolean {
@@ -60,18 +62,13 @@ class ChessBoard {
     return this.position.turn();
   }
 
-  makeMove(move: string): boolean {
-    if (!this.position.make_move(move)) {
-      // console.warn(`Invalid move attempted: ${move}`);
-      return false;
+  makeMove(move_str: string) {
+    const move = this.position.make_move(move_str);
+    if (move) {
+      this.history.push(move);
     }
 
-    this._history += ` ${move}`;
-    return true;
-  }
-
-  get history(): string {
-    return this._history;
+    return move;
   }
 }
 
@@ -92,11 +89,18 @@ class GameController {
     return this.board.isGameOver();
   }
 
+  public uciPosition(): string {
+    const { history } = this.board;
+    const moves = history.length > 0 ? `moves ${history.map(mv => mv.to_string()).join(' ')}` : '';
+    const uci = `position ${this.board.initialPos} ${moves}`;
+    return uci;
+  }
+
   async start(): Promise<void> {
     while (!this.board.isGameOver()) {
       const activePlayer = this.activePlayer();
 
-      const move = await activePlayer.getMove(this.board.history);
+      const move = await activePlayer.getMove(this.uciPosition());
 
       if (!this.board.makeMove(move)) {
         // optionally throw or notify
@@ -134,23 +138,7 @@ export class GameManager implements RuntimeModule, Listener {
     );
 
     this.waitingForInput = false;
-    // try {
-    //   const isAiPlayer = (player: string) => {
-    //     const element = document.querySelector(`input[name="${player}"]:checked`);
-    //     if (element && element instanceof HTMLInputElement) {
-    //       return element.value === 'computer';
-    //     }
-    //     return false;
-    //   };
 
-    //   console.log(`Starting a new game >>>>>>`);
-
-    //   this.game.reset_game(fen, !isAiPlayer('player1'), !isAiPlayer('player2'));
-    //   return true;
-    // } catch (e) {
-    //   console.error(`Error parsing FEN '${fen}': ${e}`);
-    //   return false;
-    // }
     this.updateBoard();
 
     runtime.messageQueue.emit({ event: EVENT_MAP.REQUEST_INPUT })
@@ -201,14 +189,20 @@ export class GameManager implements RuntimeModule, Listener {
   }
 
   async tick() {
-    const board = this.controller?.board;
-    if (!board)
+    const { controller } = this;
+    if (!controller) {
       return;
+    }
 
     if (this.waitingForInput) {
-      const move = await this.controller?.activePlayer().getMove(board.history)!;
 
-      if (board.makeMove(move)) {
+      const position = controller.uciPosition();
+      console.log(position);
+      const move_str = await controller.activePlayer().getMove(position);
+
+      const move = controller.board.makeMove(move_str);
+
+      if (move) {
         // optionally throw or notify
         runtime.messageQueue.emit({ event: EVENT_MAP.MOVE, payload: move });
         this.waitingForInput = false;

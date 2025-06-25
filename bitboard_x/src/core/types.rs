@@ -170,20 +170,11 @@ impl Piece {
     }
 
     pub fn to_char(&self) -> char {
+        const PIECES: [char; 12] = ['P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'];
+
         match self.0 {
-            0 => 'P',  // White Pawn
-            1 => 'N',  // White Knight
-            2 => 'B',  // White Bishop
-            3 => 'R',  // White Rook
-            4 => 'Q',  // White Queen
-            5 => 'K',  // White King
-            6 => 'p',  // Black Pawn
-            7 => 'n',  // Black Knight
-            8 => 'b',  // Black Bishop
-            9 => 'r',  // Black Rook
-            10 => 'q', // Black Queen
-            11 => 'k', // Black King
-            _ => '.',  // None
+            0..12 => PIECES[self.0 as usize],
+            _ => '.', // None
         }
     }
 }

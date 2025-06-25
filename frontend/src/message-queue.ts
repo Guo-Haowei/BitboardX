@@ -1,5 +1,6 @@
 import { RuntimeModule, runtime } from "./runtime";
 import { picker } from './picker';
+import { WasmMove } from "../../bitboard_x/pkg/bitboard_x";
 
 const DEBUG = false;
 // const DEBUG = true;
@@ -12,7 +13,7 @@ class EventMap {
   public readonly ANIMATION_DONE = 'animation-done';
 };
 
-export type Payload = string;
+export type Payload = WasmMove;
 
 export const EVENT_MAP = new EventMap();
 
