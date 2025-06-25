@@ -1,8 +1,8 @@
 // build wasm: wasm-pack build --target web
 // benchmark: cargo flamegraph --bench search_performance
+
 pub mod core;
 pub mod engine;
-pub mod game;
 pub mod utils;
 
 // #[cfg(target_arch = "wasm32")]

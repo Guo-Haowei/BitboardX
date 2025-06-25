@@ -100,7 +100,7 @@ impl Engine {
             "uci" => self.uci_cmd_uci(writer),
             "ucinewgame" => self.uci_cmd_ucinewgame(writer),
             "isready" => self.uci_cmd_isready(writer),
-            "position" => self.uci_cmd_position(writer, args),
+            "position" => self.uci_cmd_position(args),
             "go" => self.uci_cmd_go(writer, args),
             "d" => self.uci_cmd_d(writer),
             "q" | "quit" => {
@@ -133,7 +133,7 @@ impl Engine {
         writeln!(writer, "{}", utils::debug_string(&self.pos)).unwrap();
     }
 
-    pub fn uci_cmd_position<W: Write>(&mut self, _: &mut W, args: &str) {
+    pub fn uci_cmd_position(&mut self, args: &str) {
         let mut parts: Vec<&str> = args.split_whitespace().collect();
 
         if parts.is_empty() {

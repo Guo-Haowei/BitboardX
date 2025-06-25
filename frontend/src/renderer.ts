@@ -18,7 +18,7 @@ function getTileSize() {
 export class Renderer implements RuntimeModule, Listener {
   private ctx: CanvasRenderingContext2D | null;
   private images: Map<string, HTMLImageElement>;
-  private lastMove: WasmMove | null;
+  private lastMove: string | null;
 
   public constructor() {
     this.ctx = null;
@@ -44,7 +44,7 @@ export class Renderer implements RuntimeModule, Listener {
   public handleMessage(event: string, payload?: Payload) {
     switch (event) {
       case EVENT_MAP.MOVE: {
-        this.lastMove = payload as WasmMove || null;
+        this.lastMove = payload as string || null;
       } break;
       default: break;
     }
@@ -90,15 +90,15 @@ export class Renderer implements RuntimeModule, Listener {
         } else if (moves && moves.has(sq)) {
           this.fillSquare(col, row, RED_COLOR);
         }
-        if (this.lastMove) {
-          const src = this.lastMove.src_sq();
-          const dst = this.lastMove.dst_sq();
-          if (sq === src) {
-            this.fillSquare(col, row, YELLOW_COLOR_1);
-          } else if (sq === dst) {
-            this.fillSquare(col, row, YELLOW_COLOR_2);
-          }
-        }
+        // if (this.lastMove) {
+        //   const src = this.lastMove.src_sq();
+        //   const dst = this.lastMove.dst_sq();
+        //   if (sq === src) {
+        //     this.fillSquare(col, row, YELLOW_COLOR_1);
+        //   } else if (sq === dst) {
+        //     this.fillSquare(col, row, YELLOW_COLOR_2);
+        //   }
+        // }
       }
     }
 
