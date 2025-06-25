@@ -259,11 +259,10 @@ export class BotPlayer implements Player {
 
 class UIController {
   selected: string | null = null;
-  private moves = new Set<string>();
   private resolveMove: ((move: string) => void) | null = null;
 
   constructor(private canvas: HTMLCanvasElement) {
-    canvas.addEventListener('mouseup', this.onClick);
+    canvas.addEventListener('mousedown', this.onClick);
   }
 
   waitForPlayerMove(): Promise<string> {
@@ -271,6 +270,12 @@ class UIController {
       this.resolveMove = resolve;
       this.selected = null;
     });
+  }
+
+  private selectSquare(square: string) {
+    if (gameController?.board.legalMovesMap.has(square)) {
+      this.selected = square;
+    }
   }
 
   private onClick = (event: MouseEvent) => {
@@ -283,18 +288,14 @@ class UIController {
     const square = fileRankToSquare(file, rank);
 
     if (!this.selected) {
-      if (gameController?.board.legalMovesMap.has(square)) {
-        this.selected = square;
-      } else {
-        return;
-      }
+      this.selectSquare(square);
     } else {
       if (gameController?.board.legalMovesMap.get(this.selected)?.has(square)) {
         const resolve = this.resolveMove;
         this.resolveMove = null;
         resolve(`${this.selected}${square}`);
       } else {
-        this.selected = null; // deselect if not a legal move
+        this.selectSquare(square);
       }
     }
 
