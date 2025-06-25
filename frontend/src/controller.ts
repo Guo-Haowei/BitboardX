@@ -95,27 +95,32 @@ export class GameController {
   }
 
   async start(): Promise<void> {
-    while (!this.board.isGameOver()) {
-      const activePlayer = this.activePlayer();
+    this.step();
+  }
 
-      const moveStr = await activePlayer.getMove(this.uciPosition());
-      console.log(moveStr);
+  // sleep(ms: number) {
+  //   return new Promise(resolve => setTimeout(resolve, ms));
+  // }
 
-      const move = this.board.makeMove(moveStr);
+  private step = async () => {
+    // if (!this.isRunning || this.board.isGameOver()) return;
 
-      if (!move) {
-        // optionally throw or notify
-        continue;
-      }
 
+    const activePlayer = this.activePlayer();
+
+    const moveStr = await activePlayer.getMove(this.uciPosition());
+    console.log(moveStr);
+
+    const move = this.board.makeMove(moveStr);
+
+    if (move) {
       runtime.renderer.draw(this.board);
-      await this.sleep(200); // prevent blocking
     }
-  }
 
-  sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+    setTimeout(() => {
+      requestAnimationFrame(this.step);
+    }, 200); // controls pace between moves
+  };
 }
 
 // fen = fen || (document.getElementById('fenInput') as HTMLInputElement)?.value || DEFAULT_FEN;

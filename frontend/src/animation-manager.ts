@@ -1,7 +1,5 @@
-import { Listener, EVENT_MAP, Payload } from "./message-queue";
 import { runtime, RuntimeModule } from "./runtime";
 import { squareToFileRank } from "./utils";
-import { WasmMove } from '../../bitboard_x/pkg/bitboard_x';
 
 export interface Animation {
     piece: string;
@@ -15,7 +13,7 @@ export interface Animation {
     timeLeft: number;
 }
 
-export class AnimationManager implements RuntimeModule, Listener {
+export class AnimationManager implements RuntimeModule {
     private _animations: Animation[];
     private lastTime: number;
 
@@ -25,7 +23,6 @@ export class AnimationManager implements RuntimeModule, Listener {
     }
 
     public init(): boolean {
-        runtime.messageQueue.subscribe(EVENT_MAP.MOVE, this);
         this.lastTime = Date.now();
         return true;
     }
@@ -51,9 +48,6 @@ export class AnimationManager implements RuntimeModule, Listener {
         });
 
         this._animations = filtered;
-        if (this._animations.length === 0) {
-            runtime.messageQueue.emit({ event: EVENT_MAP.ANIMATION_DONE });
-        }
     }
 
     private addCastlingAnimation(src: string, dst: string) {
@@ -69,23 +63,6 @@ export class AnimationManager implements RuntimeModule, Listener {
             } else if (dst === 'c8') {
                 this.addAnimation('a8', 'd8'); // Rook moves from a8 to d8
             }
-        }
-    }
-
-    public handleMessage(event: string, payload?: Payload): void {
-        switch (event) {
-            case EVENT_MAP.MOVE: {
-                const lastMove = payload as WasmMove;
-                if (lastMove) {
-                    const src = lastMove.src_sq();
-                    const dst = lastMove.dst_sq();
-                    this.addAnimation(src, dst);
-                    if (lastMove.is_castling()) {
-                        this.addCastlingAnimation(src, dst);
-                    }
-                }
-            } break;
-            default: break;
         }
     }
 

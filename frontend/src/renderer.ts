@@ -2,7 +2,6 @@ import { BOARD_SIZE, COLORS, PIECE_SYMBOLS } from './constants';
 import { isLowerCase, fileRankToSquare } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 import { picker } from './picker';
-import { Listener, EVENT_MAP, Payload } from './message-queue';
 import { WasmMove } from '../../bitboard_x/pkg/bitboard_x';
 import { PIECE_RES } from './chess';
 import { ChessBoard } from './controller';
@@ -16,10 +15,9 @@ function getTileSize() {
   return runtime.display.tileSize;
 }
 
-export class Renderer implements RuntimeModule, Listener {
+export class Renderer implements RuntimeModule {
   private ctx: CanvasRenderingContext2D | null;
   private images: Map<string, HTMLImageElement>;
-  private lastMove: WasmMove | null = null;
 
   public constructor() {
     this.ctx = null;
@@ -27,7 +25,6 @@ export class Renderer implements RuntimeModule, Listener {
   }
 
   public init(): boolean {
-    runtime.messageQueue.subscribe('move', this);
 
     this.ctx = runtime.display.canvas.getContext('2d');
     if (!this.ctx) {
@@ -41,15 +38,6 @@ export class Renderer implements RuntimeModule, Listener {
     return true;
   }
 
-  public handleMessage(event: string, payload?: Payload) {
-    switch (event) {
-      case EVENT_MAP.MOVE: {
-        this.lastMove = payload as WasmMove;
-      } break;
-      default: break;
-    }
-  }
-
   async draw(board: ChessBoard) {
     const canvas = runtime.display.canvas;
     const { ctx } = this;
@@ -59,7 +47,7 @@ export class Renderer implements RuntimeModule, Listener {
 
     ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.font = `${runtime.display.tileSize / 2}px Arial`
-    this.drawBoard();
+    this.drawBoard(board);
     this.drawPieces(board);
   }
 
@@ -72,7 +60,7 @@ export class Renderer implements RuntimeModule, Listener {
     this.ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
   }
 
-  private drawBoard() {
+  private drawBoard(board: ChessBoard) {
     const { ctx } = this;
     if (!ctx) {
       return;
@@ -92,9 +80,11 @@ export class Renderer implements RuntimeModule, Listener {
         } else if (moves && moves.has(sq)) {
           this.fillSquare(col, row, RED_COLOR);
         }
-        if (this.lastMove) {
-          const src = this.lastMove.src_sq();
-          const dst = this.lastMove.dst_sq();
+
+        const lastMove = board.history.length > 0 ? board.history[board.history.length - 1] : null;
+        if (lastMove) {
+          const src = lastMove.src_sq();
+          const dst = lastMove.dst_sq();
           if (sq === src) {
             this.fillSquare(col, row, YELLOW_COLOR_1);
           } else if (sq === dst) {

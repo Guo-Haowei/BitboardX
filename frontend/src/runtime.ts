@@ -1,6 +1,5 @@
 import { AnimationManager } from './animation-manager';
 import { Display } from './display';
-import { MessageQueue } from './message-queue';
 import { Renderer } from './renderer';
 import { GameController, BotPlayer } from './controller';
 
@@ -11,14 +10,12 @@ export interface RuntimeModule {
 class Runtime {
   public display: Display;
   public renderer: Renderer;
-  public messageQueue: MessageQueue;
   public animationManager: AnimationManager;
   public gameController: GameController | null = null;
 
   private modules: RuntimeModule[];
 
   public constructor() {
-    this.messageQueue = new MessageQueue();
     this.animationManager = new AnimationManager();
     this.display = new Display();
     this.renderer = new Renderer();
@@ -26,7 +23,6 @@ class Runtime {
       this.animationManager,
       this.display,
       this.renderer,
-      this.messageQueue,
     ];
   }
 
