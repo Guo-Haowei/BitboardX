@@ -1,14 +1,11 @@
 import * as Chess from './chess';
 
-let controller: Chess.GameController | null = null;
-
 function createGame() {
   const selectPlayer = (player: string) => {
     const element = document.querySelector(`input[name="${player}"]:checked`);
     if (element && element instanceof HTMLInputElement) {
-      console.log(element);
       if (element.value === 'bot') return new Chess.BotPlayer();
-      if (element.value === 'human') return new Chess.BotPlayer();
+      if (element.value === 'human') return new Chess.UIPlayer();
     }
 
     throw new Error(`Invalid player: ${player}`);
@@ -17,16 +14,15 @@ function createGame() {
   const whitePlayer = selectPlayer('white-player');
   const blackPlayer = selectPlayer('black-player');
 
-  const controller = new Chess.GameController(
+  return Chess.createGame(
     whitePlayer,
     blackPlayer,
     document.getElementById('fen-input')?.textContent || undefined
   );
-
-  return controller;
 }
 
 Chess.initialize(() => {
+  let controller = createGame();
   document.getElementById('start-button')?.addEventListener('click', () => {
     if (controller) {
       controller.stop(); // gracefully cancel current game
@@ -36,6 +32,5 @@ Chess.initialize(() => {
     controller.start();
   });
 
-  controller = createGame();
   controller.start();
 });

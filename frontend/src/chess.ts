@@ -1,7 +1,6 @@
 import init from '../../bitboard_x/pkg/bitboard_x';
 import { BOARD_SIZE, COLORS, PIECE_SYMBOLS } from './constants';
 import { isLowerCase, fileRankToSquare } from './utils';
-import { picker } from './picker';
 import { DEFAULT_FEN } from './constants';
 import { WasmPosition, WasmEngine, WasmMove, name } from '../../bitboard_x/pkg/bitboard_x';
 
@@ -10,9 +9,21 @@ const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR',
 
 let renderer: Renderer | null = null;
 let engine: WasmEngine | null = null;
+let uiCountroller: UIController | null = null;
+let gameController: GameController | null = null;
+
+export function createGame(white: Player, black: Player, fen?: string) {
+
+  gameController = new GameController(
+    white,
+    black,
+    fen,
+  );
+
+  return gameController;
+}
 
 async function loadImage(code: string): Promise<HTMLImageElement> {
-
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = `https://lichess1.org/assets/piece/cburnett/${code}.svg`;
@@ -38,6 +49,7 @@ export async function initialize(callback: () => void) {
       console.log(`Initializing engine ${name()}`);
       engine = new WasmEngine();
       renderer = new Renderer();
+      uiCountroller = new UIController(renderer.canvas);
 
       callback();
     })
@@ -55,9 +67,9 @@ const YELLOW_COLOR_2 = 'rgba(200, 200, 0, 0.5)';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
-  private canvas: HTMLCanvasElement;
   private images: Map<string, HTMLImageElement>;
-  private tileSize = 0;
+  canvas: HTMLCanvasElement;
+  tileSize = 0;
 
   public constructor() {
     const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
@@ -91,13 +103,15 @@ export class Renderer {
     console.log(`tile size is ${this.tileSize}`);
   }
 
-  async draw(board: ChessBoard) {
+  async draw(board?: ChessBoard) {
     const { ctx, canvas } = this;
-
-    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-    ctx.font = `${this.tileSize / 2}px Arial`
-    this.drawBoard(board);
-    this.drawPieces(board);
+    board = board || gameController?.board;
+    if (board) {
+      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      ctx.font = `${this.tileSize / 2}px Arial`
+      this.drawBoard(board);
+      this.drawPieces(board);
+    }
   }
 
   private fillSquare(col: number, row: number, color: string) {
@@ -115,8 +129,10 @@ export class Renderer {
       return;
     }
 
-    const { moves, square } = picker;
     const { tileSize } = this;
+
+    const selected = uiCountroller?.selected || '';
+    const legalMoves = board.legalMovesMap.get(selected);
 
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
@@ -124,10 +140,10 @@ export class Renderer {
         this.fillSquare(col, row, color);
 
         const sq = fileRankToSquare(col, 7 - row);
-        if (sq === square) {
-          this.fillSquare(col, row, GREEN_COLOR);
-        } else if (moves && moves.has(sq)) {
+        if (sq === selected) {
           this.fillSquare(col, row, RED_COLOR);
+        } else if (legalMoves && legalMoves.has(sq)) {
+          this.fillSquare(col, row, GREEN_COLOR);
         }
 
         const lastMove = board.history.length > 0 ? board.history[board.history.length - 1] : null;
@@ -168,7 +184,6 @@ export class Renderer {
     } else {
       this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
       this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
-      // console.log(`Drawing piece ${piece} at (${x}, ${y})`);
     }
   }
 
@@ -217,17 +232,10 @@ export interface SelectedPiece {
 }
 
 export interface Player {
-  name: string;
   getMove(history: string): Promise<string>; // returns UCI move, e.g. "e2e4"
 }
 
 export class BotPlayer implements Player {
-  name: string;
-
-  constructor() {
-    this.name = 'Bot';
-  }
-
   async getMove(history: string): Promise<string> {
     const searchDepth = 5;
 
@@ -242,18 +250,85 @@ export class BotPlayer implements Player {
   }
 }
 
+class UIController {
+  selected: string | null = null;
+  private moves = new Set<string>();
+  private resolveMove: ((move: string) => void) | null = null;
+
+  constructor(private canvas: HTMLCanvasElement) {
+    canvas.addEventListener('mouseup', this.onClick);
+  }
+
+  waitForPlayerMove(): Promise<string> {
+    return new Promise((resolve) => {
+      this.resolveMove = resolve;
+      this.selected = null;
+    });
+  }
+
+  private onClick = (event: MouseEvent) => {
+    if (!this.resolveMove) return;
+    const x = event.offsetX;
+    const y = event.offsetY;
+    const tileSize = renderer?.tileSize || 0;
+    const file = Math.floor(x / tileSize);
+    const rank = 7 - Math.floor(y / tileSize);
+    const square = fileRankToSquare(file, rank);
+
+    if (!this.selected) {
+      if (gameController?.board.legalMovesMap.has(square)) {
+        this.selected = square;
+      } else {
+        return;
+      }
+    } else {
+      if (gameController?.board.legalMovesMap.get(this.selected)?.has(square)) {
+        const resolve = this.resolveMove;
+        this.resolveMove = null;
+        resolve(`${this.selected}${square}`);
+      } else {
+        this.selected = null; // deselect if not a legal move
+      }
+    }
+
+    renderer?.draw();
+  }
+};
+
+export class UIPlayer implements Player {
+  getMove(): Promise<string> {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return uiCountroller!.waitForPlayerMove();
+  }
+}
+
 export class ChessBoard {
   position: WasmPosition;
   legalMoves: string[] = [];
+  legalMovesMap = new Map<string, Set<string>>();
   initialPos: string;
   history: WasmMove[];
 
   constructor(fen: string | undefined) {
     this.position = new WasmPosition(fen || DEFAULT_FEN);
-    this.legalMoves = this.position.legal_moves();
 
     this.initialPos = fen ? `fen ${fen}` : 'startpos';
     this.history = [];
+    this.updateLegalMoves();
+  }
+
+  updateLegalMoves() {
+    this.legalMoves = this.position.legal_moves();
+    this.legalMovesMap.clear();
+
+    for (const move of this.legalMoves) {
+      const src = move.slice(0, 2); // e.g. "e2"
+      const dst = move.slice(2, 4); // e.g. "e4"
+      if (!this.legalMovesMap.has(src)) {
+        this.legalMovesMap.set(src, new Set());
+      }
+      this.legalMovesMap.get(src)?.add(dst);
+    }
   }
 
   isGameOver(): boolean {
@@ -268,13 +343,15 @@ export class ChessBoard {
     const move = this.position.make_move(move_str);
     if (move) {
       this.history.push(move);
+
+      this.updateLegalMoves();
     }
 
     return move;
   }
 }
 
-export class GameController {
+class GameController {
   private players: Player[];
   private isRunning = false;
   board: ChessBoard;
@@ -282,6 +359,7 @@ export class GameController {
   constructor(white: Player, black: Player, fen?: string) {
     this.board = new ChessBoard(fen);
     this.players = [white, black];
+    renderer?.draw(this.board);
   }
 
   public activePlayer(): Player {
@@ -316,12 +394,11 @@ export class GameController {
     const activePlayer = this.activePlayer();
 
     const moveStr = await activePlayer.getMove(this.uciPosition());
-    console.log(moveStr);
 
     const move = this.board.makeMove(moveStr);
 
     if (move) {
-      await renderer?.draw(this.board);
+      await renderer?.draw();
     }
 
     setTimeout(() => {
