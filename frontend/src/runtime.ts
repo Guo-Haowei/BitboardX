@@ -1,6 +1,4 @@
 import { AnimationManager } from './animation-manager';
-import { Display } from './display';
-import { Renderer } from './renderer';
 import { GameController, BotPlayer } from './controller';
 
 export interface RuntimeModule {
@@ -8,8 +6,6 @@ export interface RuntimeModule {
 }
 
 class Runtime {
-  public display: Display;
-  public renderer: Renderer;
   public animationManager: AnimationManager;
   public gameController: GameController | null = null;
 
@@ -17,12 +13,8 @@ class Runtime {
 
   public constructor() {
     this.animationManager = new AnimationManager();
-    this.display = new Display();
-    this.renderer = new Renderer();
     this.modules = [
       this.animationManager,
-      this.display,
-      this.renderer,
     ];
   }
 
@@ -36,11 +28,6 @@ class Runtime {
         return false;
       }
     }
-
-    this.gameController = new GameController(
-      new BotPlayer(), // White player
-      new BotPlayer(), // Black player
-    );
 
     return true;
   }
