@@ -276,10 +276,11 @@ export class ChessBoard {
 
 export class GameController {
   private players: Player[];
+  private isRunning = false;
   board: ChessBoard;
 
   constructor(white: Player, black: Player, fen?: string) {
-    this.board = new ChessBoard(fen || DEFAULT_FEN);
+    this.board = new ChessBoard(fen);
     this.players = [white, black];
   }
 
@@ -299,11 +300,19 @@ export class GameController {
   }
 
   async start(): Promise<void> {
+    this.isRunning = true;
     this.step();
   }
 
+  stop() {
+    this.isRunning = false;
+  }
+
   private step = async () => {
-    // if (!this.isRunning || this.board.isGameOver()) return;
+    if (!this.isRunning) {
+      return;
+    }
+
     const activePlayer = this.activePlayer();
 
     const moveStr = await activePlayer.getMove(this.uciPosition());
@@ -312,7 +321,7 @@ export class GameController {
     const move = this.board.makeMove(moveStr);
 
     if (move) {
-      renderer?.draw(this.board);
+      await renderer?.draw(this.board);
     }
 
     setTimeout(() => {
