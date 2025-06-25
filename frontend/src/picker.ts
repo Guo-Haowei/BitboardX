@@ -1,4 +1,3 @@
-import { runtime } from './runtime';
 import { fileRankToSquare } from './utils';
 
 class Picker {

@@ -1,16 +1,15 @@
 import init from '../../bitboard_x/pkg/bitboard_x';
 import { BOARD_SIZE, COLORS, PIECE_SYMBOLS } from './constants';
 import { isLowerCase, fileRankToSquare } from './utils';
-import { runtime } from './runtime';
 import { picker } from './picker';
 import { DEFAULT_FEN } from './constants';
-import { WasmPosition, WasmEngine, WasmMove } from '../../bitboard_x/pkg/bitboard_x';
+import { WasmPosition, WasmEngine, WasmMove, name } from '../../bitboard_x/pkg/bitboard_x';
 
 export const PIECE_RES = new Map<string, HTMLImageElement>();
 const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK'];
 
-// console.log(`Running ${name()}`);
 let renderer: Renderer | null = null;
+let engine: WasmEngine | null = null;
 
 async function loadImage(code: string): Promise<HTMLImageElement> {
 
@@ -36,6 +35,8 @@ export async function initialize(callback: () => void) {
         PIECE_RES.set(piece, img);
       });
 
+      console.log(`Initializing engine ${name()}`);
+      engine = new WasmEngine();
       renderer = new Renderer();
 
       callback();
@@ -175,15 +176,14 @@ export class Renderer {
     const animated = new Set<number>();
     const { tileSize } = this;
 
-    const { animations } = runtime.animationManager;
-    for (const animation of animations) {
-      const { piece, dstFile, dstRank } = animation;
-      const idx = dstFile + dstRank * BOARD_SIZE;
-      animated.add(idx);
-      const x = animation.x * tileSize + tileSize / 2;
-      const y = animation.y * tileSize + tileSize / 2;
-      this.drawPiece(piece, x, y);
-    }
+    // for (const animation of animations) {
+    //   const { piece, dstFile, dstRank } = animation;
+    //   const idx = dstFile + dstRank * BOARD_SIZE;
+    //   animated.add(idx);
+    //   const x = animation.x * tileSize + tileSize / 2;
+    //   const y = animation.y * tileSize + tileSize / 2;
+    //   this.drawPiece(piece, x, y);
+    // }
 
     const boardString = board.position.board_string();
 
@@ -223,24 +223,22 @@ export interface Player {
 
 export class BotPlayer implements Player {
   name: string;
-  private engine: WasmEngine
 
   constructor() {
     this.name = 'Bot';
-    this.engine = new WasmEngine();
   }
 
   async getMove(history: string): Promise<string> {
-    const searchDepth = 5; // Example depth, can be adjusted
-    this.engine.set_position(history);
+    const searchDepth = 5;
 
-    const bestMove = this.engine.best_move(searchDepth);
+    engine?.set_position(history);
+
+    const bestMove = engine?.best_move(searchDepth);
 
     if (bestMove) {
       return bestMove;
     }
     throw new Error("No best move found");
-
   }
 }
 
