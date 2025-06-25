@@ -1,11 +1,23 @@
 import init from '../../bitboard_x/pkg/bitboard_x';
-import { BOARD_SIZE, COLORS, PIECE_SYMBOLS } from './constants';
-import { isLowerCase, fileRankToSquare } from './utils';
-import { DEFAULT_FEN } from './constants';
 import { WasmPosition, WasmEngine, WasmMove, name } from '../../bitboard_x/pkg/bitboard_x';
 
-export const PIECE_RES = new Map<string, HTMLImageElement>();
+const PIECE_RES = new Map<string, HTMLImageElement>();
 const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK'];
+
+const BOARD_SIZE = 8;
+const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
+const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
+const YELLOW_COLOR_1 = 'rgba(150, 150, 0, 0.5)';
+const LIGHT_SQUARE_COLOR = 'rgba(240, 217, 181, 1)';
+const DARK_SQUARE_COLOR = 'rgba(181, 136, 99, 1)';
+const YELLOW_COLOR_2 = 'rgba(200, 200, 0, 0.5)';
+
+const PIECE_SYMBOLS: Record<string, string> = {
+  'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
+  'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙',
+};
 
 let renderer: Renderer | null = null;
 let engine: WasmEngine | null = null;
@@ -59,11 +71,6 @@ export async function initialize(callback: () => void) {
 }
 
 // ---------------------------- Renderer -----------------------------------
-
-const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
-const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
-const YELLOW_COLOR_1 = 'rgba(150, 150, 0, 0.5)';
-const YELLOW_COLOR_2 = 'rgba(200, 200, 0, 0.5)';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -136,7 +143,7 @@ export class Renderer {
 
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
-        const color = ((row + col) % 2 === 0 ? COLORS.light : COLORS.dark);
+        const color = ((row + col) % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
         this.fillSquare(col, row, color);
 
         const sq = fileRankToSquare(col, 7 - row);
@@ -406,3 +413,19 @@ class GameController {
     }, 200); // controls pace between moves
   };
 }
+
+// ---------------------------- Utils ------------------------------------
+
+function isLowerCase(char: string) {
+  return char === char.toLowerCase() && char !== char.toUpperCase();
+};
+
+function fileRankToSquare(file: number, rank: number) {
+  return `${String.fromCharCode(97 + file)}${rank + 1}`;
+};
+
+// function squareToFileRank(square: string): [number, number] {
+//   const file = square.charCodeAt(0) - 97; // 'a' is 97 in ASCII
+//   const rank = square.charCodeAt(1) - 49; // '1' is 49 in ASCII, so we subtract 1 to get zero-based rank
+//   return [file, rank];
+// }
