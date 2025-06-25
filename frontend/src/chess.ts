@@ -92,21 +92,16 @@ export class Renderer {
       throw new Error("Failed to get canvas context");
     }
 
-    this.ctx.font = '40px Arial';
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-
     this.images = PIECE_RES;
   }
 
   resizeCanvas(canvas: HTMLCanvasElement, minSize = 200) {
-
     let size = Math.min(canvas.clientWidth, canvas.clientHeight);
     size = Math.max(size, minSize);
     canvas.width = size;
     canvas.height = size;
 
-    this.tileSize = size / (BOARD_SIZE + 1);
+    this.tileSize = size / (BOARD_SIZE);
     console.log(`tile size is ${this.tileSize}`);
   }
 
@@ -115,7 +110,6 @@ export class Renderer {
     board = board || gameController?.board;
     if (board) {
       ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-      ctx.font = `${this.tileSize / 2}px Arial`
       this.drawBoard(board);
       this.drawPieces(board);
     }
@@ -131,12 +125,7 @@ export class Renderer {
   }
 
   private drawBoard(board: ChessBoard) {
-    const { ctx } = this;
-    if (!ctx) {
-      return;
-    }
-
-    const { tileSize } = this;
+    const { ctx, tileSize } = this;
 
     const selected = uiCountroller?.selected || '';
     const legalMoves = board.legalMovesMap.get(selected);
@@ -166,24 +155,29 @@ export class Renderer {
       }
     }
 
-    // draw file labels
-    ctx.fillStyle = 'black';
+    const fontSize = Math.floor(tileSize / 4);
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textAlign = 'center';
     for (let file = 0; file < BOARD_SIZE; ++file) {
-      const x = file * tileSize + tileSize / 2;
-      const y = BOARD_SIZE * tileSize + tileSize / 2;
+      const color = (file % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+      ctx.fillStyle = color;
+      const x = file * tileSize + 0.88 * tileSize;
+      const y = 7.93 * tileSize;
       ctx.fillText(String.fromCharCode(97 + file).toString(), x, y);
     }
 
     // draw rank labels
     for (let row = 0; row < BOARD_SIZE; row++) {
-      const x = BOARD_SIZE * tileSize + tileSize / 2;
-      const y = row * tileSize + tileSize / 2;
+      const color = (row % 2 === 0 ? DARK_SQUARE_COLOR : LIGHT_SQUARE_COLOR);
+      ctx.fillStyle = color;
+      const x = 0.1 * tileSize;
+      const y = row * tileSize + 0.3 * tileSize;
       ctx.fillText((8 - row).toString(), x, y);
     }
   }
 
   private drawPiece(piece: string, x: number, y: number) {
-    const { tileSize } = this;
+    const tileSize = this.tileSize * 0.86; // make it a bit smaller than the tile size
     const img = this.images.get(piece);
     if (img) {
       const half = tileSize / 2;
@@ -198,46 +192,23 @@ export class Renderer {
     const animated = new Set<number>();
     const { tileSize } = this;
 
-    // for (const animation of animations) {
-    //   const { piece, dstFile, dstRank } = animation;
-    //   const idx = dstFile + dstRank * BOARD_SIZE;
-    //   animated.add(idx);
-    //   const x = animation.x * tileSize + tileSize / 2;
-    //   const y = animation.y * tileSize + tileSize / 2;
-    //   this.drawPiece(piece, x, y);
-    // }
-
     const boardString = board.position.board_string();
 
     for (let row = 0; row < BOARD_SIZE; ++row) {
       for (let col = 0; col < BOARD_SIZE; ++col) {
         const idx = (7 - row) * BOARD_SIZE + col;
         const piece = boardString[idx];
-        if (piece === '.') {
-          continue;
+        if (piece !== '.' && !animated.has(idx)) {
+          const x = col * tileSize + tileSize / 2;
+          const y = row * tileSize + tileSize / 2;
+          this.drawPiece(piece, x, y);
         }
-        if (animated.has(idx)) {
-          continue; // Skip pieces that are currently animated
-        }
-        const x = col * tileSize + tileSize / 2;
-        const y = row * tileSize + tileSize / 2;
-        this.drawPiece(piece, x, y);
       }
     }
   }
 }
 
 // ---------------------------- Game Controller -------------------------------
-
-
-export interface SelectedPiece {
-  piece: string;
-  x: number;
-  y: number;
-  file: number;
-  rank: number;
-}
-
 export interface Player {
   getMove(history: string): Promise<string>; // returns UCI move, e.g. "e2e4"
 }
