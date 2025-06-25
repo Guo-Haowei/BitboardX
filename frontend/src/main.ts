@@ -1,11 +1,7 @@
 import { runtime } from './runtime';
 import init, { name } from '../../bitboard_x/pkg/bitboard_x';
+import { initializeChess } from './chess';
 
-function tick() {
-  runtime.tick();
-
-  requestAnimationFrame(tick);
-}
 
 async function run() {
   await init();
@@ -13,8 +9,10 @@ async function run() {
   console.log(`Running ${name()}`);
 
   if (runtime.init()) {
-    tick();
+    await runtime.gameController?.start();
   }
 };
 
-run();
+initializeChess(() => {
+  run();
+});

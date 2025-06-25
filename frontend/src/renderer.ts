@@ -2,45 +2,29 @@ import { BOARD_SIZE, COLORS, PIECE_SYMBOLS } from './constants';
 import { isLowerCase, fileRankToSquare } from './utils';
 import { RuntimeModule, runtime } from './runtime';
 import { picker } from './picker';
-import { Listener, EVENT_MAP, Payload } from './message-queue';
 import { WasmMove } from '../../bitboard_x/pkg/bitboard_x';
+import { PIECE_RES } from './chess';
+import { ChessBoard } from './controller';
 
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
 const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
 const YELLOW_COLOR_1 = 'rgba(150, 150, 0, 0.5)';
 const YELLOW_COLOR_2 = 'rgba(200, 200, 0, 0.5)';
 
-function loadPieceImages() {
-  const pieces = new Map<string, HTMLImageElement>();
-  const pieceCodes = ['P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'];
-
-  pieceCodes.forEach(code => {
-    const color = isLowerCase(code) ? 'b' : 'w';
-    const id = `img-${color}${code.toUpperCase()}`;
-    const img = document.getElementById(id) as HTMLImageElement;
-    pieces.set(code, img);
-  });
-
-  return pieces;
-}
-
 function getTileSize() {
   return runtime.display.tileSize;
 }
 
-export class Renderer implements RuntimeModule, Listener {
+export class Renderer implements RuntimeModule {
   private ctx: CanvasRenderingContext2D | null;
   private images: Map<string, HTMLImageElement>;
-  private lastMove: WasmMove | null;
 
   public constructor() {
     this.ctx = null;
-    this.images = loadPieceImages();
-    this.lastMove = null;
+    this.images = PIECE_RES;
   }
 
   public init(): boolean {
-    runtime.messageQueue.subscribe('move', this);
 
     this.ctx = runtime.display.canvas.getContext('2d');
     if (!this.ctx) {
@@ -54,24 +38,17 @@ export class Renderer implements RuntimeModule, Listener {
     return true;
   }
 
-  public handleMessage(event: string, payload?: Payload) {
-    switch (event) {
-      case EVENT_MAP.MOVE: {
-        this.lastMove = payload as WasmMove || null;
-      } break;
-      default: break;
-    }
-  }
-
-  public tick() {
+  async draw(board: ChessBoard) {
     const canvas = runtime.display.canvas;
     const { ctx } = this;
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-      ctx.font = `${runtime.display.tileSize / 2}px Arial`
-      this.drawBoard();
-      this.drawPieces(runtime.gameManager.board.board);
+    if (!ctx) {
+      return;
     }
+
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    ctx.font = `${runtime.display.tileSize / 2}px Arial`
+    this.drawBoard(board);
+    this.drawPieces(board);
   }
 
   private fillSquare(col: number, row: number, color: string) {
@@ -83,7 +60,7 @@ export class Renderer implements RuntimeModule, Listener {
     this.ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
   }
 
-  private drawBoard() {
+  private drawBoard(board: ChessBoard) {
     const { ctx } = this;
     if (!ctx) {
       return;
@@ -103,9 +80,11 @@ export class Renderer implements RuntimeModule, Listener {
         } else if (moves && moves.has(sq)) {
           this.fillSquare(col, row, RED_COLOR);
         }
-        if (this.lastMove) {
-          const src = this.lastMove.src_sq();
-          const dst = this.lastMove.dst_sq();
+
+        const lastMove = board.history.length > 0 ? board.history[board.history.length - 1] : null;
+        if (lastMove) {
+          const src = lastMove.src_sq();
+          const dst = lastMove.dst_sq();
           if (sq === src) {
             this.fillSquare(col, row, YELLOW_COLOR_1);
           } else if (sq === dst) {
@@ -148,7 +127,7 @@ export class Renderer implements RuntimeModule, Listener {
     }
   }
 
-  private drawPieces(board: string) {
+  private drawPieces(board: ChessBoard) {
     if (!this.ctx) {
       return;
     }
@@ -166,10 +145,12 @@ export class Renderer implements RuntimeModule, Listener {
       this.drawPiece(piece, x, y);
     }
 
+    const boardString = board.position.board_string();
+
     for (let row = 0; row < BOARD_SIZE; ++row) {
       for (let col = 0; col < BOARD_SIZE; ++col) {
         const idx = (7 - row) * BOARD_SIZE + col;
-        const piece = board[idx];
+        const piece = boardString[idx];
         if (piece === '.') {
           continue;
         }
