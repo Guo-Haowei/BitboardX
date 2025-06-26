@@ -1,5 +1,5 @@
-import init from '../../bitboard_x/pkg/bitboard_x';
-import { WasmPosition, WasmEngine, WasmMove, name } from '../../bitboard_x/pkg/bitboard_x';
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import init, { WasmPosition, WasmEngine, WasmMove, name } from '../../pkg/bitboard_x';
 
 const PIECE_RES = new Map<string, HTMLImageElement>();
 const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK'];
@@ -7,31 +7,27 @@ const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR',
 const BOARD_SIZE = 8;
 const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+// @TODO: allow user to configure the colors
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
 const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
-const YELLOW_COLOR_1 = 'rgba(150, 150, 0, 0.5)';
+const YELLOW_COLOR = 'rgba(200, 200, 0, 0.5)';
 const LIGHT_SQUARE_COLOR = 'rgba(240, 217, 181, 1)';
 const DARK_SQUARE_COLOR = 'rgba(181, 136, 99, 1)';
-const YELLOW_COLOR_2 = 'rgba(200, 200, 0, 0.5)';
-
-const PIECE_SYMBOLS: Record<string, string> = {
-  'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
-  'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙',
-};
 
 let renderer: Renderer | null = null;
 let engine: WasmEngine | null = null;
-let uiCountroller: UIController | null = null;
+let uiController: UIController | null = null;
 let gameController: GameController | null = null;
+let board: ChessBoard | null = null;
 
+// ---------------------------- Initialization -------------------------------
 export function createGame(white: Player, black: Player, fen?: string) {
+  board = new ChessBoard(fen || DEFAULT_FEN);
 
   gameController = new GameController(
     white,
     black,
-    fen,
   );
-
   return gameController;
 }
 
@@ -45,7 +41,12 @@ async function loadImage(code: string): Promise<HTMLImageElement> {
   });
 }
 
-export async function initialize(callback: () => void) {
+interface Config {
+  canvas: HTMLCanvasElement;
+  createUIPlayer: boolean;
+}
+
+export async function initialize(config: Config, callback: () => void) {
   await init();
 
   Promise.all(PIECE_CODES.map(loadImage))
@@ -58,10 +59,17 @@ export async function initialize(callback: () => void) {
         PIECE_RES.set(piece, img);
       });
 
-      console.log(`Initializing engine ${name()}`);
+      const { canvas } = config;
+
+      const viewport = new Viewport(canvas);
+      renderer = new Renderer(viewport);
+
+      if (config.createUIPlayer) {
+        uiController = new UIController(viewport);
+      }
+
+      console.log(`✅ Initializing engine ${name()}`);
       engine = new WasmEngine();
-      renderer = new Renderer();
-      uiCountroller = new UIController(renderer.canvas);
 
       callback();
     })
@@ -70,145 +78,397 @@ export async function initialize(callback: () => void) {
     });
 }
 
-// ---------------------------- Renderer -----------------------------------
+// ---------------------------- Chess Board Wrapper -----------------------------
+class ChessBoard {
+  private position: WasmPosition;
+  private initialPos: string;
 
-export class Renderer {
-  private ctx: CanvasRenderingContext2D;
-  private images: Map<string, HTMLImageElement>;
+  private _boardString = '';
+  private _legalMoves: string[] = [];
+  private _legalMovesMap = new Map<string, Set<string>>();
+
+  private history: WasmMove[];
+
+  constructor(fen: string) {
+    this.position = new WasmPosition(fen);
+
+    this.initialPos = `fen ${fen}`;
+    this.history = [];
+
+    this.updateInternal();
+  }
+
+  get boardString() {
+    return this._boardString;
+  }
+
+  get legalMovesMap() {
+    return this._legalMovesMap;
+  }
+
+  public uciPosition(): string {
+    const { history, initialPos } = this;
+    const moves = history.length > 0 ? `moves ${history.map(mv => mv.to_string()).join(' ')}` : '';
+    const uci = `position ${initialPos} ${moves}`;
+    return uci;
+  }
+
+  public lastMove(): WasmMove | null {
+    return this.history.length > 0 ? this.history[this.history.length - 1] : null;
+  }
+
+  private updateInternal() {
+    // board string
+    this._boardString = this.position.board_string();
+    // legal moves
+    this._legalMoves = this.position.legal_moves();
+    this._legalMovesMap.clear();
+
+    for (const move of this._legalMoves) {
+      const src = move.slice(0, 2); // e.g. "e2"
+      const dst = move.slice(2, 4); // e.g. "e4"
+      if (!this._legalMovesMap.has(src)) {
+        this._legalMovesMap.set(src, new Set());
+      }
+      this._legalMovesMap.get(src)?.add(dst);
+    }
+  }
+
+  isGameOver(): boolean {
+    return this._legalMoves.length === 0;
+  }
+
+  turn(): number {
+    return this.position.turn();
+  }
+
+  makeMove(move_str: string) {
+    const move = this.position.make_move(move_str);
+    if (move) {
+      this.history.push(move);
+
+      this.updateInternal();
+    }
+
+    return move;
+  }
+
+  getPieceAt(square: string) {
+    const index = squareStringToIndex(square);
+    return this._boardString[index];
+  }
+}
+
+// ---------------------------- GUI and Renderer -------------------------------
+class Viewport {
+  squareSize = 0;
   canvas: HTMLCanvasElement;
-  tileSize = 0;
 
-  public constructor() {
-    const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
-    canvas.tabIndex = 0;
-    canvas.style.margin = '20px auto';
-
+  constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    const minSize = 800;
-    this.resizeCanvas(canvas, minSize);
+    window.addEventListener('resize', () => {
+      this.resize();
+    });
+    this.resize();
+  }
 
-    this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  resize() {
+    const { clientWidth, clientHeight } = this.canvas;
+    const minSize = 200;
+    const size = Math.max(minSize, Math.min(clientWidth, clientHeight));
+    this.canvas.width = size;
+    this.canvas.height = size;
+    this.squareSize = size / BOARD_SIZE;
+  }
+
+  screenToSquare(x: number, y: number): string {
+    const file = Math.floor(x / this.squareSize);
+    const rank = 7 - Math.floor(y / this.squareSize);
+    return fileRankToSquare(file, rank);
+  }
+}
+
+class Renderer {
+  private ctx: CanvasRenderingContext2D;
+  private viewport: Viewport;
+
+  private get squareSize() {
+    return this.viewport.squareSize;
+  }
+
+  public constructor(viewport: Viewport) {
+    this.ctx = viewport.canvas.getContext('2d') as CanvasRenderingContext2D;
     if (!this.ctx) {
       throw new Error("Failed to get canvas context");
     }
 
-    this.images = PIECE_RES;
+    this.viewport = viewport;
   }
 
-  resizeCanvas(canvas: HTMLCanvasElement, minSize = 200) {
-    let size = Math.min(canvas.clientWidth, canvas.clientHeight);
-    size = Math.max(size, minSize);
-    canvas.width = size;
-    canvas.height = size;
-
-    this.tileSize = size / (BOARD_SIZE);
-    console.log(`tile size is ${this.tileSize}`);
-  }
-
-  async draw(board?: ChessBoard) {
-    const { ctx, canvas } = this;
-    board = board || gameController?.board;
+  async draw() {
+    const { ctx, viewport } = this;
+    const { width, height } = viewport.canvas;
     if (board) {
-      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      ctx.clearRect(0, 0, width, height);
       this.drawBoard(board);
       this.drawPieces(board);
     }
   }
 
   private fillSquare(col: number, row: number, color: string) {
-    if (!this.ctx) {
-      return;
-    }
-    const { tileSize } = this;
-    this.ctx.fillStyle = color;
-    this.ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+    const { squareSize, ctx } = this;
+    ctx.fillStyle = color;
+    ctx.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
   }
 
   private drawBoard(board: ChessBoard) {
-    const { ctx, tileSize } = this;
+    const { ctx, squareSize } = this;
 
-    const selected = uiCountroller?.selected || '';
+    const selected = uiController?.selected || '';
     const legalMoves = board.legalMovesMap.get(selected);
 
-    for (let row = 0; row < BOARD_SIZE; row++) {
-      for (let col = 0; col < BOARD_SIZE; col++) {
-        const color = ((row + col) % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
-        this.fillSquare(col, row, color);
+    const lastMove = board.lastMove();
+    for (let idx = 0; idx < BOARD_SIZE * BOARD_SIZE; ++idx) {
+      const [file, rank] = squareToFileRank(idx);
+      const sq = fileRankToSquare(file, rank);
 
-        const sq = fileRankToSquare(col, 7 - row);
-        if (sq === selected) {
-          this.fillSquare(col, row, RED_COLOR);
-        } else if (legalMoves && legalMoves.has(sq)) {
-          this.fillSquare(col, row, GREEN_COLOR);
-        }
-
-        const lastMove = board.history.length > 0 ? board.history[board.history.length - 1] : null;
-        if (lastMove) {
-          const src = lastMove.src_sq();
-          const dst = lastMove.dst_sq();
-          if (sq === src) {
-            this.fillSquare(col, row, YELLOW_COLOR_1);
-          } else if (sq === dst) {
-            this.fillSquare(col, row, YELLOW_COLOR_2);
-          }
-        }
+      const row = 7 - rank; // flip the rank for rendering
+      this.fillSquare(file, row, (row + file) % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+      if (sq === selected) {
+        this.fillSquare(file, row, RED_COLOR);
+      } else if (legalMoves && legalMoves.has(sq)) {
+        this.fillSquare(file, row, GREEN_COLOR);
+      }
+      if (lastMove && (sq === lastMove.src_sq() || sq === lastMove.dst_sq())) {
+        this.fillSquare(file, row, YELLOW_COLOR);
       }
     }
 
-    const fontSize = Math.floor(tileSize / 4);
+    const fontSize = Math.floor(squareSize / 4);
     ctx.font = `${fontSize}px Arial`;
     ctx.textAlign = 'center';
-    for (let file = 0; file < BOARD_SIZE; ++file) {
-      const color = (file % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+    for (let i = 0; i < BOARD_SIZE; ++i) {
+      const color = (i % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+      const fileStr = String.fromCharCode(97 + i); // 'a' + i
+      const rankStr = (i + 1).toString();
       ctx.fillStyle = color;
-      const x = file * tileSize + 0.88 * tileSize;
-      const y = 7.93 * tileSize;
-      ctx.fillText(String.fromCharCode(97 + file).toString(), x, y);
-    }
-
-    // draw rank labels
-    for (let row = 0; row < BOARD_SIZE; row++) {
-      const color = (row % 2 === 0 ? DARK_SQUARE_COLOR : LIGHT_SQUARE_COLOR);
-      ctx.fillStyle = color;
-      const x = 0.1 * tileSize;
-      const y = row * tileSize + 0.3 * tileSize;
-      ctx.fillText((8 - row).toString(), x, y);
+      let x = (i + 0.88) * squareSize;
+      let y = 7.93 * squareSize;
+      ctx.fillText(fileStr, x, y);
+      x = 0.1 * squareSize;
+      y = (7.3 - i) * squareSize;
+      ctx.fillText(rankStr, x, y);
     }
   }
 
   private drawPiece(piece: string, x: number, y: number) {
-    const tileSize = this.tileSize * 0.86; // make it a bit smaller than the tile size
-    const img = this.images.get(piece);
-    if (img) {
-      const half = tileSize / 2;
-      this.ctx.drawImage(img, x - half, y - half, tileSize, tileSize);
-    } else {
-      this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
-      this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
-    }
+    // make it a bit smaller than the tile size so it doesn't block the file/rank labels
+    const pieceSize = this.squareSize * 0.86;
+    const half = pieceSize / 2;
+    const img = PIECE_RES.get(piece);
+    if (img) this.ctx.drawImage(img, x - half, y - half, pieceSize, pieceSize);
   }
 
   private drawPieces(board: ChessBoard) {
-    const animated = new Set<number>();
-    const { tileSize } = this;
+    const { squareSize } = this;
+    const boardString = board.boardString;
 
-    const boardString = board.position.board_string();
-
-    for (let row = 0; row < BOARD_SIZE; ++row) {
-      for (let col = 0; col < BOARD_SIZE; ++col) {
-        const idx = (7 - row) * BOARD_SIZE + col;
-        const piece = boardString[idx];
-        if (piece !== '.' && !animated.has(idx)) {
-          const x = col * tileSize + tileSize / 2;
-          const y = row * tileSize + tileSize / 2;
-          this.drawPiece(piece, x, y);
-        }
+    const { selected, x, y } = uiController !== null ? uiController : { selected: null, x: -1, y: -1 };
+    for (let idx = 0; idx < 64; ++idx) {
+      const piece = boardString[idx];
+      if (piece === '.') continue;
+      const [file, rank] = squareToFileRank(idx);
+      const screenX = file * squareSize + squareSize / 2;
+      const screenY = (7 - rank) * squareSize + squareSize / 2;
+      if (fileRankToSquare(file, rank) === selected) {
+        this.drawPiece(piece, x, y);
+      } else {
+        this.drawPiece(piece, screenX, screenY);
       }
     }
   }
 }
 
+class UIController {
+  selected: string | null = null;
+  x = -1;
+  y = -1;
+  private selectingPromotion = false;
+  private viewport: Viewport;
+  private resolveMove: ((move: string) => void) | null = null;
+
+  constructor(viewport: Viewport) {
+    viewport.canvas.addEventListener('mousedown', this.onMouseDown);
+    viewport.canvas.addEventListener('mousemove', this.onMouseMove);
+    viewport.canvas.addEventListener('mouseup', this.onMouseUp);
+    viewport.canvas.addEventListener('touchstart', this.onMouseDown);
+    viewport.canvas.addEventListener('touchmove', this.onMouseMove);
+    viewport.canvas.addEventListener('touchend', this.onMouseUp);
+    this.viewport = viewport;
+  }
+
+  waitForPlayerMove(): Promise<string> {
+    return new Promise((resolve) => {
+      this.resolveMove = resolve;
+      this.selected = null;
+    });
+  }
+
+  private normalizeMouseEvent(e: MouseEvent | TouchEvent): { x: number, y: number } {
+    if (e instanceof TouchEvent) {
+      const touch = e.touches[0] || e.changedTouches[0];
+      return { x: touch.clientX, y: touch.clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  private onMouseDown = (event: MouseEvent | TouchEvent) => {
+    if (!this.resolveMove) return;
+    const { x, y } = this.normalizeMouseEvent(event);
+    const square = this.viewport.screenToSquare(x, y);
+
+    if (board!.legalMovesMap.has(square)) {
+      this.selected = square;
+    }
+
+    renderer!.draw();
+  };
+
+  private onMouseMove = (event: MouseEvent | TouchEvent) => {
+    if (!this.resolveMove || this.selectingPromotion) return;
+    const { x, y } = this.normalizeMouseEvent(event);
+    this.x = x;
+    this.y = y;
+    renderer!.draw();
+  };
+
+  private onMouseUp = async (event: MouseEvent | TouchEvent) => {
+    if (!this.resolveMove || !this.selected) return;
+    const { x, y } = this.normalizeMouseEvent(event);
+    const square = this.viewport.screenToSquare(x, y);
+
+    if (board!.legalMovesMap.get(this.selected)?.has(square)) {
+      let move = `${this.selected}${square}`;
+
+      const piece = board!.getPieceAt(this.selected);
+
+      let promotion = null;
+      if (piece === 'P' && square[1] === '8') {
+        promotion = true;
+      } else if (piece === 'p' && square[1] === '1') {
+        promotion = false;
+      }
+
+      if (promotion !== null) {
+        this.selected = null;
+        this.selectingPromotion = true;
+        const promotionPiece = await this.waitForPromotionSelection(promotion, event);
+        this.selectingPromotion = false;
+        move += promotionPiece;
+      }
+
+      const resolve = this.resolveMove;
+      this.resolveMove = null;
+      resolve(move);
+    }
+
+    this.selected = null;
+    renderer!.draw();
+  };
+
+  private waitForPromotionSelection(isWhite: boolean, event: MouseEvent | TouchEvent): Promise<string> {
+    const { x, y } = this.normalizeMouseEvent(event);
+
+    return new Promise((resolve) => {
+      const container = document.createElement('div');
+      container.id = 'promotion-dialog';
+      container.style.position = 'absolute';
+      container.style.left = `${x}px`;
+      container.style.top = `${y}px`;
+      container.style.display = 'flex';
+      container.style.gap = '8px';
+      container.style.zIndex = '9999';
+      container.style.background = 'rgba(255, 255, 255, 0.95)';
+      container.style.padding = '6px';
+      container.style.border = '1px solid #ccc';
+      container.style.borderRadius = '4px';
+      container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+
+      const pieces = ['Q', 'R', 'B', 'N'];
+
+      for (let piece of pieces) {
+        if (!isWhite) {
+          piece = piece.toLowerCase();
+        }
+
+        const option = document.createElement('div');
+        option.style.width = '64px';
+        option.style.height = '64px';
+        option.style.cursor = 'pointer';
+        option.style.backgroundImage = `url(${PIECE_RES.get(piece)?.src})`;
+        option.style.backgroundSize = 'contain';
+        option.style.backgroundRepeat = 'no-repeat';
+        option.style.backgroundPosition = 'center';
+
+        option.onclick = () => {
+          document.body.removeChild(container);
+          resolve(piece);
+        };
+
+        container.appendChild(option);
+      }
+
+      document.body.appendChild(container);
+    });
+  }
+};
+
 // ---------------------------- Game Controller -------------------------------
+class GameController {
+  private players: Player[];
+  private isRunning = false;
+
+  constructor(white: Player, black: Player) {
+    this.players = [white, black];
+    renderer?.draw();
+  }
+
+  public activePlayer(): Player {
+    return this.players[board!.turn()];
+  }
+
+  public isGameOver(): boolean {
+    return board!.isGameOver();
+  }
+
+  async start(): Promise<string> {
+    this.isRunning = true;
+
+    while (true) {
+      if (!this.isRunning) return 'paused';
+      if (this.isGameOver()) return 'gameover';
+      const activePlayer = this.activePlayer();
+      const moveStr = await activePlayer.getMove(board!.uciPosition());
+
+      const move = board!.makeMove(moveStr);
+
+      if (move) {
+        await renderer!.draw();
+      }
+
+      await sleep(200); // at least 200ms between moves
+    }
+  }
+
+  stop() {
+    this.isRunning = false;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export interface Player {
   getMove(history: string): Promise<string>; // returns UCI move, e.g. "e2e4"
 }
@@ -228,176 +488,24 @@ export class BotPlayer implements Player {
   }
 }
 
-class UIController {
-  selected: string | null = null;
-  private resolveMove: ((move: string) => void) | null = null;
-
-  constructor(private canvas: HTMLCanvasElement) {
-    canvas.addEventListener('mousedown', this.onClick);
-  }
-
-  waitForPlayerMove(): Promise<string> {
-    return new Promise((resolve) => {
-      this.resolveMove = resolve;
-      this.selected = null;
-    });
-  }
-
-  private selectSquare(square: string) {
-    if (gameController?.board.legalMovesMap.has(square)) {
-      this.selected = square;
-    }
-  }
-
-  private onClick = (event: MouseEvent) => {
-    if (!this.resolveMove) return;
-    const x = event.offsetX;
-    const y = event.offsetY;
-    const tileSize = renderer?.tileSize || 0;
-    const file = Math.floor(x / tileSize);
-    const rank = 7 - Math.floor(y / tileSize);
-    const square = fileRankToSquare(file, rank);
-
-    if (!this.selected) {
-      this.selectSquare(square);
-    } else {
-      if (gameController?.board.legalMovesMap.get(this.selected)?.has(square)) {
-        const resolve = this.resolveMove;
-        this.resolveMove = null;
-        resolve(`${this.selected}${square}`);
-      } else {
-        this.selectSquare(square);
-      }
-    }
-
-    renderer?.draw();
-  }
-};
-
 export class UIPlayer implements Player {
   getMove(): Promise<string> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return uiCountroller!.waitForPlayerMove();
+
+    return uiController!.waitForPlayerMove();
   }
-}
-
-export class ChessBoard {
-  position: WasmPosition;
-  legalMoves: string[] = [];
-  legalMovesMap = new Map<string, Set<string>>();
-  initialPos: string;
-  history: WasmMove[];
-
-  constructor(fen: string | undefined) {
-    this.position = new WasmPosition(fen || DEFAULT_FEN);
-
-    this.initialPos = fen ? `fen ${fen}` : 'startpos';
-    this.history = [];
-    this.updateLegalMoves();
-  }
-
-  updateLegalMoves() {
-    this.legalMoves = this.position.legal_moves();
-    this.legalMovesMap.clear();
-
-    for (const move of this.legalMoves) {
-      const src = move.slice(0, 2); // e.g. "e2"
-      const dst = move.slice(2, 4); // e.g. "e4"
-      if (!this.legalMovesMap.has(src)) {
-        this.legalMovesMap.set(src, new Set());
-      }
-      this.legalMovesMap.get(src)?.add(dst);
-    }
-  }
-
-  isGameOver(): boolean {
-    return this.legalMoves.length === 0;
-  }
-
-  turn(): number {
-    return this.position.turn();
-  }
-
-  makeMove(move_str: string) {
-    const move = this.position.make_move(move_str);
-    if (move) {
-      this.history.push(move);
-
-      this.updateLegalMoves();
-    }
-
-    return move;
-  }
-}
-
-class GameController {
-  private players: Player[];
-  private isRunning = false;
-  board: ChessBoard;
-
-  constructor(white: Player, black: Player, fen?: string) {
-    this.board = new ChessBoard(fen);
-    this.players = [white, black];
-    renderer?.draw(this.board);
-  }
-
-  public activePlayer(): Player {
-    return this.players[this.board.turn()];
-  }
-
-  public isGameOver(): boolean {
-    return this.board.isGameOver();
-  }
-
-  public uciPosition(): string {
-    const { history } = this.board;
-    const moves = history.length > 0 ? `moves ${history.map(mv => mv.to_string()).join(' ')}` : '';
-    const uci = `position ${this.board.initialPos} ${moves}`;
-    return uci;
-  }
-
-  async start(): Promise<void> {
-    this.isRunning = true;
-    this.step();
-  }
-
-  stop() {
-    this.isRunning = false;
-  }
-
-  private step = async () => {
-    if (!this.isRunning) {
-      return;
-    }
-
-    const activePlayer = this.activePlayer();
-
-    const moveStr = await activePlayer.getMove(this.uciPosition());
-
-    const move = this.board.makeMove(moveStr);
-
-    if (move) {
-      await renderer?.draw();
-    }
-
-    setTimeout(() => {
-      requestAnimationFrame(this.step);
-    }, 200); // controls pace between moves
-  };
 }
 
 // ---------------------------- Utils ------------------------------------
-
-function isLowerCase(char: string) {
-  return char === char.toLowerCase() && char !== char.toUpperCase();
-};
-
 function fileRankToSquare(file: number, rank: number) {
   return `${String.fromCharCode(97 + file)}${rank + 1}`;
 };
 
-// function squareToFileRank(square: string): [number, number] {
-//   const file = square.charCodeAt(0) - 97; // 'a' is 97 in ASCII
-//   const rank = square.charCodeAt(1) - 49; // '1' is 49 in ASCII, so we subtract 1 to get zero-based rank
-//   return [file, rank];
-// }
+function squareToFileRank(square: number): [number, number] {
+  return [square % BOARD_SIZE, Math.floor(square / BOARD_SIZE)];
+}
+
+function squareStringToIndex(square: string): number {
+  const file = square.charCodeAt(0) - 97; // 'a' is 97
+  const rank = parseInt(square[1], 10) - 1; // '1' is 1
+  return rank * BOARD_SIZE + file;
+}

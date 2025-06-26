@@ -13,8 +13,8 @@ const VERSION_PATCH: u32 = 10; // v0.1.10
 
 pub struct Engine {
     pub(super) pos: Position,
-    pub(super) repetition_table: HashMap<ZobristHash, u32>, // for threefold detection
     pub(super) tt: TTable,
+    repetition_table: HashMap<ZobristHash, u32>, // for threefold detection
 }
 
 impl Engine {
@@ -70,7 +70,9 @@ impl Engine {
         let promotion = mv.get_promotion();
         for mv in legal_moves.iter().copied() {
             if mv.src_sq() == src_sq && mv.dst_sq() == dst_sq && mv.get_promotion() == promotion {
-                self.make_move_unverified(mv);
+                self.pos.make_move(mv);
+
+                *self.repetition_table.entry(self.pos.state.hash).or_insert(0) += 1;
                 return true;
             }
         }
@@ -79,15 +81,21 @@ impl Engine {
         return false;
     }
 
+    pub fn repetition_add(&mut self, key: ZobristHash) {
+        *self.repetition_table.entry(key).or_insert(0) += 1;
+    }
+
+    pub fn repetition_remove(&mut self, key: ZobristHash) {
+        if let Some(count) = self.repetition_table.get_mut(&key) {
+            if *count > 0 {
+                *count -= 1;
+            }
+        }
+    }
+
     pub fn repetition_count(&self, key: ZobristHash) -> u32 {
         let val = self.repetition_table.get(&key).unwrap_or(&0);
         *val
-    }
-
-    pub fn make_move_unverified(&mut self, mv: Move) {
-        self.pos.make_move(mv);
-
-        *self.repetition_table.entry(self.pos.state.hash).or_insert(0) += 1;
     }
 
     /// The following methods are for UCI commands
@@ -197,7 +205,7 @@ impl Engine {
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
             _ => {
-                let mv = self.best_move(6).unwrap();
+                let mv = self.best_move(5).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
         }

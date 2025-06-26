@@ -35,8 +35,8 @@ def main():
         'proto=uci',
         'tc=inf',
         # 'tc=40/60',
-        '-rounds', '10',
-        '-pgnout', 'out.pgn',
+        '-rounds', '100',
+        '-pgnout', f'{engine1}-vs-{engine2}.pgn',
         '-debug', 'all'
     ])
 

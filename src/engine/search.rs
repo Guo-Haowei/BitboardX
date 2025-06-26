@@ -57,13 +57,19 @@ impl SearchContext {
         self.killer_moves[ply as usize].contains(&Some(mv))
     }
 
-    fn make_move(&mut self, pos: &mut Position, mv: Move) -> UndoState {
-        let undo_state = pos.make_move(mv);
+    fn make_move(&mut self, engine: &mut Engine, mv: Move) -> UndoState {
+        let undo_state = engine.pos.make_move(mv);
+        let hash = engine.pos.state.hash;
+
+        engine.repetition_add(hash);
         undo_state
     }
 
-    fn unmake_move(&mut self, pos: &mut Position, mv: Move, undo_state: &UndoState) {
-        pos.unmake_move(mv, undo_state);
+    fn unmake_move(&mut self, engine: &mut Engine, mv: Move, undo_state: &UndoState) {
+        let hash = engine.pos.state.hash;
+        engine.repetition_remove(hash);
+
+        engine.pos.unmake_move(mv, undo_state);
     }
 
     fn evaluate(&mut self, pos: &Position) -> i32 {
@@ -98,9 +104,9 @@ impl SearchContext {
         }
 
         for mv in move_list.iter().copied() {
-            let undo_state = self.make_move(&mut engine.pos, mv);
+            let undo_state = self.make_move(engine, mv);
             let score = -self.quiescence(engine, -beta, -alpha, depth - 1);
-            self.unmake_move(&mut engine.pos, mv, &undo_state);
+            self.unmake_move(engine, mv, &undo_state);
 
             if score >= beta {
                 // @TODO: stats
@@ -191,14 +197,14 @@ impl SearchContext {
         // --- 6) Main search loop ---
         let mut mv_left = move_list.len();
         for mv in move_list.iter().copied() {
-            let undo_state = self.make_move(&mut engine.pos, mv);
+            let undo_state = self.make_move(engine, mv);
 
             let captured_piece = engine.pos.state.captured_piece;
 
             let (score, _) = self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
             let score = -score; // Negate the score for the opponent
 
-            self.unmake_move(&mut engine.pos, mv, &undo_state);
+            self.unmake_move(engine, mv, &undo_state);
 
             if score > best_score {
                 if mv.get_type() == MoveType::Normal && captured_piece == Piece::NONE {
