@@ -1,25 +1,17 @@
-::-webkit-scrollbar {
-  width: 8px;
+body {
+  background: var(--demo-bg, #161512);
+  font-family: 'Noto Sans';
+  --board-color: #886f46;
+  margin: 0;
 }
 
-::-webkit-scrollbar-track {
-  background: #1c1c1c;
+.viewers {
+  margin: 2em;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
+  gap: 2em;
 }
 
-::-webkit-scrollbar-thumb {
-  background-color: #555;
-  border-radius: 4px;
-}
-
-.menu-dropdown {
-  display: none;
-  position: absolute;
-  background-color: #2b2b2b;
-  border: 1px solid #444;
-  z-index: 50;
-  min-width: 160px;
-}
-
-.menu-item:hover .menu-dropdown {
-  display: block;
+.viewers>div {
+  max-width: 600px;
 }

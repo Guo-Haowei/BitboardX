@@ -5,6 +5,7 @@ import path from 'path';
 export default defineConfig({
   server: {
     port: 8001,
+    host: true,
     fs: {
       allow: [
         path.resolve(__dirname, '../bitboard_x/pkg'),
