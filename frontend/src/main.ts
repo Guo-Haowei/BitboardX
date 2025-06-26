@@ -29,18 +29,18 @@ async function main() {
   canvas.tabIndex = 0;
   canvas.style.margin = '20px auto';
 
-  await Chess.initialize({ canvas }, () => {
+  await Chess.initialize({ canvas }, async () => {
     let controller = createGame();
-    document.getElementById('start-button')?.addEventListener('click', () => {
+    await controller.start();
+
+    document.getElementById('start-button')?.addEventListener('click', async () => {
       if (controller) {
         controller.stop();
       }
 
       controller = createGame();
-      controller.start();
+      await controller.start();
     });
-
-    controller.start();
   });
 }
 

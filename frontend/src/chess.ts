@@ -430,7 +430,10 @@ class GameController {
   }
 
   private step = async () => {
-    if (!this.isRunning) {
+    if (!this.isRunning) return;
+
+    if (this.isGameOver()) {
+      alert("Game over!");
       return;
     }
 
