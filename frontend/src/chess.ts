@@ -58,10 +58,16 @@ export async function initialize(callback: () => void) {
         PIECE_RES.set(piece, img);
       });
 
+      const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
+      canvas.tabIndex = 0;
+      canvas.style.margin = '20px auto';
+
+      const viewport = new Viewport(canvas);
+      renderer = new Renderer(viewport);
+      uiCountroller = new UIController(viewport);
+
       console.log(`Initializing engine ${name()}`);
       engine = new WasmEngine();
-      renderer = new Renderer();
-      uiCountroller = new UIController(renderer.canvas);
 
       callback();
     })
@@ -71,61 +77,66 @@ export async function initialize(callback: () => void) {
 }
 
 // ---------------------------- Renderer -----------------------------------
+class Viewport {
+  squareSize = 0;
+  canvas: HTMLCanvasElement;
 
-export class Renderer {
+  constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+    window.addEventListener('resize', () => {
+      this.resize();
+    });
+    this.resize();
+  }
+
+  resize() {
+    const { clientWidth, clientHeight } = this.canvas;
+    const minSize = 200;
+    const size = Math.max(minSize, Math.min(clientWidth, clientHeight));
+    this.canvas.width = size;
+    this.canvas.height = size;
+    this.squareSize = size / BOARD_SIZE;
+  }
+}
+
+class Renderer {
   private ctx: CanvasRenderingContext2D;
   private images: Map<string, HTMLImageElement>;
-  canvas: HTMLCanvasElement;
-  tileSize = 0;
+  private viewport: Viewport;
 
-  public constructor() {
-    const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
-    canvas.tabIndex = 0;
-    canvas.style.margin = '20px auto';
+  private get squareSize() {
+    return this.viewport.squareSize;
+  }
 
-    this.canvas = canvas;
-    const minSize = 800;
-    this.resizeCanvas(canvas, minSize);
-
-    this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  public constructor(viewport: Viewport) {
+    this.ctx = viewport.canvas.getContext('2d') as CanvasRenderingContext2D;
     if (!this.ctx) {
       throw new Error("Failed to get canvas context");
     }
 
+    this.viewport = viewport;
     this.images = PIECE_RES;
   }
 
-  resizeCanvas(canvas: HTMLCanvasElement, minSize = 200) {
-    let size = Math.min(canvas.clientWidth, canvas.clientHeight);
-    size = Math.max(size, minSize);
-    canvas.width = size;
-    canvas.height = size;
-
-    this.tileSize = size / (BOARD_SIZE);
-    console.log(`tile size is ${this.tileSize}`);
-  }
-
   async draw(board?: ChessBoard) {
-    const { ctx, canvas } = this;
+    const { ctx, viewport } = this;
+    const { width, height } = viewport.canvas;
     board = board || gameController?.board;
     if (board) {
-      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      ctx.clearRect(0, 0, width, height);
       this.drawBoard(board);
       this.drawPieces(board);
     }
   }
 
   private fillSquare(col: number, row: number, color: string) {
-    if (!this.ctx) {
-      return;
-    }
-    const { tileSize } = this;
-    this.ctx.fillStyle = color;
-    this.ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+    const { squareSize, ctx } = this;
+    ctx.fillStyle = color;
+    ctx.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
   }
 
   private drawBoard(board: ChessBoard) {
-    const { ctx, tileSize } = this;
+    const { ctx, squareSize } = this;
 
     const selected = uiCountroller?.selected || '';
     const legalMoves = board.legalMovesMap.get(selected);
@@ -155,14 +166,14 @@ export class Renderer {
       }
     }
 
-    const fontSize = Math.floor(tileSize / 4);
+    const fontSize = Math.floor(squareSize / 4);
     ctx.font = `${fontSize}px Arial`;
     ctx.textAlign = 'center';
     for (let file = 0; file < BOARD_SIZE; ++file) {
       const color = (file % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
       ctx.fillStyle = color;
-      const x = file * tileSize + 0.88 * tileSize;
-      const y = 7.93 * tileSize;
+      const x = file * squareSize + 0.88 * squareSize;
+      const y = 7.93 * squareSize;
       ctx.fillText(String.fromCharCode(97 + file).toString(), x, y);
     }
 
@@ -170,18 +181,18 @@ export class Renderer {
     for (let row = 0; row < BOARD_SIZE; row++) {
       const color = (row % 2 === 0 ? DARK_SQUARE_COLOR : LIGHT_SQUARE_COLOR);
       ctx.fillStyle = color;
-      const x = 0.1 * tileSize;
-      const y = row * tileSize + 0.3 * tileSize;
+      const x = 0.1 * squareSize;
+      const y = row * squareSize + 0.3 * squareSize;
       ctx.fillText((8 - row).toString(), x, y);
     }
   }
 
   private drawPiece(piece: string, x: number, y: number) {
-    const tileSize = this.tileSize * 0.86; // make it a bit smaller than the tile size
+    const squareSize = this.squareSize * 0.86; // make it a bit smaller than the tile size
     const img = this.images.get(piece);
     if (img) {
-      const half = tileSize / 2;
-      this.ctx.drawImage(img, x - half, y - half, tileSize, tileSize);
+      const half = squareSize / 2;
+      this.ctx.drawImage(img, x - half, y - half, squareSize, squareSize);
     } else {
       this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
       this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
@@ -189,8 +200,7 @@ export class Renderer {
   }
 
   private drawPieces(board: ChessBoard) {
-    const animated = new Set<number>();
-    const { tileSize } = this;
+    const { squareSize } = this;
 
     const boardString = board.position.board_string();
 
@@ -198,9 +208,9 @@ export class Renderer {
       for (let col = 0; col < BOARD_SIZE; ++col) {
         const idx = (7 - row) * BOARD_SIZE + col;
         const piece = boardString[idx];
-        if (piece !== '.' && !animated.has(idx)) {
-          const x = col * tileSize + tileSize / 2;
-          const y = row * tileSize + tileSize / 2;
+        if (piece !== '.') {
+          const x = col * squareSize + squareSize / 2;
+          const y = row * squareSize + squareSize / 2;
           this.drawPiece(piece, x, y);
         }
       }
@@ -230,10 +240,12 @@ export class BotPlayer implements Player {
 
 class UIController {
   selected: string | null = null;
+  private viewport: Viewport;
   private resolveMove: ((move: string) => void) | null = null;
 
-  constructor(private canvas: HTMLCanvasElement) {
-    canvas.addEventListener('mousedown', this.onClick);
+  constructor(viewport: Viewport) {
+    viewport.canvas.addEventListener('mousedown', this.onClick);
+    this.viewport = viewport;
   }
 
   waitForPlayerMove(): Promise<string> {
@@ -253,9 +265,9 @@ class UIController {
     if (!this.resolveMove) return;
     const x = event.offsetX;
     const y = event.offsetY;
-    const tileSize = renderer?.tileSize || 0;
-    const file = Math.floor(x / tileSize);
-    const rank = 7 - Math.floor(y / tileSize);
+    const { squareSize } = this.viewport;
+    const file = Math.floor(x / squareSize);
+    const rank = 7 - Math.floor(y / squareSize);
     const square = fileRankToSquare(file, rank);
 
     if (!this.selected) {
