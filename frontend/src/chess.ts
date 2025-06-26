@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import init from '../../bitboard_x/pkg/bitboard_x';
 import { WasmPosition, WasmEngine, WasmMove, name } from '../../bitboard_x/pkg/bitboard_x';
 
@@ -175,24 +176,28 @@ class Renderer {
   }
 
   private drawPiece(piece: string, x: number, y: number) {
-    const squareSize = this.squareSize * 0.86; // make it a bit smaller than the tile size
-    const half = squareSize / 2;
+    // make it a bit smaller than the tile size so it doesn't block the file/rank labels
+    const pieceSize = this.squareSize * 0.86;
+    const half = pieceSize / 2;
     const img = PIECE_RES.get(piece);
-    if (img) this.ctx.drawImage(img, x - half, y - half, squareSize, squareSize);
+    if (img) this.ctx.drawImage(img, x - half, y - half, pieceSize, pieceSize);
   }
 
   private drawPieces(board: ChessBoard) {
     const { squareSize } = this;
-
     const boardString = board.position.board_string();
-
+    const { selected, x, y } = uiCountroller!;
     for (let idx = 0; idx < 64; ++idx) {
       const piece = boardString[idx];
       if (piece === '.') continue;
       const [file, rank] = squareToFileRank(idx);
-      const x = file * squareSize + squareSize / 2;
-      const y = (7 - rank) * squareSize + squareSize / 2;
-      this.drawPiece(piece, x, y);
+      const screenX = file * squareSize + squareSize / 2;
+      const screenY = (7 - rank) * squareSize + squareSize / 2;
+      if (fileRankToSquare(file, rank) === selected) {
+        this.drawPiece(piece, x, y);
+      } else {
+        this.drawPiece(piece, screenX, screenY);
+      }
     }
   }
 }
@@ -219,11 +224,15 @@ export class BotPlayer implements Player {
 
 class UIController {
   selected: string | null = null;
+  x = -1;
+  y = -1;
   private viewport: Viewport;
   private resolveMove: ((move: string) => void) | null = null;
 
   constructor(viewport: Viewport) {
-    viewport.canvas.addEventListener('mousedown', this.onClick);
+    viewport.canvas.addEventListener('mousedown', this.onMouseDown);
+    viewport.canvas.addEventListener('mousemove', this.onMouseMove);
+    viewport.canvas.addEventListener('mouseup', this.onMouseUp);
     this.viewport = viewport;
   }
 
@@ -234,38 +243,41 @@ class UIController {
     });
   }
 
-  private selectSquare(square: string) {
+  private onMouseDown = (event: MouseEvent) => {
+    // if (!this.resolveMove) return;
+    const square = this.viewport.screenToSquare(event.offsetX, event.offsetY);
+
     if (gameController?.board.legalMovesMap.has(square)) {
       this.selected = square;
     }
+
+    renderer?.draw();
   }
 
-  private onClick = (event: MouseEvent) => {
-    if (!this.resolveMove) return;
-    const x = event.offsetX;
-    const y = event.offsetY;
+  private onMouseMove = (event: MouseEvent) => {
+    this.x = event.offsetX;
+    this.y = event.offsetY;
+    renderer?.draw();
+  }
 
-    const square = this.viewport.screenToSquare(x, y);
+  private onMouseUp = (event: MouseEvent) => {
+    if (!this.resolveMove || !this.selected) return;
+    const square = this.viewport.screenToSquare(event.offsetX, event.offsetY);
 
-    if (!this.selected) {
-      this.selectSquare(square);
-    } else {
-      if (gameController?.board.legalMovesMap.get(this.selected)?.has(square)) {
-        const resolve = this.resolveMove;
-        this.resolveMove = null;
-        resolve(`${this.selected}${square}`);
-      } else {
-        this.selectSquare(square);
-      }
+    if (gameController?.board.legalMovesMap.get(this.selected)?.has(square)) {
+      const resolve = this.resolveMove;
+      this.resolveMove = null;
+      resolve(`${this.selected}${square}`);
     }
 
+    this.selected = null;
     renderer?.draw();
   }
 };
 
 export class UIPlayer implements Player {
   getMove(): Promise<string> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
     return uiCountroller!.waitForPlayerMove();
   }
 }
@@ -376,11 +388,6 @@ class GameController {
 }
 
 // ---------------------------- Utils ------------------------------------
-
-function isLowerCase(char: string) {
-  return char === char.toLowerCase() && char !== char.toUpperCase();
-};
-
 function fileRankToSquare(file: number, rank: number) {
   return `${String.fromCharCode(97 + file)}${rank + 1}`;
 };
