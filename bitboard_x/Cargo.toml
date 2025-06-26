@@ -30,3 +30,12 @@ chrono = "0.4"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1"
+
+[profile.dev]
+debug = true
+
+[profile.release]
+debug = true
+
+[profile.bench]
+debug = true
