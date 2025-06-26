@@ -19,15 +19,16 @@ let renderer: Renderer | null = null;
 let engine: WasmEngine | null = null;
 let uiCountroller: UIController | null = null;
 let gameController: GameController | null = null;
+let board: ChessBoard | null = null;
 
+// ---------------------------- Initialization -------------------------------
 export function createGame(white: Player, black: Player, fen?: string) {
+  board = new ChessBoard(fen || DEFAULT_FEN);
 
   gameController = new GameController(
     white,
     black,
-    fen,
   );
-
   return gameController;
 }
 
@@ -41,7 +42,11 @@ async function loadImage(code: string): Promise<HTMLImageElement> {
   });
 }
 
-export async function initialize(callback: () => void) {
+interface Config {
+  canvas: HTMLCanvasElement;
+}
+
+export async function initialize(config: Config, callback: () => void) {
   await init();
 
   Promise.all(PIECE_CODES.map(loadImage))
@@ -54,15 +59,13 @@ export async function initialize(callback: () => void) {
         PIECE_RES.set(piece, img);
       });
 
-      const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
-      canvas.tabIndex = 0;
-      canvas.style.margin = '20px auto';
+      const { canvas } = config;
 
       const viewport = new Viewport(canvas);
       renderer = new Renderer(viewport);
       uiCountroller = new UIController(viewport);
 
-      console.log(`Initializing engine ${name()}`);
+      console.log(`✅ Initializing engine ${name()}`);
       engine = new WasmEngine();
 
       callback();
@@ -70,6 +73,87 @@ export async function initialize(callback: () => void) {
     .catch(err => {
       console.error("❌ One or more images failed to load:", err);
     });
+}
+
+// ---------------------------- Chess Board Wrapper -----------------------------
+class ChessBoard {
+  private position: WasmPosition;
+  private initialPos: string;
+
+  private _boardString = '';
+  private _legalMoves: string[] = [];
+  private _legalMovesMap = new Map<string, Set<string>>();
+
+  private history: WasmMove[];
+
+  constructor(fen: string) {
+    this.position = new WasmPosition(fen);
+
+    this.initialPos = `fen ${fen}`;
+    this.history = [];
+
+    this.updateInternal();
+  }
+
+  get boardString() {
+    return this._boardString;
+  }
+
+  get legalMovesMap() {
+    return this._legalMovesMap;
+  }
+
+  public uciPosition(): string {
+    const { history, initialPos } = this;
+    const moves = history.length > 0 ? `moves ${history.map(mv => mv.to_string()).join(' ')}` : '';
+    const uci = `position ${initialPos} ${moves}`;
+    return uci;
+  }
+
+  public lastMove(): WasmMove | null {
+    return this.history.length > 0 ? this.history[this.history.length - 1] : null;
+  }
+
+  private updateInternal() {
+    // board string
+    this._boardString = this.position.board_string();
+    // legal moves
+    this._legalMoves = this.position.legal_moves();
+    this._legalMovesMap.clear();
+
+    for (const move of this._legalMoves) {
+      const src = move.slice(0, 2); // e.g. "e2"
+      const dst = move.slice(2, 4); // e.g. "e4"
+      if (!this._legalMovesMap.has(src)) {
+        this._legalMovesMap.set(src, new Set());
+      }
+      this._legalMovesMap.get(src)?.add(dst);
+    }
+  }
+
+  isGameOver(): boolean {
+    return this._legalMoves.length === 0;
+  }
+
+  turn(): number {
+    return this.position.turn();
+  }
+
+  makeMove(move_str: string) {
+    const move = this.position.make_move(move_str);
+    if (move) {
+      this.history.push(move);
+
+      this.updateInternal();
+    }
+
+    return move;
+  }
+
+  getPieceAt(square: string) {
+    const index = squareStringToIndex(square);
+    return this._boardString[index];
+  }
 }
 
 // ---------------------------- GUI and Renderer -------------------------------
@@ -118,10 +202,9 @@ class Renderer {
     this.viewport = viewport;
   }
 
-  async draw(board?: ChessBoard) {
+  async draw() {
     const { ctx, viewport } = this;
     const { width, height } = viewport.canvas;
-    board = board || gameController?.board;
     if (board) {
       ctx.clearRect(0, 0, width, height);
       this.drawBoard(board);
@@ -141,7 +224,7 @@ class Renderer {
     const selected = uiCountroller?.selected || '';
     const legalMoves = board.legalMovesMap.get(selected);
 
-    const lastMove = board.history.length > 0 ? board.history[board.history.length - 1] : null;
+    const lastMove = board.lastMove();
     for (let idx = 0; idx < BOARD_SIZE * BOARD_SIZE; ++idx) {
       const [file, rank] = squareToFileRank(idx);
       const sq = fileRankToSquare(file, rank);
@@ -185,7 +268,7 @@ class Renderer {
 
   private drawPieces(board: ChessBoard) {
     const { squareSize } = this;
-    const boardString = board.position.board_string();
+    const boardString = board.boardString;
     const { selected, x, y } = uiCountroller!;
     for (let idx = 0; idx < 64; ++idx) {
       const piece = boardString[idx];
@@ -202,7 +285,171 @@ class Renderer {
   }
 }
 
+class UIController {
+  selected: string | null = null;
+  x = -1;
+  y = -1;
+  private selectingPromotion = false;
+  private viewport: Viewport;
+  private resolveMove: ((move: string) => void) | null = null;
+
+  constructor(viewport: Viewport) {
+    viewport.canvas.addEventListener('mousedown', this.onMouseDown);
+    viewport.canvas.addEventListener('mousemove', this.onMouseMove);
+    viewport.canvas.addEventListener('mouseup', this.onMouseUp);
+    this.viewport = viewport;
+  }
+
+  waitForPlayerMove(): Promise<string> {
+    return new Promise((resolve) => {
+      this.resolveMove = resolve;
+      this.selected = null;
+    });
+  }
+
+  private onMouseDown = (event: MouseEvent) => {
+    const square = this.viewport.screenToSquare(event.offsetX, event.offsetY);
+
+    if (board!.legalMovesMap.has(square)) {
+      this.selected = square;
+    }
+
+    renderer!.draw();
+  }
+
+  private onMouseMove = (event: MouseEvent) => {
+    if (this.selectingPromotion) return;
+    this.x = event.offsetX;
+    this.y = event.offsetY;
+    renderer!.draw();
+  }
+
+  private onMouseUp = async (event: MouseEvent) => {
+    if (!this.resolveMove || !this.selected) return;
+    const square = this.viewport.screenToSquare(event.offsetX, event.offsetY);
+
+    if (board!.legalMovesMap.get(this.selected)?.has(square)) {
+      let move = `${this.selected}${square}`;
+
+      const piece = board!.getPieceAt(this.selected);
+
+      let promotion = null;
+      if (piece === 'P' && square[1] === '8') {
+        promotion = true;
+      } else if (piece === 'p' && square[1] === '1') {
+        promotion = false;
+      }
+
+      if (promotion !== null) {
+        this.selected = null;
+        this.selectingPromotion = true;
+        const promotionPiece = await this.waitForPromotionSelection(promotion, event);
+        this.selectingPromotion = false;
+        move += promotionPiece;
+      }
+
+      const resolve = this.resolveMove;
+      this.resolveMove = null;
+      resolve(move);
+    }
+
+    this.selected = null;
+    renderer!.draw();
+  }
+
+  private waitForPromotionSelection(isWhite: boolean, event: MouseEvent): Promise<string> {
+    return new Promise((resolve) => {
+      const container = document.createElement('div');
+      container.id = 'promotion-dialog';
+      container.style.position = 'absolute';
+      container.style.left = `${event.clientX}px`;
+      container.style.top = `${event.clientY}px`;
+      container.style.display = 'flex';
+      container.style.gap = '8px';
+      container.style.zIndex = '9999';
+      container.style.background = 'rgba(255, 255, 255, 0.95)';
+      container.style.padding = '6px';
+      container.style.border = '1px solid #ccc';
+      container.style.borderRadius = '4px';
+      container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+
+      const pieces = ['Q', 'R', 'B', 'N'];
+
+      for (let piece of pieces) {
+        if (!isWhite) {
+          piece = piece.toLowerCase();
+        }
+
+        const option = document.createElement('div');
+        option.style.width = '64px';
+        option.style.height = '64px';
+        option.style.cursor = 'pointer';
+        option.style.backgroundImage = `url(${PIECE_RES.get(piece)?.src})`;
+        option.style.backgroundSize = 'contain';
+        option.style.backgroundRepeat = 'no-repeat';
+        option.style.backgroundPosition = 'center';
+
+        option.onclick = () => {
+          document.body.removeChild(container);
+          resolve(piece);
+        };
+
+        container.appendChild(option);
+      }
+
+      document.body.appendChild(container);
+    });
+  }
+};
+
 // ---------------------------- Game Controller -------------------------------
+class GameController {
+  private players: Player[];
+  private isRunning = false;
+
+  constructor(white: Player, black: Player) {
+    this.players = [white, black];
+    renderer?.draw();
+  }
+
+  public activePlayer(): Player {
+    return this.players[board!.turn()];
+  }
+
+  public isGameOver(): boolean {
+    return board!.isGameOver();
+  }
+
+  async start(): Promise<void> {
+    this.isRunning = true;
+    this.step();
+  }
+
+  stop() {
+    this.isRunning = false;
+  }
+
+  private step = async () => {
+    if (!this.isRunning) {
+      return;
+    }
+
+    const activePlayer = this.activePlayer();
+
+    const moveStr = await activePlayer.getMove(board!.uciPosition());
+
+    const move = board!.makeMove(moveStr);
+
+    if (move) {
+      await renderer!.draw();
+    }
+
+    setTimeout(() => {
+      requestAnimationFrame(this.step);
+    }, 200); // controls pace between moves
+  };
+}
+
 export interface Player {
   getMove(history: string): Promise<string>; // returns UCI move, e.g. "e2e4"
 }
@@ -222,169 +469,11 @@ export class BotPlayer implements Player {
   }
 }
 
-class UIController {
-  selected: string | null = null;
-  x = -1;
-  y = -1;
-  private viewport: Viewport;
-  private resolveMove: ((move: string) => void) | null = null;
-
-  constructor(viewport: Viewport) {
-    viewport.canvas.addEventListener('mousedown', this.onMouseDown);
-    viewport.canvas.addEventListener('mousemove', this.onMouseMove);
-    viewport.canvas.addEventListener('mouseup', this.onMouseUp);
-    this.viewport = viewport;
-  }
-
-  waitForPlayerMove(): Promise<string> {
-    return new Promise((resolve) => {
-      this.resolveMove = resolve;
-      this.selected = null;
-    });
-  }
-
-  private onMouseDown = (event: MouseEvent) => {
-    // if (!this.resolveMove) return;
-    const square = this.viewport.screenToSquare(event.offsetX, event.offsetY);
-
-    if (gameController?.board.legalMovesMap.has(square)) {
-      this.selected = square;
-    }
-
-    renderer?.draw();
-  }
-
-  private onMouseMove = (event: MouseEvent) => {
-    this.x = event.offsetX;
-    this.y = event.offsetY;
-    renderer?.draw();
-  }
-
-  private onMouseUp = (event: MouseEvent) => {
-    if (!this.resolveMove || !this.selected) return;
-    const square = this.viewport.screenToSquare(event.offsetX, event.offsetY);
-
-    if (gameController?.board.legalMovesMap.get(this.selected)?.has(square)) {
-      const resolve = this.resolveMove;
-      this.resolveMove = null;
-      resolve(`${this.selected}${square}`);
-    }
-
-    this.selected = null;
-    renderer?.draw();
-  }
-};
-
 export class UIPlayer implements Player {
   getMove(): Promise<string> {
 
     return uiCountroller!.waitForPlayerMove();
   }
-}
-
-export class ChessBoard {
-  position: WasmPosition;
-  legalMoves: string[] = [];
-  legalMovesMap = new Map<string, Set<string>>();
-  initialPos: string;
-  history: WasmMove[];
-
-  constructor(fen: string | undefined) {
-    this.position = new WasmPosition(fen || DEFAULT_FEN);
-
-    this.initialPos = fen ? `fen ${fen}` : 'startpos';
-    this.history = [];
-    this.updateLegalMoves();
-  }
-
-  updateLegalMoves() {
-    this.legalMoves = this.position.legal_moves();
-    this.legalMovesMap.clear();
-
-    for (const move of this.legalMoves) {
-      const src = move.slice(0, 2); // e.g. "e2"
-      const dst = move.slice(2, 4); // e.g. "e4"
-      if (!this.legalMovesMap.has(src)) {
-        this.legalMovesMap.set(src, new Set());
-      }
-      this.legalMovesMap.get(src)?.add(dst);
-    }
-  }
-
-  isGameOver(): boolean {
-    return this.legalMoves.length === 0;
-  }
-
-  turn(): number {
-    return this.position.turn();
-  }
-
-  makeMove(move_str: string) {
-    const move = this.position.make_move(move_str);
-    if (move) {
-      this.history.push(move);
-
-      this.updateLegalMoves();
-    }
-
-    return move;
-  }
-}
-
-class GameController {
-  private players: Player[];
-  private isRunning = false;
-  board: ChessBoard;
-
-  constructor(white: Player, black: Player, fen?: string) {
-    this.board = new ChessBoard(fen);
-    this.players = [white, black];
-    renderer?.draw(this.board);
-  }
-
-  public activePlayer(): Player {
-    return this.players[this.board.turn()];
-  }
-
-  public isGameOver(): boolean {
-    return this.board.isGameOver();
-  }
-
-  public uciPosition(): string {
-    const { history } = this.board;
-    const moves = history.length > 0 ? `moves ${history.map(mv => mv.to_string()).join(' ')}` : '';
-    const uci = `position ${this.board.initialPos} ${moves}`;
-    return uci;
-  }
-
-  async start(): Promise<void> {
-    this.isRunning = true;
-    this.step();
-  }
-
-  stop() {
-    this.isRunning = false;
-  }
-
-  private step = async () => {
-    if (!this.isRunning) {
-      return;
-    }
-
-    const activePlayer = this.activePlayer();
-
-    const moveStr = await activePlayer.getMove(this.uciPosition());
-
-    const move = this.board.makeMove(moveStr);
-
-    if (move) {
-      await renderer?.draw();
-    }
-
-    setTimeout(() => {
-      requestAnimationFrame(this.step);
-    }, 200); // controls pace between moves
-  };
 }
 
 // ---------------------------- Utils ------------------------------------
@@ -394,4 +483,10 @@ function fileRankToSquare(file: number, rank: number) {
 
 function squareToFileRank(square: number): [number, number] {
   return [square % BOARD_SIZE, Math.floor(square / BOARD_SIZE)];
+}
+
+function squareStringToIndex(square: string): number {
+  const file = square.charCodeAt(0) - 97; // 'a' is 97
+  const rank = parseInt(square[1], 10) - 1; // '1' is 1
+  return rank * BOARD_SIZE + file;
 }

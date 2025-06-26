@@ -14,23 +14,34 @@ function createGame() {
   const whitePlayer = selectPlayer('white-player');
   const blackPlayer = selectPlayer('black-player');
 
+  const input = document.getElementById('fen-input') as HTMLInputElement;
+  const fen = input.value;
+
   return Chess.createGame(
     whitePlayer,
     blackPlayer,
-    document.getElementById('fen-input')?.textContent || undefined
+    fen,
   );
 }
 
-Chess.initialize(() => {
-  let controller = createGame();
-  document.getElementById('start-button')?.addEventListener('click', () => {
-    if (controller) {
-      controller.stop(); // gracefully cancel current game
-    }
+async function main() {
+  const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
+  canvas.tabIndex = 0;
+  canvas.style.margin = '20px auto';
 
-    controller = createGame();
+  await Chess.initialize({ canvas }, () => {
+    let controller = createGame();
+    document.getElementById('start-button')?.addEventListener('click', () => {
+      if (controller) {
+        controller.stop();
+      }
+
+      controller = createGame();
+      controller.start();
+    });
+
     controller.start();
   });
+}
 
-  controller.start();
-});
+main();
