@@ -3,6 +3,7 @@ from pathlib import Path
 import chess.pgn
 import sys
 import os
+import webbrowser
 
 html_head = '''<!DOCTYPE html>
 <html lang="en">
@@ -36,7 +37,7 @@ html_head = '''<!DOCTYPE html>
     .merged-bar {
       display: flex;
       height: 20px;
-      width: 300px;
+      width: 600px;
       border: 1px solid #aaa;
       margin: 8px 0;
     }
@@ -179,8 +180,13 @@ def main():
         sys.exit(1)
 
     p = Path(sys.argv[1])
-    new_name = p.with_suffix('.html').name  # replaces extension, keeps filename only
+    html_path = p.with_suffix('.html').name  # replaces extension, keeps filename only
 
-    pgn_to_markdown(sys.argv[1], new_name)
+    pgn_to_markdown(sys.argv[1], html_path)
+
+    file_url = f"file://{os.path.abspath(html_path)}"
+
+    # Open in default browser
+    webbrowser.open(file_url)
 
 main()

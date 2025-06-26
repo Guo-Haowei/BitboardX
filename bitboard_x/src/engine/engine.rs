@@ -70,7 +70,9 @@ impl Engine {
         let promotion = mv.get_promotion();
         for mv in legal_moves.iter().copied() {
             if mv.src_sq() == src_sq && mv.dst_sq() == dst_sq && mv.get_promotion() == promotion {
-                self.make_move_unverified(mv);
+                self.pos.make_move(mv);
+
+                *self.repetition_table.entry(self.pos.state.hash).or_insert(0) += 1;
                 return true;
             }
         }
@@ -82,12 +84,6 @@ impl Engine {
     pub fn repetition_count(&self, key: ZobristHash) -> u32 {
         let val = self.repetition_table.get(&key).unwrap_or(&0);
         *val
-    }
-
-    pub fn make_move_unverified(&mut self, mv: Move) {
-        self.pos.make_move(mv);
-
-        *self.repetition_table.entry(self.pos.state.hash).or_insert(0) += 1;
     }
 
     /// The following methods are for UCI commands

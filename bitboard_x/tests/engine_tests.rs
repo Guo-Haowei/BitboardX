@@ -10,15 +10,15 @@ named_test!(find_mate_in_two, {
     let mut engine = Engine::from_fen(fen).unwrap();
     let mv = engine.best_move(SEARCH_DEPTH).unwrap();
     assert_eq!(mv.to_string(), "g4h3");
-    engine.make_move_unverified(mv);
+    engine.make_move("g4h3");
 
     let mv = engine.best_move(SEARCH_DEPTH).unwrap();
     assert_eq!(mv.to_string(), "f3h2");
-    engine.make_move_unverified(mv);
+    engine.make_move("f3h2");
 
     let mv = engine.best_move(SEARCH_DEPTH).unwrap();
     assert_eq!(mv.to_string(), "h3h2");
-    engine.make_move_unverified(mv);
+    engine.make_move("h3h2");
 });
 
 named_test!(find_mate_in_three, {
