@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import init from '../../bitboard_x/pkg/bitboard_x';
-import { WasmPosition, WasmEngine, WasmMove, name } from '../../bitboard_x/pkg/bitboard_x';
+import init, { WasmPosition, WasmEngine, WasmMove, name } from '../../pkg/bitboard_x';
 
 const PIECE_RES = new Map<string, HTMLImageElement>();
 const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK'];
