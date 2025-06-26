@@ -17,7 +17,7 @@ const DARK_SQUARE_COLOR = 'rgba(181, 136, 99, 1)';
 
 let renderer: Renderer | null = null;
 let engine: WasmEngine | null = null;
-let uiCountroller: UIController | null = null;
+let uiController: UIController | null = null;
 let gameController: GameController | null = null;
 let board: ChessBoard | null = null;
 
@@ -66,7 +66,7 @@ export async function initialize(config: Config, callback: () => void) {
       renderer = new Renderer(viewport);
 
       if (config.createUIPlayer) {
-        uiCountroller = new UIController(viewport);
+        uiController = new UIController(viewport);
       }
 
       console.log(`✅ Initializing engine ${name()}`);
@@ -225,7 +225,7 @@ class Renderer {
   private drawBoard(board: ChessBoard) {
     const { ctx, squareSize } = this;
 
-    const selected = uiCountroller?.selected || '';
+    const selected = uiController?.selected || '';
     const legalMoves = board.legalMovesMap.get(selected);
 
     const lastMove = board.lastMove();
@@ -273,7 +273,8 @@ class Renderer {
   private drawPieces(board: ChessBoard) {
     const { squareSize } = this;
     const boardString = board.boardString;
-    const { selected, x, y } = uiCountroller!;
+
+    const { selected, x, y } = uiController !== null ? uiController : { selected: null, x: -1, y: -1 };
     for (let idx = 0; idx < 64; ++idx) {
       const piece = boardString[idx];
       if (piece === '.') continue;
@@ -301,6 +302,9 @@ class UIController {
     viewport.canvas.addEventListener('mousedown', this.onMouseDown);
     viewport.canvas.addEventListener('mousemove', this.onMouseMove);
     viewport.canvas.addEventListener('mouseup', this.onMouseUp);
+    viewport.canvas.addEventListener('touchstart', this.onMouseDown);
+    viewport.canvas.addEventListener('touchmove', this.onMouseMove);
+    viewport.canvas.addEventListener('touchend', this.onMouseUp);
     this.viewport = viewport;
   }
 
@@ -311,9 +315,18 @@ class UIController {
     });
   }
 
-  private onMouseDown = (event: MouseEvent) => {
+  private normalizeMouseEvent(e: MouseEvent | TouchEvent): { x: number, y: number } {
+    if (e instanceof TouchEvent) {
+      const touch = e.touches[0] || e.changedTouches[0];
+      return { x: touch.clientX, y: touch.clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  private onMouseDown = (event: MouseEvent | TouchEvent) => {
     if (!this.resolveMove) return;
-    const square = this.viewport.screenToSquare(event.offsetX, event.offsetY);
+    const { x, y } = this.normalizeMouseEvent(event);
+    const square = this.viewport.screenToSquare(x, y);
 
     if (board!.legalMovesMap.has(square)) {
       this.selected = square;
@@ -322,16 +335,18 @@ class UIController {
     renderer!.draw();
   };
 
-  private onMouseMove = (event: MouseEvent) => {
-    if (!this.resolveMove) return;
-    this.x = event.offsetX;
-    this.y = event.offsetY;
+  private onMouseMove = (event: MouseEvent | TouchEvent) => {
+    if (!this.resolveMove || this.selectingPromotion) return;
+    const { x, y } = this.normalizeMouseEvent(event);
+    this.x = x;
+    this.y = y;
     renderer!.draw();
   };
 
-  private onMouseUp = async (event: MouseEvent) => {
+  private onMouseUp = async (event: MouseEvent | TouchEvent) => {
     if (!this.resolveMove || !this.selected) return;
-    const square = this.viewport.screenToSquare(event.offsetX, event.offsetY);
+    const { x, y } = this.normalizeMouseEvent(event);
+    const square = this.viewport.screenToSquare(x, y);
 
     if (board!.legalMovesMap.get(this.selected)?.has(square)) {
       let move = `${this.selected}${square}`;
@@ -362,13 +377,15 @@ class UIController {
     renderer!.draw();
   };
 
-  private waitForPromotionSelection(isWhite: boolean, event: MouseEvent): Promise<string> {
+  private waitForPromotionSelection(isWhite: boolean, event: MouseEvent | TouchEvent): Promise<string> {
+    const { x, y } = this.normalizeMouseEvent(event);
+
     return new Promise((resolve) => {
       const container = document.createElement('div');
       container.id = 'promotion-dialog';
       container.style.position = 'absolute';
-      container.style.left = `${event.clientX}px`;
-      container.style.top = `${event.clientY}px`;
+      container.style.left = `${x}px`;
+      container.style.top = `${y}px`;
       container.style.display = 'flex';
       container.style.gap = '8px';
       container.style.zIndex = '9999';
@@ -475,7 +492,7 @@ export class BotPlayer implements Player {
 export class UIPlayer implements Player {
   getMove(): Promise<string> {
 
-    return uiCountroller!.waitForPlayerMove();
+    return uiController!.waitForPlayerMove();
   }
 }
 

@@ -1,43 +1,6 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as Chess from './chess';
-import { ChessSocket, StreamingPlayer } from './socket';
-
-interface MatchData {
-  player1: string;
-  player2: string;
-  wins: number;
-  losses: number;
-  draws: number;
-}
-
-function writeMatchHTML(matchData: MatchData): string {
-  const { player1, player2, wins, losses, draws } = matchData;
-  const totalGames = (wins + losses + draws) / 100; // Assuming the data is in percentage format;
-  return `
-  <div class="bg-[#2b2b2b] p-4 rounded-lg">
-    <div class="flex justify-between items-center mb-2">
-      <h2 class="text-lg font-semibold">${player1} vs ${player2}</h2>
-        <span class="text-sm text-gray-400">100 games</span>
-    </div>
-    <div class="text-sm text-gray-300 mb-2">
-      Wins: <span class="text-green-400">${wins}</span>
-      Draws: <span class="text-gray-400">${draws}</span>
-      Losses: <span class="text-red-400">${losses}</span>
-    </div>
-    <div class="flex h-4 w-full overflow-hidden rounded bg-gray-700 mb-2">
-      <div class="bg-green-500" style="width: ${wins / totalGames}%"></div>
-      <div class="bg-gray-500" style="width: ${draws / totalGames}%"></div>
-      <div class="bg-red-500" style="width: ${losses / totalGames}%"></div>
-    </div>
-    <details class="text-base">
-      <summary class="cursor-pointer text-gray-300 hover:text-white">View Matches</summary>
-      <div class="mt-2 space-y-2 max-h-40 overflow-y-auto text-sm bg-[#1a1a1a] p-2 rounded">
-        <div><strong>Round 1 PGN:</strong> 1.e4 e5 2.Nf3 Nc6 3.Bb5 a6</div>
-        <div><strong>Round 2 PGN:</strong> 1.d4 d5 2.c4 e6 3.Nc3 Nf6</div>
-        <div><strong>Round 3 PGN:</strong> 1.e4 c5 2.Nf3 d6 3.d4 cxd4</div>
-      </div>
-    </details>
-  </div>`;
-}
+import { writeMatchHTML } from './ui-generation';
 
 async function loadMeta() {
   [{
@@ -99,18 +62,85 @@ function initSelectEngineButton(color: string) {
 initSelectEngineButton('white');
 initSelectEngineButton('black');
 
+class StreamingPlayer implements Chess.Player {
+  private moveQueue: string[] = [];
+  private waitingResolve: ((move: string) => void) | null = null;
+
+  queueMove(bestmove: string): void {
+    if (this.waitingResolve) {
+      this.waitingResolve(bestmove);
+      this.waitingResolve = null;
+    } else {
+      this.moveQueue.push(bestmove);
+    }
+  }
+
+  async getMove(): Promise<string> {
+    if (this.moveQueue.length > 0) {
+      return this.moveQueue.shift()!;
+    }
+    return new Promise((resolve) => {
+      this.waitingResolve = resolve;
+    });
+  };
+}
+
+const player = new StreamingPlayer();
+
+class ChessSocket {
+  private socket: WebSocket;
+
+  constructor(url: string) {
+    this.socket = new WebSocket(url);
+
+    this.socket.onopen = () => {
+      console.log("[WebSocket] Connected");
+    };
+
+    this.socket.onmessage = (event) => {
+      const msg: string = event.data;
+      let match = msg.match(/bestmove\s+(\w+)/);
+      if (match) {
+        player.queueMove(match[1]);
+        return;
+      }
+
+      match = msg.match(/Started game (\d+) of (\d+) \((.+?) vs (.+?)\)/);
+      if (match) {
+        const whitePlayerDiv = document.getElementById('white-player') as HTMLDivElement;
+        whitePlayerDiv.textContent = match[3];
+        const blackPlayerDiv = document.getElementById('black-player') as HTMLDivElement;
+        blackPlayerDiv.textContent = match[4];
+        const game = Chess.createGame(player, player);
+        game.start();
+        return;
+      }
+
+      match = msg.match(/Finished game/);
+      if (match) {
+        // @TODO: restart
+        return;
+      }
+
+      console.log("[WebSocket] Message received:", msg);
+    };
+  }
+
+  send(msg: string) {
+    this.socket.send(msg);
+  }
+}
+
 const socket = new ChessSocket('ws://localhost:3000/ws');
 
 async function main() {
   const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
   canvas.tabIndex = 0;
 
-  await Chess.initialize({ canvas }, async () => {
+  await Chess.initialize({ canvas, createUIPlayer: false }, async () => {
     document.getElementById('match-button')?.addEventListener('click', async () => {
       const whitePlayer = (document.getElementById('select-white') as HTMLDivElement).textContent;
       const blackPlayer = (document.getElementById('select-black') as HTMLDivElement).textContent;
-
-      console.log('Starting match with players:', whitePlayer, blackPlayer);
 
       if (!whitePlayer || !blackPlayer) {
         alert('Please select both players before starting the match.');
@@ -118,13 +148,6 @@ async function main() {
       }
 
       socket.send(`match:${whitePlayer}:${blackPlayer}`);
-
-      const player1 = new StreamingPlayer(socket);
-      const player2 = new StreamingPlayer(socket);
-      while (true) {
-        const game = Chess.createGame(player1, player2);
-        await game.start();
-      }
     });
   });
 }

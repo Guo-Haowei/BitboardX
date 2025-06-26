@@ -27,22 +27,25 @@ function createGame() {
 async function main() {
   const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
   canvas.tabIndex = 0;
-  canvas.style.margin = '20px auto';
+  // canvas.style.margin = '20px auto';
 
   await Chess.initialize({ canvas, createUIPlayer: true }, async () => {
     let controller = createGame();
-    const result = await controller.start();
-    if (result !== 'playing') alert(result);
 
     document.getElementById('start-button')?.addEventListener('click', async () => {
       if (controller) {
         controller.stop();
       }
 
+      console.log('Starting new game...');
+
       controller = createGame();
       const result = await controller.start();
       if (result !== 'playing') alert(result);
     });
+
+    const result = await controller.start();
+    if (result !== 'playing') alert(result);
   });
 }
 

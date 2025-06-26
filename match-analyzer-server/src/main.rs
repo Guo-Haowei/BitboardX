@@ -1,6 +1,5 @@
 use futures::{SinkExt, StreamExt, stream::SplitSink};
 use regex::Regex;
-use serde::Serialize;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio_tungstenite::{WebSocketStream, accept_async};
@@ -8,21 +7,6 @@ use tokio_tungstenite::{WebSocketStream, accept_async};
 const PROJECT_ROOT: &'static str = env!("CARGO_MANIFEST_DIR");
 
 type SplitSinkStream = SplitSink<WebSocketStream<TcpStream>, Message>;
-
-#[derive(Serialize)]
-struct BestMoveMessage {
-    r#type: &'static str,
-    bestmove: String,
-}
-
-#[derive(Serialize)]
-struct NewGameMessage {
-    r#type: &'static str,
-    game: i32,
-    total: i32,
-    white: String,
-    black: String,
-}
 
 async fn run_match(
     ws_sink: &mut SplitSinkStream,
@@ -48,6 +32,8 @@ async fn run_match(
     let engine_1_cmd = format!("cmd={}", engine_1_path);
     let engine_2_cmd = format!("cmd={}", engine_2_path);
 
+    let out_file = format!("{}_vs_{}.pgn", engine_1, engine_2);
+
     let args = [
         "-engine",
         engine_1_name.as_str(),
@@ -63,7 +49,7 @@ async fn run_match(
         "-debug",
         "all",
         "-pgnout",
-        "out.pgn",
+        out_file.as_str(),
     ];
 
     let mut child = async_process::Command::new("cutechess-cli.exe")
@@ -81,25 +67,13 @@ async fn run_match(
         let line = line?;
 
         let re = Regex::new(r#"Started game (\d+) of (\d+) \(([^)]+) vs ([^)]+)\)"#).unwrap();
-        if let Some(caps) = re.captures(&line) {
-            let new_game_message = NewGameMessage {
-                r#type: "newgame",
-                game: caps.get(0).unwrap().as_str().parse().unwrap_or(0),
-                total: caps.get(1).unwrap().as_str().parse().unwrap_or(0),
-                white: caps.get(2).unwrap().as_str().to_string(),
-                black: caps.get(3).unwrap().as_str().to_string(),
-            };
-            ws_sink.send(Message::Text(serde_json::to_string(&new_game_message)?)).await?;
+        if re.is_match(&line) {
+            ws_sink.send(Message::Text(line)).await?;
             continue;
         }
 
-        let re = Regex::new(r"bestmove\s+(\S+)").unwrap();
-        if let Some(caps) = re.captures(&line) {
-            if let Some(bestmove) = caps.get(1) {
-                let bestmove_msg =
-                    BestMoveMessage { r#type: "bestmove", bestmove: bestmove.as_str().to_string() };
-                ws_sink.send(Message::Text(serde_json::to_string(&bestmove_msg)?)).await?;
-            }
+        if line.contains("bestmove") {
+            ws_sink.send(Message::Text(line)).await?;
             continue;
         }
 
