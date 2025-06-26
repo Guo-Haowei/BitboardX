@@ -7,17 +7,12 @@ const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR',
 const BOARD_SIZE = 8;
 const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+// @TODO: allow user to configure the colors
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
 const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
-const YELLOW_COLOR_1 = 'rgba(150, 150, 0, 0.5)';
+const YELLOW_COLOR = 'rgba(200, 200, 0, 0.5)';
 const LIGHT_SQUARE_COLOR = 'rgba(240, 217, 181, 1)';
 const DARK_SQUARE_COLOR = 'rgba(181, 136, 99, 1)';
-const YELLOW_COLOR_2 = 'rgba(200, 200, 0, 0.5)';
-
-const PIECE_SYMBOLS: Record<string, string> = {
-  'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
-  'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙',
-};
 
 let renderer: Renderer | null = null;
 let engine: WasmEngine | null = null;
@@ -76,7 +71,7 @@ export async function initialize(callback: () => void) {
     });
 }
 
-// ---------------------------- Renderer -----------------------------------
+// ---------------------------- GUI and Renderer -------------------------------
 class Viewport {
   squareSize = 0;
   canvas: HTMLCanvasElement;
@@ -97,11 +92,16 @@ class Viewport {
     this.canvas.height = size;
     this.squareSize = size / BOARD_SIZE;
   }
+
+  screenToSquare(x: number, y: number): string {
+    const file = Math.floor(x / this.squareSize);
+    const rank = 7 - Math.floor(y / this.squareSize);
+    return fileRankToSquare(file, rank);
+  }
 }
 
 class Renderer {
   private ctx: CanvasRenderingContext2D;
-  private images: Map<string, HTMLImageElement>;
   private viewport: Viewport;
 
   private get squareSize() {
@@ -115,7 +115,6 @@ class Renderer {
     }
 
     this.viewport = viewport;
-    this.images = PIECE_RES;
   }
 
   async draw(board?: ChessBoard) {
@@ -141,62 +140,45 @@ class Renderer {
     const selected = uiCountroller?.selected || '';
     const legalMoves = board.legalMovesMap.get(selected);
 
-    for (let row = 0; row < BOARD_SIZE; row++) {
-      for (let col = 0; col < BOARD_SIZE; col++) {
-        const color = ((row + col) % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
-        this.fillSquare(col, row, color);
+    const lastMove = board.history.length > 0 ? board.history[board.history.length - 1] : null;
+    for (let idx = 0; idx < BOARD_SIZE * BOARD_SIZE; ++idx) {
+      const [file, rank] = squareToFileRank(idx);
+      const sq = fileRankToSquare(file, rank);
 
-        const sq = fileRankToSquare(col, 7 - row);
-        if (sq === selected) {
-          this.fillSquare(col, row, RED_COLOR);
-        } else if (legalMoves && legalMoves.has(sq)) {
-          this.fillSquare(col, row, GREEN_COLOR);
-        }
-
-        const lastMove = board.history.length > 0 ? board.history[board.history.length - 1] : null;
-        if (lastMove) {
-          const src = lastMove.src_sq();
-          const dst = lastMove.dst_sq();
-          if (sq === src) {
-            this.fillSquare(col, row, YELLOW_COLOR_1);
-          } else if (sq === dst) {
-            this.fillSquare(col, row, YELLOW_COLOR_2);
-          }
-        }
+      const row = 7 - rank; // flip the rank for rendering
+      this.fillSquare(file, row, (row + file) % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+      if (sq === selected) {
+        this.fillSquare(file, row, RED_COLOR);
+      } else if (legalMoves && legalMoves.has(sq)) {
+        this.fillSquare(file, row, GREEN_COLOR);
+      }
+      if (lastMove && (sq === lastMove.src_sq() || sq === lastMove.dst_sq())) {
+        this.fillSquare(file, row, YELLOW_COLOR);
       }
     }
 
     const fontSize = Math.floor(squareSize / 4);
     ctx.font = `${fontSize}px Arial`;
     ctx.textAlign = 'center';
-    for (let file = 0; file < BOARD_SIZE; ++file) {
-      const color = (file % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+    for (let i = 0; i < BOARD_SIZE; ++i) {
+      const color = (i % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+      const fileStr = String.fromCharCode(97 + i); // 'a' + i
+      const rankStr = (i + 1).toString();
       ctx.fillStyle = color;
-      const x = file * squareSize + 0.88 * squareSize;
-      const y = 7.93 * squareSize;
-      ctx.fillText(String.fromCharCode(97 + file).toString(), x, y);
-    }
-
-    // draw rank labels
-    for (let row = 0; row < BOARD_SIZE; row++) {
-      const color = (row % 2 === 0 ? DARK_SQUARE_COLOR : LIGHT_SQUARE_COLOR);
-      ctx.fillStyle = color;
-      const x = 0.1 * squareSize;
-      const y = row * squareSize + 0.3 * squareSize;
-      ctx.fillText((8 - row).toString(), x, y);
+      let x = (i + 0.88) * squareSize;
+      let y = 7.93 * squareSize;
+      ctx.fillText(fileStr, x, y);
+      x = 0.1 * squareSize;
+      y = (7.3 - i) * squareSize;
+      ctx.fillText(rankStr, x, y);
     }
   }
 
   private drawPiece(piece: string, x: number, y: number) {
     const squareSize = this.squareSize * 0.86; // make it a bit smaller than the tile size
-    const img = this.images.get(piece);
-    if (img) {
-      const half = squareSize / 2;
-      this.ctx.drawImage(img, x - half, y - half, squareSize, squareSize);
-    } else {
-      this.ctx.fillStyle = isLowerCase(piece) ? 'black' : 'white';
-      this.ctx.fillText(PIECE_SYMBOLS[piece], x, y);
-    }
+    const half = squareSize / 2;
+    const img = PIECE_RES.get(piece);
+    if (img) this.ctx.drawImage(img, x - half, y - half, squareSize, squareSize);
   }
 
   private drawPieces(board: ChessBoard) {
@@ -204,16 +186,13 @@ class Renderer {
 
     const boardString = board.position.board_string();
 
-    for (let row = 0; row < BOARD_SIZE; ++row) {
-      for (let col = 0; col < BOARD_SIZE; ++col) {
-        const idx = (7 - row) * BOARD_SIZE + col;
-        const piece = boardString[idx];
-        if (piece !== '.') {
-          const x = col * squareSize + squareSize / 2;
-          const y = row * squareSize + squareSize / 2;
-          this.drawPiece(piece, x, y);
-        }
-      }
+    for (let idx = 0; idx < 64; ++idx) {
+      const piece = boardString[idx];
+      if (piece === '.') continue;
+      const [file, rank] = squareToFileRank(idx);
+      const x = file * squareSize + squareSize / 2;
+      const y = (7 - rank) * squareSize + squareSize / 2;
+      this.drawPiece(piece, x, y);
     }
   }
 }
@@ -265,10 +244,8 @@ class UIController {
     if (!this.resolveMove) return;
     const x = event.offsetX;
     const y = event.offsetY;
-    const { squareSize } = this.viewport;
-    const file = Math.floor(x / squareSize);
-    const rank = 7 - Math.floor(y / squareSize);
-    const square = fileRankToSquare(file, rank);
+
+    const square = this.viewport.screenToSquare(x, y);
 
     if (!this.selected) {
       this.selectSquare(square);
@@ -408,8 +385,6 @@ function fileRankToSquare(file: number, rank: number) {
   return `${String.fromCharCode(97 + file)}${rank + 1}`;
 };
 
-// function squareToFileRank(square: string): [number, number] {
-//   const file = square.charCodeAt(0) - 97; // 'a' is 97 in ASCII
-//   const rank = square.charCodeAt(1) - 49; // '1' is 49 in ASCII, so we subtract 1 to get zero-based rank
-//   return [file, rank];
-// }
+function squareToFileRank(square: number): [number, number] {
+  return [square % BOARD_SIZE, Math.floor(square / BOARD_SIZE)];
+}
