@@ -13,8 +13,8 @@ const VERSION_PATCH: u32 = 10; // v0.1.10
 
 pub struct Engine {
     pub(super) pos: Position,
-    pub(super) repetition_table: HashMap<ZobristHash, u32>, // for threefold detection
     pub(super) tt: TTable,
+    repetition_table: HashMap<ZobristHash, u32>, // for threefold detection
 }
 
 impl Engine {
@@ -79,6 +79,18 @@ impl Engine {
 
         log::error!("'{}' is not a legal move", mv_str);
         return false;
+    }
+
+    pub fn repetition_add(&mut self, key: ZobristHash) {
+        *self.repetition_table.entry(key).or_insert(0) += 1;
+    }
+
+    pub fn repetition_remove(&mut self, key: ZobristHash) {
+        if let Some(count) = self.repetition_table.get_mut(&key) {
+            if *count > 0 {
+                *count -= 1;
+            }
+        }
     }
 
     pub fn repetition_count(&self, key: ZobristHash) -> u32 {

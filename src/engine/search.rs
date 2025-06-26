@@ -59,13 +59,17 @@ impl SearchContext {
 
     fn make_move(&mut self, engine: &mut Engine, mv: Move) -> UndoState {
         let undo_state = engine.pos.make_move(mv);
-        *(engine.repetition_table.entry(engine.pos.state.hash).or_insert(0)) += 1;
+        let hash = engine.pos.state.hash;
+
+        engine.repetition_add(hash);
         undo_state
     }
 
     fn unmake_move(&mut self, engine: &mut Engine, mv: Move, undo_state: &UndoState) {
+        let hash = engine.pos.state.hash;
+        engine.repetition_remove(hash);
+
         engine.pos.unmake_move(mv, undo_state);
-        *(engine.repetition_table.get_mut(&engine.pos.state.hash).unwrap()) -= 1;
     }
 
     fn evaluate(&mut self, pos: &Position) -> i32 {
