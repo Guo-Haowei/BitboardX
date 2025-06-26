@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 import chess.pgn
 import sys
 import os
@@ -47,6 +48,17 @@ html_head = '''<!DOCTYPE html>
     .win  { background-color: #4caf50; }  /* Green */
     .draw { background-color: #9e9e9e; }  /* Gray */
     .loss { background-color: #f44336; }  /* Red */
+
+    textarea {
+      width: 100%;
+      height: 200px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 6px 12px;
+    }
   </style>
 </head>
 <body>
@@ -54,6 +66,16 @@ html_head = '''<!DOCTYPE html>
 '''
 
 html_foot = '''
+  <script>
+    function copyPGN(num) {
+      const textarea = document.getElementById("pgn-" + num);
+      textarea.select();
+      document.execCommand("copy");
+    }
+    function openAnalysis() {
+      window.open("https://www.chess.com/analysis?tab=analysis", "_blank");
+    }
+  </script>
 </body>
 </html>
 '''
@@ -131,11 +153,14 @@ def pgn_to_markdown(pgn_path, md_path):
                     moves[-1] += f' {san}'
                 board.push(move)
 
-            # Moves section
-            details += '<p><strong>Moves:</strong></p>\n'
-            details += f'<p>{" ".join(moves)}</p>\n'
+            details += f'<textarea id="pgn-{game_count}" readonly>'
+            details += f'[White "{white}"]\n'
+            details += f'[Black "{black}"]\n'
+            details += ' '.join(moves)
+            details += '</textarea>\n'
+            details += f'<button onclick="copyPGN({game_count})">Copy PGN</button>\n'
+            details += f'<button onclick="openAnalysis()">Open Analysis</button>\n'
             details += '<hr>\n'
-
             game_count += 1
 
         for player, stats in stats.items():
@@ -153,6 +178,9 @@ def main():
         print('Usage: python report.py <path_to_pgn_file>')
         sys.exit(1)
 
-    pgn_to_markdown(sys.argv[1], 'report.html')
+    p = Path(sys.argv[1])
+    new_name = p.with_suffix('.html').name  # replaces extension, keeps filename only
+
+    pgn_to_markdown(sys.argv[1], new_name)
 
 main()

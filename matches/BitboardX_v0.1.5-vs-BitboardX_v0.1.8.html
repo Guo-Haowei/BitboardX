@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chess Game Results</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #fdfdfd;
+      color: #222;
+    }
+    h2 { margin-top: 2rem; }
+    hr { margin: 2rem 0; }
+    .bar-container {
+      background: #eee;
+      border: 1px solid #ccc;
+      width: 200px;
+      height: 16px;
+      margin-bottom: 4px;
+    }
+    .bar-fill {
+      height: 100%;
+    }
+    .stat-label {
+      font-weight: bold;
+    }
+    .merged-bar {
+      display: flex;
+      height: 20px;
+      width: 300px;
+      border: 1px solid #aaa;
+      margin: 8px 0;
+    }
+
+    .bar-segment {
+      height: 100%;
+    }
+
+    .win  { background-color: #4caf50; }  /* Green */
+    .draw { background-color: #9e9e9e; }  /* Gray */
+    .loss { background-color: #f44336; }  /* Red */
+
+    textarea {
+      width: 100%;
+      height: 200px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 6px 12px;
+    }
+  </style>
+</head>
+<body>
+<h1>Chess Game Report</h1>
+<h2>BitboardX_v0.1.5 Results</h2>
+
+    <div class="merged-bar">
+      <div class="bar-segment win" style="flex: 0;"></div>
+      <div class="bar-segment draw" style="flex: 7;"></div>
+      <div class="bar-segment loss" style="flex: 3;"></div>
+    </div>
+    <div>
+      Wins: 0 &nbsp; Draws: 7 &nbsp; Losses: 3
+    </div>
+    <h2>BitboardX_v0.1.8 Results</h2>
+
+    <div class="merged-bar">
+      <div class="bar-segment win" style="flex: 3;"></div>
+      <div class="bar-segment draw" style="flex: 7;"></div>
+      <div class="bar-segment loss" style="flex: 0;"></div>
+    </div>
+    <div>
+      Wins: 3 &nbsp; Draws: 7 &nbsp; Losses: 0
+    </div>
+    <h2>Game 1: BitboardX_v0.1.5 vs BitboardX_v0.1.8 (Draw)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 1/2-1/2</li>
+</ul>
+<textarea id="pgn-1" readonly>[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.8"]
+1. Nf3 Nf6 2. c4 g6 3. g3 Bg7 4. Bg2 O-O 5. O-O d5 6. cxd5 Nxd5 7. d4 Nb6 8. Nc3 Nc6 9. e3 Re8 10. Re1 Nb4 11. a3 N4d5 12. Bd2 Bg4 13. Nb5 Nc4 14. Bc1 c6 15. e4 cxb5 16. exd5 Qxd5 17. h3 Bxf3 18. Qxf3 Qxf3 19. Bxf3 Bxd4 20. Bxb7 Rab8 21. Bc6 Nxb2 22. Bxe8 Bxf2+ 23. Kxf2 Nd3+ 24. Kg1 Nxe1 25. Bd7 Nf3+ 26. Kh1 Ne5 27. Bf4 Nxd7 28. Bxb8 Nxb8 29. Ra2 Nc6 30. Re2 Kg7 31. Kg1 Kf6 32. Kh1 Nd4 33. Rd2 Nf5 34. Rf2 Ke5 35. g4 Kd4 36. gxf5 b4 37. axb4 Kc3 38. h4 Kxb4 39. Rf1 gxf5 40. Rxf5 f6 41. h5 h6 42. Rf1 Kc5 43. Ra1 Kb6 44. Rb1+ Kc7 45. Ra1 Kb6 46. Rb1+ Kc7 47. Rc1+ Kd6 48. Ra1 Kc7 49. Rxa7+ Kd6 50. Ra1 f5 51. Rb1 Kc6 52. Ra1 Kd6 53. Rb1 Kc6 54. Rc1+ Kd6 55. Rb1</textarea>
+<button onclick="copyPGN(1)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 2: BitboardX_v0.1.8 vs BitboardX_v0.1.5 (Draw)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 1/2-1/2</li>
+</ul>
+<textarea id="pgn-2" readonly>[White "BitboardX_v0.1.8"]
+[Black "BitboardX_v0.1.5"]
+1. Nf3 Nf6 2. c4 e6 3. Nc3 Bb4 4. Qc2 O-O 5. a3 Bxc3 6. Qxc3 b6 7. g3 Bb7 8. Bg2 d6 9. O-O Nbd7 10. b4 Re8 11. Bb2 Be4 12. d3 Bc6 13. b5 Bb7 14. Nd4 Bxg2 15. Kxg2 Qc8 16. Qb4 e5 17. Nb3 d5 18. cxd5 a6 19. d6 axb5 20. dxc7 Qxc7 21. Rac1 Qb7+ 22. e4 Rac8 23. Rxc8 Rxc8 24. Qxb5 Qc6 25. Qxc6 Rxc6 26. Kf3 Nh5 27. Rd1 Rg6 28. Rc1 Kf8 29. Rc7 Ke8 30. Ra7 Kd8 31. Bc3 Kc8 32. Rxd7 Kxd7 33. Bxe5 f6 34. Bc3 f5 35. exf5 Rd6 36. Bd4 Nf6 37. Ke2 Nd5 38. Bxg7 Kc8 39. Kd2 Rd7 40. Bd4 b5 41. Bb2 Kb8 42. Be5+ Ka7 43. Nd4 Rb7 44. Bd6 Kb6 45. Be5 b4 46. axb4 Nxb4 47. Kc3 Nd5+ 48. Kc4 Rd7 49. Nb3 Kc6 50. Na5+ Kb6 51. Nb3 Ka7 52. Bd4+ Kb8 53. Nc5 Rd8 54. Ne6 Rd7 55. Nf8 Rd8 56. Nxh7 Rd7 57. Nf8 Rd8 58. Ne6 Rd7 59. Nc5 Rd8 60. Ne6 Rd7 61. Nc5 Nb6+ 62. Kc3 Rc7 63. Kd2 Ra7 64. Kc3 Rc7 65. Kd2 Ra7 66. Kc3 Rc7</textarea>
+<button onclick="copyPGN(2)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 3: BitboardX_v0.1.5 vs BitboardX_v0.1.8 (BitboardX_v0.1.8 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-3" readonly>[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.8"]
+1. e4 g6 2. d4 d6 3. Nc3 Bg7 4. Nf3 Nf6 5. h3 O-O 6. Be3 a6 7. a4 b6 8. Bc4 Nxe4 9. Nxe4 d5 10. Ned2 dxc4 11. Ke2 Qd5 12. Re1 Bb7 13. c3 Qf5 14. Nxc4 Bxf3+ 15. gxf3 Qxh3 16. d5 Qf5 17. Qd3 Qxd3+ 18. Kxd3 Rd8 19. Ke4 f5+ 20. Kd3 Rxd5+ 21. Kc2 Nd7 22. Kb3 Bf6 23. Re2 Rc8 24. Ka2 b5 25. axb5 axb5 26. Na3 Ne5 27. f4 Nc4 28. Nxc4 bxc4 29. Rae1 Rb8 30. Rc2 Ra5+ 31. Kb1 Rba8 32. Ba7 R8xa7 33. Rce2 Bxc3 34. Kc2 Bxe1 35. Rxe1 c3 36. Kxc3 Kf7 37. b4 Ra1 38. Rxa1 Rxa1 39. Kb3 Rf1 40. f3 Rxf3+ 41. Ka2 Rxf4 42. Kb3 c6 43. Ka3 Ke6 44. Kb3 Kd6 45. Ka3 Rc4 46. Kb3 Kd5 47. Ka3 Kd4 48. Kb3 Kd3 49. Ka3 Kc3 50. b5 cxb5 51. Ka2 Kc2 52. Ka3 Ra4#</textarea>
+<button onclick="copyPGN(3)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 4: BitboardX_v0.1.8 vs BitboardX_v0.1.5 (BitboardX_v0.1.8 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-4" readonly>[White "BitboardX_v0.1.8"]
+[Black "BitboardX_v0.1.5"]
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Nxe4 6. d4 b5 7. Bb3 d5 8. dxe5 Be6 9. c3 Bc5 10. Qd3 Ne7 11. Nd4 Bg4 12. Nd2 Bxd4 13. Qxd4 c5 14. Qe3 Nf5 15. Qf4 Be2 16. Nxe4 Bxf1 17. Qxf5 f6 18. exf6 Bd3 19. Qe6+ Qe7 20. Qxe7#</textarea>
+<button onclick="copyPGN(4)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 5: BitboardX_v0.1.5 vs BitboardX_v0.1.8 (Draw)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 1/2-1/2</li>
+</ul>
+<textarea id="pgn-5" readonly>[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.8"]
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O d6 6. Re1 Bd7 7. c4 Nd4 8. Bxd7+ Kxd7 9. Nxd4 exd4 10. Qb3 Kc6 11. Na3 Qe7 12. Nc2 Qe5 13. Nb4+ Kd7 14. Nd3 Qa5 15. Qxb7 Re8 16. b4 Qb6 17. Qxb6 cxb6 18. Bb2 Rxe4 19. Rxe4 Nxe4 20. Bxd4 Nxd2 21. Bxb6 Nxc4 22. Bd4 Na3 23. Rc1 Nb5 24. Ba1 Rg8 25. a4 Nc7 26. Re1 Nd5 27. b5 axb5 28. axb5 g5 29. f3 Bg7 30. Bxg7 Rxg7 31. Kh1 Nc3 32. f4 gxf4 33. Nxf4 Rg4 34. Nh5 Rg6 35. Nf4 Rf6 36. Nh5 Rf5 37. g4 Rf2 38. Kg1 Re2 39. Nf6+ Ke6 40. Rf1 h6 41. Ng8 h5 42. gxh5 Rb2 43. Nh6 Rxb5 44. Nxf7 Rxh5 45. Rf2 Ne4 46. Rf4 Ng5 47. Nxg5+ Rxg5+ 48. Kh1 Ke5 49. Rf1 Rg4 50. h3 Rb4 51. Ra1 Rc4 52. Rb1 Rc3 53. Re1+ Kf4 54. h4 Rh3+ 55. Kg1 Rxh4 56. Rd1 Ke5 57. Rd2 Rd4 58. Re2+ Re4 59. Rf2 Rg4+ 60. Kh2 Rf4 61. Re2+ Re4 62. Rxe4+ Kxe4 63. Kg2 Ke3 64. Kh2 Kf2 65. Kh3 Kf3 66. Kh2 Ke4 67. Kg2 Ke3 68. Kg1 Kf3 69. Kf1 Ke3 70. Kg2 Ke2 71. Kh2 Kf3 72. Kg1 Ke3 73. Kg2 Ke2 74. Kh2 Kf3 75. Kg1 Ke3 76. Kg2</textarea>
+<button onclick="copyPGN(5)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 6: BitboardX_v0.1.8 vs BitboardX_v0.1.5 (Draw)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 1/2-1/2</li>
+</ul>
+<textarea id="pgn-6" readonly>[White "BitboardX_v0.1.8"]
+[Black "BitboardX_v0.1.5"]
+1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. O-O Nxe4 5. d4 Nd6 6. Bxc6 dxc6 7. dxe5 Nf5 8. Qxd8+ Kxd8 9. Nc3 Ke8 10. Rd1 Ne7 11. Bg5 Bg4 12. Rd3 h6 13. Bc1 Nf5 14. Ne4 Ke7 15. Nc5 Bxf3 16. gxf3 f6 17. Nxb7 fxe5 18. Bd2 Kf6 19. Na5 Nd4 20. Rxd4 exd4 21. Nxc6 Bc5 22. Bf4 Bd6 23. Bxd6 cxd6 24. Nxd4 Rab8 25. Re1 Rxb2 26. Re6+ Kg5 27. Rxd6 Rb1+ 28. Kg2 Re1 29. Rd7 g6 30. Rxa7 Rd8 31. Ra5+ Kf4 32. Ra6 Rxd4 33. Rxg6 h5 34. Rf6+ Ke5 35. Rf8 Ra1 36. Re8+ Kf4 37. Ra8 h4 38. Rf8+ Ke5 39. Ra8 Rb1 40. Re8+ Kf4 41. Rh8 Rd6 42. Rxh4+ Kf5 43. Rh5+ Kf4 44. Rh4+ Kf5 45. Rh5+ Kg6 46. Rh8 Rc1 47. Rc8 Rb1 48. Rg8+ Kf6 49. Rf8+ Kg6 50. Rg8+ Kf7 51. Rg4 Rbd1 52. Rf4+ Kg6 53. Rg4+ Kf5 54. Rg8 Rc1 55. Rf8+ Kg5 56. Rc8 Rb1 57. Rg8+ Kh6 58. Rh8+ Kg5 59. Rg8+ Kh6 60. Rh8+ Kg7 61. Rh4 Rc1 62. Rc4 Rcd1 63. Rg4+ Kf6 64. Rf4+ Ke5 65. Rh4 Re1 66. Rh5+ Kd4 67. Kg3 Rg1+ 68. Kh3 Rc1 69. Rh4+ Kc3 70. Rh7 Ra1 71. Rc7+ Kb2 72. Kg4 Rxa2 73. Kf4 Ra1 74. Ke4 Rc1 75. Rb7+ Ka1 76. Ke5 Rcd1 77. Ra7+ Kb1 78. Rb7+ Ka1 79. Ra7+ Kb1 80. Rb7+ Ka1</textarea>
+<button onclick="copyPGN(6)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 7: BitboardX_v0.1.5 vs BitboardX_v0.1.8 (Draw)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 1/2-1/2</li>
+</ul>
+<textarea id="pgn-7" readonly>[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.8"]
+1. d4 Nf6 2. c4 e6 3. g3 d5 4. Nf3 Be7 5. Bg2 O-O 6. Nc3 dxc4 7. Ne5 c5 8. dxc5 Qxd1+ 9. Nxd1 Bxc5 10. Nxc4 Nc6 11. Be3 Nd4 12. Kd2 Rd8 13. Bxd4 Rxd4+ 14. Kc3 Ne4+ 15. Bxe4 Rxe4 16. e3 Rg4 17. f3 Rg5 18. b4 Be7 19. Kb3 Rb5 20. a3 Rf5 21. Re1 Rxf3 22. Rb1 Rf5 23. e4 Rf6 24. Ndb2 Rf2 25. b5 Rxh2 26. Nd3 Bd7 27. a4 Rh3 28. Nce5 Rxg3 29. Ka2 Bd6 30. Nxd7 Rxd3 31. Rbd1 Ra3+ 32. Kb1 Be7 33. Rc1 Rxa4 34. Rc2 Rb4+ 35. Ka2 Rxb5 36. Rb1 Ra5+ 37. Kb3 Rb5+ 38. Ka2 Ra5+ 39. Kb3 Rb5+ 40. Ka2</textarea>
+<button onclick="copyPGN(7)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 8: BitboardX_v0.1.8 vs BitboardX_v0.1.5 (Draw)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 1/2-1/2</li>
+</ul>
+<textarea id="pgn-8" readonly>[White "BitboardX_v0.1.8"]
+[Black "BitboardX_v0.1.5"]
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. Qc2 O-O 5. a3 Bxc3+ 6. Qxc3 b6 7. Bg5 Bb7 8. e3 c5 9. dxc5 bxc5 10. f3 Nc6 11. Ne2 Qc7 12. Bxf6 gxf6 13. Qxf6 Qd8 14. Qf4 e5 15. Qe4 Na5 16. Qxe5 Nxc4 17. Qxc5 Nxb2 18. Qf5 Re8 19. Qg4+ Kh8 20. Qd4+ f6 21. Qxb2 Qb6 22. Qxb6 axb6 23. Kd2 Re7 24. Nf4 Rd8 25. Rb1 Ba8 26. Rxb6 Rde8 27. Bb5 Bc6 28. Bxc6 dxc6 29. Rxc6 Rxe3 30. Ra1 f5 31. Rc5 R3e7 32. Rxf5 Rg8 33. Kd3 Rd8+ 34. Kc4 Rc8+ 35. Kd5 Rd7+ 36. Ke6 Rdc7 37. Nd5 Re8+ 38. Kd6 Rg7 39. Ra2 h6 40. Rh5 Rg6+ 41. Kc5 Rc8+ 42. Kd4 Rf8 43. Ke4 Rd8 44. Ke3 Rdg8 45. Nf4 Rf6 46. Nd5 Re8+ 47. Kd3 Ra6 48. Nc7 Rd6+ 49. Kc4 Rc6+ 50. Kd5 Rxc7 51. Rxh6+ Kg8 52. Rg6+ Kh8 53. Rh6+ Kg7 54. Rh4 Rd8+ 55. Ke6 Re8+ 56. Kd5 Rd8+ 57. Ke6 Kg8 58. Rg4+ Kh8 59. Rh4+ Kg8 60. Rg4+ Kh8 61. Rh4+ Kg8</textarea>
+<button onclick="copyPGN(8)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 9: BitboardX_v0.1.5 vs BitboardX_v0.1.8 (BitboardX_v0.1.8 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-9" readonly>[White "BitboardX_v0.1.5"]
+[Black "BitboardX_v0.1.8"]
+1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. Bf4 O-O 6. Rc1 dxc4 7. e4 Bg4 8. Bxc4 Nh5 9. Be3 Bxf3 10. gxf3 e5 11. dxe5 Qxd1+ 12. Kxd1 Bxe5 13. Nb5 Bxb2 14. Rc2 Be5 15. Kc1 Nc6 16. Bc5 Rfc8 17. Bd5 a6 18. Nc3 Nf6 19. Bxc6 Bf4+ 20. Be3 Bxe3+ 21. fxe3 bxc6 22. Re2 Nd7 23. Rd1 Ne5 24. Rf1 Nd3+ 25. Kd2 Rd8 26. Kc2 Nb4+ 27. Kb3 Rab8 28. Kc4 Nd3 29. a3 Ne5+ 30. Kc5 Rb3 31. Rc2 Rd6 32. Rh1 Nxf3 33. a4 Ne5 34. Ne2 a5 35. Rg1 Rb4 36. Rc4 Nd3#</textarea>
+<button onclick="copyPGN(9)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 10: BitboardX_v0.1.8 vs BitboardX_v0.1.5 (Draw)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.22</li>
+  <li><strong>Result</strong>: 1/2-1/2</li>
+</ul>
+<textarea id="pgn-10" readonly>[White "BitboardX_v0.1.8"]
+[Black "BitboardX_v0.1.5"]
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Nf6 5. Nxf6+ gxf6 6. c3 Bf5 7. Nf3 Be4 8. Nd2 Bg6 9. Qb3 Qb6 10. Qxb6 axb6 11. Be2 Kd8 12. Nc4 Nd7 13. Bg4 Bd3 14. Ne3 Bh6 15. Bh5 Bg6 16. Bxg6 hxg6 17. Ke2 Kc8 18. Kd3 b5 19. Ng4 Bxc1 20. Rhxc1 Rd8 21. Re1 e5 22. Nh6 exd4 23. Nxf7 Nc5+ 24. Kc2 d3+ 25. Kd2 Rf8 26. Nd6+ Kd7 27. Ne4 Nxe4+ 28. Rxe4 Kc8 29. Rg4 g5 30. Kxd3 Re8 31. Re4 Rxe4 32. Kxe4 c5 33. Kd5 c4 34. Kc5 Ra5 35. Kb6 Ra6+ 36. Kxb5 Rc6 37. Re1 Kb8 38. Re3 Ka7 39. Rf3 g4 40. Rf4 f5 41. Rxf5 Rc7 42. h3 gxh3 43. gxh3 b6 44. Rf6 Rc5+ 45. Kb4 Rc8 46. Rf3 Rc7 47. Rf4 Kb8 48. Rf3 Kc8 49. Rf6 Kb8 50. Rxb6+ Ka8 51. Rb5 Ka7 52. Rc5 Rb7+ 53. Rb5 Rf7 54. Kxc4 Rxf2 55. Rb4 Rf7 56. Kd5 Rd7+ 57. Kc6 Re7 58. Ra4+ Kb8 59. Rh4 Rc7+ 60. Kd5 Rd7+ 61. Ke5 Rf7 62. Rb4+ Ka7 63. Kd5 Rd7+ 64. Kc6 Re7 65. Ra4+ Kb8 66. Rh4 Rc7+ 67. Kd5 Rd7+ 68. Ke5 Ka7 69. Ra4+ Kb6 70. Rb4+ Ka7 71. Ke4 Rh7 72. Ra4+ Kb6 73. Ra3 Rxh3 74. Rb3+ Kc6 75. Rb4 Rh7 76. Rc4+ Kb6 77. Rb4+ Ka7 78. Kd5 Rd7+ 79. Kc6 Re7 80. Kd6 Re8 81. Kd5 Rd8+ 82. Ke4 Re8+ 83. Kd5 Re7 84. Kd6 Rg7 85. Kd5 Rd7+ 86. Kc6 Rf7 87. Ra4+ Kb8 88. Re4 Rf6+ 89. Kd5 Ka7 90. Ra4+ Kb6 91. Rb4+ Ka7 92. Ra4+ Kb8 93. Re4 Rf7 94. Rb4+ Ka7 95. Ke5 Rd7 96. Ke6 Rd8 97. Ke5 Rd7 98. Ke6 Rg7 99. Kd5 Rd7+</textarea>
+<button onclick="copyPGN(10)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+
+  <script>
+    function copyPGN(num) {
+      const textarea = document.getElementById("pgn-" + num);
+      textarea.select();
+      document.execCommand("copy");
+    }
+    function openAnalysis() {
+      window.open("https://www.chess.com/analysis?tab=analysis", "_blank");
+    }
+  </script>
+</body>
+</html>
