@@ -44,6 +44,7 @@ async function loadImage(code: string): Promise<HTMLImageElement> {
 
 interface Config {
   canvas: HTMLCanvasElement;
+  createUIPlayer: boolean;
 }
 
 export async function initialize(config: Config, callback: () => void) {
@@ -63,7 +64,10 @@ export async function initialize(config: Config, callback: () => void) {
 
       const viewport = new Viewport(canvas);
       renderer = new Renderer(viewport);
-      uiCountroller = new UIController(viewport);
+
+      if (config.createUIPlayer) {
+        uiCountroller = new UIController(viewport);
+      }
 
       console.log(`✅ Initializing engine ${name()}`);
       engine = new WasmEngine();
@@ -308,6 +312,7 @@ class UIController {
   }
 
   private onMouseDown = (event: MouseEvent) => {
+    if (!this.resolveMove) return;
     const square = this.viewport.screenToSquare(event.offsetX, event.offsetY);
 
     if (board!.legalMovesMap.has(square)) {
@@ -315,14 +320,14 @@ class UIController {
     }
 
     renderer!.draw();
-  }
+  };
 
   private onMouseMove = (event: MouseEvent) => {
-    if (this.selectingPromotion) return;
+    if (!this.resolveMove) return;
     this.x = event.offsetX;
     this.y = event.offsetY;
     renderer!.draw();
-  }
+  };
 
   private onMouseUp = async (event: MouseEvent) => {
     if (!this.resolveMove || !this.selected) return;
@@ -355,7 +360,7 @@ class UIController {
 
     this.selected = null;
     renderer!.draw();
-  }
+  };
 
   private waitForPromotionSelection(isWhite: boolean, event: MouseEvent): Promise<string> {
     return new Promise((resolve) => {
@@ -420,37 +425,32 @@ class GameController {
     return board!.isGameOver();
   }
 
-  async start(): Promise<void> {
+  async start(): Promise<string> {
     this.isRunning = true;
-    this.step();
+
+    while (true) {
+      if (!this.isRunning) return 'paused';
+      if (this.isGameOver()) return 'gameover';
+      const activePlayer = this.activePlayer();
+      const moveStr = await activePlayer.getMove(board!.uciPosition());
+
+      const move = board!.makeMove(moveStr);
+
+      if (move) {
+        await renderer!.draw();
+      }
+
+      await sleep(200); // at least 200ms between moves
+    }
   }
 
   stop() {
     this.isRunning = false;
   }
+}
 
-  private step = async () => {
-    if (!this.isRunning) return;
-
-    if (this.isGameOver()) {
-      alert("Game over!");
-      return;
-    }
-
-    const activePlayer = this.activePlayer();
-
-    const moveStr = await activePlayer.getMove(board!.uciPosition());
-
-    const move = board!.makeMove(moveStr);
-
-    if (move) {
-      await renderer!.draw();
-    }
-
-    setTimeout(() => {
-      requestAnimationFrame(this.step);
-    }, 200); // controls pace between moves
-  };
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export interface Player {

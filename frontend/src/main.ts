@@ -29,9 +29,10 @@ async function main() {
   canvas.tabIndex = 0;
   canvas.style.margin = '20px auto';
 
-  await Chess.initialize({ canvas }, async () => {
+  await Chess.initialize({ canvas, createUIPlayer: true }, async () => {
     let controller = createGame();
-    await controller.start();
+    const result = await controller.start();
+    if (result !== 'playing') alert(result);
 
     document.getElementById('start-button')?.addEventListener('click', async () => {
       if (controller) {
@@ -39,7 +40,8 @@ async function main() {
       }
 
       controller = createGame();
-      await controller.start();
+      const result = await controller.start();
+      if (result !== 'playing') alert(result);
     });
   });
 }

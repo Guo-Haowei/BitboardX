@@ -1,3 +1,6 @@
+import * as Chess from './chess';
+import { ChessSocket, StreamingPlayer } from './socket';
+
 interface MatchData {
   player1: string;
   player2: string;
@@ -74,21 +77,6 @@ async function loadMeta() {
 
 window.onload = loadMeta;
 
-const canvas = document.getElementById('chessboard') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-const squareSize = canvas.width / 8;
-function drawBoard() {
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
-      const isLight = (x + y) % 2 === 0;
-      ctx.fillStyle = isLight ? '#f0d9b5' : '#b58863';
-      ctx.fillRect(x * squareSize, y * squareSize, squareSize, squareSize);
-    }
-  }
-}
-drawBoard();
-
-
 function initSelectEngineButton(color: string) {
   const button = document.getElementById(`select-${color}`) as HTMLDivElement;
   const fileInput = document.getElementById(`${color}-player-input`) as HTMLInputElement;
@@ -111,45 +99,34 @@ function initSelectEngineButton(color: string) {
 initSelectEngineButton('white');
 initSelectEngineButton('black');
 
-function connect() {
-  let reconnectDelay = 1000; // 1 second
-  const socket = new WebSocket("ws://localhost:3000");
+const socket = new ChessSocket('ws://localhost:3000/ws');
 
-  socket.onopen = () => {
-    console.log("[WebSocket] Connected");
-    reconnectDelay = 1000; // Reset delay after successful connect
-  };
+async function main() {
+  const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
+  canvas.tabIndex = 0;
 
-  socket.onmessage = (event) => {
-    console.log("[WebSocket] Message:", event.data);
-  };
+  await Chess.initialize({ canvas }, async () => {
+    document.getElementById('match-button')?.addEventListener('click', async () => {
+      const whitePlayer = (document.getElementById('select-white') as HTMLDivElement).textContent;
+      const blackPlayer = (document.getElementById('select-black') as HTMLDivElement).textContent;
 
-  socket.onclose = () => {
-    console.warn("[WebSocket] Disconnected. Reconnecting in", reconnectDelay, "ms");
-    setTimeout(connect, reconnectDelay);
-    reconnectDelay = Math.min(reconnectDelay * 2, 10000); // exponential backoff up to 10s
-  };
+      console.log('Starting match with players:', whitePlayer, blackPlayer);
 
-  socket.onerror = (err) => {
-    console.error("[WebSocket] Error:", err);
-    socket?.close(); // Ensure close triggers reconnect
-  };
+      if (!whitePlayer || !blackPlayer) {
+        alert('Please select both players before starting the match.');
+        return;
+      }
 
-  return socket;
+      socket.send(`match:${whitePlayer}:${blackPlayer}`);
+
+      const player1 = new StreamingPlayer(socket);
+      const player2 = new StreamingPlayer(socket);
+      while (true) {
+        const game = Chess.createGame(player1, player2);
+        await game.start();
+      }
+    });
+  });
 }
 
-const socket = connect();
-
-document.getElementById('match-button')?.addEventListener('click', () => {
-  const whitePlayer = (document.getElementById('select-white') as HTMLDivElement).textContent;
-  const blackPlayer = (document.getElementById('select-black') as HTMLDivElement).textContent;
-
-  console.log('Starting match with players:', whitePlayer, blackPlayer);
-
-  if (!whitePlayer || !blackPlayer) {
-    alert('Please select both players before starting the match.');
-    return;
-  }
-
-  socket.send(`match:${whitePlayer}:${blackPlayer}`);
-});
+main();

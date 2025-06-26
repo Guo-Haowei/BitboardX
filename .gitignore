@@ -10,6 +10,9 @@ frontend/chess/
 # build artifacts
 # *.exe
 
+# hardlinked files
+/match-analyzer/src/chess.ts
+
 # user-specific files
 *.log
 *.txt
