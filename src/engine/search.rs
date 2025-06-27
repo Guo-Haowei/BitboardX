@@ -1,5 +1,4 @@
-use crate::core::position::{Position, UndoState};
-use crate::core::{move_gen, types::*};
+use crate::core::{move_gen, position::Position, types::*};
 use crate::engine::Engine;
 use crate::engine::book::*;
 use crate::engine::evaluation::Evaluation;
@@ -57,21 +56,6 @@ impl SearchContext {
         self.killer_moves[ply as usize].contains(&Some(mv))
     }
 
-    fn make_move(&mut self, engine: &mut Engine, mv: Move) -> UndoState {
-        let undo_state = engine.pos.make_move(mv);
-        let hash = engine.pos.state.hash;
-
-        engine.repetition_add(hash);
-        undo_state
-    }
-
-    fn unmake_move(&mut self, engine: &mut Engine, mv: Move, undo_state: &UndoState) {
-        let hash = engine.pos.state.hash;
-        engine.repetition_remove(hash);
-
-        engine.pos.unmake_move(mv, undo_state);
-    }
-
     fn evaluate(&mut self, pos: &Position) -> i32 {
         self.leaf_count += 1;
 
@@ -84,9 +68,9 @@ impl SearchContext {
         // @TODO: cancel
 
         // @TODO: order
-        let move_list = move_gen::capture_moves(&engine.pos);
+        let move_list = move_gen::capture_moves(&engine.state.pos);
 
-        let eval = self.evaluate(&engine.pos);
+        let eval = self.evaluate(&engine.state.pos);
         if eval >= beta {
             // searchDiagnostics.numCutOffs++;
             return beta;
@@ -100,13 +84,13 @@ impl SearchContext {
         }
 
         if move_list.is_empty() {
-            return self.evaluate(&engine.pos);
+            return self.evaluate(&engine.state.pos);
         }
 
         for mv in move_list.iter().copied() {
-            let undo_state = self.make_move(engine, mv);
+            let undo_state = engine.state.make_move(mv);
             let score = -self.quiescence(engine, -beta, -alpha, depth - 1);
-            self.unmake_move(engine, mv, &undo_state);
+            engine.state.unmake_move(mv, &undo_state);
 
             if score >= beta {
                 // @TODO: stats
@@ -129,32 +113,27 @@ impl SearchContext {
         mut beta: i32,
     ) -> (i32, Move) {
         // @TODO: refactor draw detection and mate detection
-        let key = engine.pos.state.hash;
+        let key = engine.state.pos.state.hash;
         let alpha_orig = alpha;
         let is_root = ply_remaining == max_ply;
 
+        // --- 1) Check for repetition and 50-move rule ---
         if max_ply > ply_remaining {
-            // --- 1) Check for repetition and 50-move rule ---
-            let repetition = engine.repetition_count(key);
-            // threefold draw
-            if repetition >= 3 {
-                assert!(repetition == 3);
+            if engine.state.is_three_fold() {
                 log::debug!("repetition detected at depth: {}", ply_remaining);
                 return (DRAW_PENALTY, Move::null());
             }
 
-            // 50-move rule draw
-            if engine.pos.state.halfmove_clock >= 100 {
-                assert!(engine.pos.state.halfmove_clock == 100);
-                log::debug!("50-move rule draw detected: {}", engine.pos.fen());
+            if engine.state.is_fifty_draw() {
+                log::debug!("50-move rule draw detected: {}", engine.state.pos.fen());
                 return (DRAW_PENALTY, Move::null());
             }
         }
 
         // --- 2) Check for terminal node (mate/stalemate) ---
-        let mut move_list = move_gen::legal_moves(&engine.pos);
+        let mut move_list = move_gen::legal_moves(&engine.state.pos);
         if move_list.is_empty() {
-            let score = if engine.pos.is_in_check() {
+            let score = if engine.state.pos.is_in_check() {
                 // shallower checkmate should have higher score
                 // because it's a position where the side to move is losing,
                 // so we negate the score
@@ -190,21 +169,27 @@ impl SearchContext {
 
         // --- 5) Move ordering ---
         let prev_best_move = if is_root { self.prev_best_move } else { Move::null() };
-        sort_moves(&engine.pos, &self, &mut move_list, ply_remaining, prev_best_move, cached_move);
+        sort_moves(
+            &engine.state.pos,
+            &self,
+            &mut move_list,
+            ply_remaining,
+            prev_best_move,
+            cached_move,
+        );
         let mut best_move = Move::null();
         let mut best_score = MIN;
 
         // --- 6) Main search loop ---
         let mut mv_left = move_list.len();
         for mv in move_list.iter().copied() {
-            let undo_state = self.make_move(engine, mv);
-
-            let captured_piece = engine.pos.state.captured_piece;
+            let undo_state = engine.state.make_move(mv);
+            let captured_piece = engine.state.pos.state.captured_piece;
 
             let (score, _) = self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
             let score = -score; // Negate the score for the opponent
 
-            self.unmake_move(engine, mv, &undo_state);
+            engine.state.unmake_move(mv, &undo_state);
 
             if score > best_score {
                 if mv.get_type() == MoveType::Normal && captured_piece == Piece::NONE {
@@ -246,7 +231,7 @@ impl SearchContext {
     pub fn find_best_move(&mut self, engine: &mut Engine, max_depth: u8) -> Option<Move> {
         debug_assert!(max_depth > 0);
 
-        let move_list = move_gen::legal_moves(&engine.pos);
+        let move_list = move_gen::legal_moves(&engine.state.pos);
         if move_list.len() == 0 {
             return None; // no legal moves
         }
@@ -254,7 +239,7 @@ impl SearchContext {
         // @TODO: add ply optimization, if there are more than 20 plys, it's unlikely to find a book move
         const USE_BOOK: bool = true;
         if USE_BOOK {
-            if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.pos.state.hash) {
+            if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.state.pos.state.hash) {
                 for mv in move_list.iter().copied() {
                     if mv.src_sq() == book_mv.src_sq()
                         && mv.dst_sq() == book_mv.dst_sq()
@@ -264,7 +249,7 @@ impl SearchContext {
                     }
                 }
                 log::debug!("book move is: {:?}", book_mv.to_string());
-                log::debug!("FEN: {:?}", engine.pos.fen());
+                log::debug!("FEN: {:?}", engine.state.pos.fen());
                 panic!("Should not happen, book move not found in legal moves");
             }
         }
