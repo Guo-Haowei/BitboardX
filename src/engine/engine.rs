@@ -179,11 +179,22 @@ impl Engine {
                 };
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
-            _ => {
-                const TIME: f64 = 2000.0;
-                let mv = self.best_move(TIME).unwrap();
+            ["wtime", wtime, "btime", btime, "movestogo", movestogo, _rest @ ..] => {
+                let wtime: i32 = wtime.trim().parse().unwrap();
+                let btime: i32 = btime.trim().parse().unwrap();
+                let movestogo: i32 = movestogo.trim().parse().unwrap();
+
+                let time = if self.state.pos.white_to_move() { wtime } else { btime };
+                let time = time as f64 / movestogo as f64;
+                let time = time * 0.9;
+
+                let mut searcher = search::Searcher::new(time);
+                let mv = searcher.find_best_move(self).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
+            _ => panic!(
+                "Error: Invalid 'go' command arguments. Expected 'perft <depth>' or 'wtime <wtime> btime <btime> movestogo <movestogo>'."
+            ),
         }
     }
 
