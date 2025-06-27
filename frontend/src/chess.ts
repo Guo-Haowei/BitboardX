@@ -452,6 +452,7 @@ class GameController {
       const move = board!.makeMove(moveStr);
 
       if (move) {
+        if (board) console.log(board!.gameState.debug_string());
         await renderer!.draw();
       }
 

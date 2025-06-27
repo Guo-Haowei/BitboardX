@@ -33,7 +33,7 @@ pub fn sort_moves(
 
         // move is the previous depth best move, give it a high score
         if mv == prev_best_move {
-            return 20_000;
+            return 25_000;
         }
 
         //     Priority:
@@ -55,9 +55,10 @@ pub fn sort_moves(
             pos.get_piece_at(dst_sq)
         };
 
+        // @TODO: killer move ranking
         if captured_piece == Piece::NONE {
             if ctx.is_killer(ply, mv) {
-                return 10_000; // Killer move
+                return 20_000; // Killer move
             }
         }
 
@@ -74,12 +75,12 @@ pub fn sort_moves(
         // promote a pawn is also a good move
         if move_type == MoveType::Promotion {
             let promo_piece = mv.get_promotion().unwrap();
-            score += get_piece_value(promo_piece);
+            score += get_piece_value(promo_piece) + 5_000; // promotion bonus
         }
 
         // penalize moving a piece to a square that is attacked by an opponent piece
         if pos.state.attack_mask[opponent.as_usize()].test(dst_sq.as_u8()) {
-            score = -src_piece_value;
+            score -= src_piece_value / 2;
         }
 
         score

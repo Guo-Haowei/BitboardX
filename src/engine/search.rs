@@ -272,18 +272,20 @@ impl SearchContext {
 
             self.prev_best_move = mv;
             if_debug_search!({
-                let end_time = utils::get_time();
-                log::debug!(
-                    "move '{}'(score: {}) found in {} ms, at depth: {}, {} leaves evaluated, {}/{} ({}%) pruned",
-                    mv.to_string(),
-                    score,
-                    (end_time - begin_time),
-                    depth,
-                    self.leaf_count,
-                    self.pruned_count,
-                    self.total_moves,
-                    self.pruned_count as f32 / self.total_moves as f32 * 100.0
-                );
+                if depth >= 4 {
+                    let end_time = utils::get_time();
+                    log::debug!(
+                        "move '{}'(score: {}) found in {} ms, at depth: {}, {} leaves evaluated, {}/{} ({}%) pruned",
+                        mv.to_string(),
+                        score,
+                        (end_time - begin_time),
+                        depth,
+                        self.leaf_count,
+                        self.pruned_count,
+                        self.total_moves,
+                        self.pruned_count as f32 / self.total_moves as f32 * 100.0
+                    );
+                }
             });
         }
 
