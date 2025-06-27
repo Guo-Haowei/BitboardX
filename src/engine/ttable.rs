@@ -70,7 +70,7 @@ impl<const N: usize> TranspositionTable<N> {
         node_type: NodeType,
         best_move: Move,
     ) -> TTStoreResult {
-        assert!(!best_move.is_null());
+        debug_assert!(!best_move.is_null());
         // Don't store entries with if debug option is enabled
         if DEBUG_OPTION_TURN_OFF_TT {
             return TTStoreResult::NotUpdated;
@@ -101,7 +101,7 @@ impl<const N: usize> TranspositionTable<N> {
     }
 
     pub fn probe(&self, key: ZobristHash) -> Option<&TTEntry> {
-        assert!(key.0 != 0, "ZobristHash cannot be zero");
+        debug_assert!(key.0 != 0, "ZobristHash cannot be zero");
         let idx = Self::index(key);
         let entry = &self.table[idx];
         match entry {

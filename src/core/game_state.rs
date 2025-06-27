@@ -20,7 +20,7 @@ impl GameState {
     pub fn from_fen(fen: &str) -> Result<Self, &'static str> {
         let pos = Position::from_fen(fen)?;
         let mut repetition_table = HashMap::new();
-        assert!(pos.state.hash != ZobristHash(0));
+        debug_assert!(pos.state.hash != ZobristHash(0));
         repetition_table.insert(pos.state.hash, 1);
 
         Ok(Self { pos, repetition_table })
@@ -29,7 +29,7 @@ impl GameState {
     pub fn set_position(&mut self, pos: Position) {
         self.pos = pos;
         self.repetition_table.clear();
-        assert!(pos.state.hash != ZobristHash(0));
+        debug_assert!(pos.state.hash != ZobristHash(0));
         self.repetition_table.insert(pos.state.hash, 1);
     }
 
@@ -51,12 +51,12 @@ impl GameState {
 
     pub fn is_three_fold(&self) -> bool {
         let count = *self.repetition_table.get(&self.pos.state.hash).unwrap_or(&0);
-        assert!(count <= 3);
+        debug_assert!(count <= 3);
         count >= 3
     }
 
     pub fn is_fifty_draw(&self) -> bool {
-        assert!(self.pos.state.halfmove_clock <= 100);
+        debug_assert!(self.pos.state.halfmove_clock <= 100);
         self.pos.state.halfmove_clock >= 100
     }
 }

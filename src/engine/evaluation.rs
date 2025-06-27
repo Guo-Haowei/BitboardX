@@ -28,7 +28,7 @@ const PIECE_VALUES: [i16; 6] = [
 // }
 
 pub fn get_piece_value(piece_type: PieceType) -> i16 {
-    assert!(piece_type != PieceType::NONE, "Piece must not be NONE");
+    debug_assert!(piece_type != PieceType::NONE, "Piece must not be NONE");
     PIECE_VALUES[piece_type.as_u8() as usize]
 }
 

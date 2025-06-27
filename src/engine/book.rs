@@ -133,7 +133,7 @@ impl Book {
 
     pub fn get_move(&self, hash: ZobristHash) -> Option<Move> {
         if let Some(entries) = self.map.get(&hash) {
-            assert!(!entries.moves.is_empty(), "No entries found for hash: {:?}", hash);
+            debug_assert!(!entries.moves.is_empty(), "No entries found for hash: {:?}", hash);
             let rand = random();
             let mut random_weight = (rand * entries.total_weight as f32) as i16;
             random_weight = random_weight.min(entries.total_weight as i16); // Ensure non-negative
@@ -145,7 +145,7 @@ impl Book {
                     break;
                 }
             }
-            assert!(entry.is_some());
+            debug_assert!(entry.is_some());
 
             let entry = entry.unwrap();
             let mv = entry.to_move();

@@ -164,7 +164,10 @@ impl SearchContext {
                 }
             }
             cached_move = entry.best_move;
-            assert!(!cached_move.is_null(), "Transposition table entry should have a best move");
+            debug_assert!(
+                !cached_move.is_null(),
+                "Transposition table entry should have a best move"
+            );
         }
 
         // --- 4) Check depth cutoff (leaf node) ---
@@ -230,7 +233,7 @@ impl SearchContext {
             NodeType::Exact
         };
 
-        assert!(!best_move.is_null(), "Best move should be valid");
+        debug_assert!(!best_move.is_null(), "Best move should be valid");
         engine.tt.store(key, ply_remaining, best_score, node_type, best_move);
 
         (best_score, best_move)
@@ -277,7 +280,7 @@ impl SearchContext {
 
             let prev_pv = self.pv_table[0];
             let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX, &prev_pv);
-            assert!(!mv.is_null(), "Best move should be valid");
+            debug_assert!(!mv.is_null(), "Best move should be valid");
 
             self.prev_best_move = mv;
             if_debug_search!({

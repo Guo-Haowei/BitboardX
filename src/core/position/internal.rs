@@ -70,19 +70,19 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
 
             // king already moved to the destination square, only need to move the rook
             let index = castling_type(src_piece, src_sq, dst_sq);
-            assert!(index != CastlingType::None, "Invalid castling move");
+            debug_assert!(index != CastlingType::None, "Invalid castling move");
             // move rook position
             let (piece, src_sq, to_sq) = CASTLING_ROOK_SQUARES[index as usize];
             move_piece(&mut pos.bitboards[piece.as_usize()], src_sq, to_sq);
         }
         MoveType::Promotion => {
-            assert!(src_piece_type == PieceType::PAWN);
+            debug_assert!(src_piece_type == PieceType::PAWN);
             let promotion = Piece::get_piece(mover_color, mv.get_promotion().unwrap());
             pos.bitboards[src_piece_idx].unset(dst_sq.as_u8()); // Remove the pawn from the board
             pos.bitboards[promotion.as_usize()].set(dst_sq.as_u8()); // Place the promoted piece on the board
         }
         MoveType::EnPassant => {
-            assert!(src_piece_type == PieceType::PAWN, "En passant must be a pawn move");
+            debug_assert!(src_piece_type == PieceType::PAWN, "En passant must be a pawn move");
             let enemy_sq = Square::make(dst_file, src_rank);
             let enemy = Piece::get_piece(enemy_color, PieceType::PAWN);
 
