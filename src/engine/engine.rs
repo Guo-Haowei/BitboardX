@@ -8,8 +8,10 @@ use crate::utils;
 
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
-const VERSION_MINOR: u32 = 1;
-const VERSION_PATCH: u32 = 10; // v0.1.10
+const VERSION_MINOR: u32 = 2;
+const VERSION_PATCH: u32 = 0;
+
+// need an extra layer to track 50 move rule, and threefold repetition
 
 pub struct Engine {
     pub(super) pos: Position,
@@ -205,7 +207,7 @@ impl Engine {
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
             _ => {
-                let mv = self.best_move(5).unwrap();
+                let mv = self.best_move(4).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
         }

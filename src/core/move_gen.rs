@@ -1,3 +1,5 @@
+use crate::core::move_gen::generator::pseudo_legal_capture_moves;
+
 use super::position::Position;
 use super::types::*;
 
@@ -21,17 +23,13 @@ pub fn legal_moves(pos: &Position) -> MoveList {
     moves
 }
 
-/// Capture move generation
+/// Legal capture move generation
 pub fn capture_moves(pos: &Position) -> MoveList {
-    let pseudo_moves = pseudo_legal_moves(pos);
+    let pseudo_moves = pseudo_legal_capture_moves(pos);
     let mut moves = MoveList::new();
-    let opponent = pos.side_to_move.flip();
     for mv in pseudo_moves.iter().copied() {
-        let dst_sq = mv.dst_sq();
-        if pos.state.occupancies[opponent.as_usize()].test(dst_sq.as_u8()) {
-            if validation::is_pseudo_move_legal(pos, mv) {
-                moves.add(mv);
-            }
+        if validation::is_pseudo_move_legal(pos, mv) {
+            moves.add(mv);
         }
     }
 
