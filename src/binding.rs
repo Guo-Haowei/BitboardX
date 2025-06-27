@@ -1,7 +1,7 @@
+// build wasm: wasm-pack build --target web
 use wasm_bindgen::prelude::*;
 
-use crate::core::move_gen::*;
-use crate::core::{position::*, types::*};
+use crate::core::{game_state::GameState, move_gen::*, position::*, types::*};
 use crate::engine::Engine;
 use crate::utils;
 
@@ -71,8 +71,8 @@ impl WasmMove {
 
 // ---------------------------- Position Binding -------------------------------
 #[wasm_bindgen]
-pub struct WasmPosition {
-    pos: Position,
+pub struct WasmGame {
+    state: GameState,
     legal_moves: MoveList,
 
     undo_stack: Vec<(Move, UndoState)>,
@@ -80,28 +80,25 @@ pub struct WasmPosition {
 }
 
 #[wasm_bindgen]
-impl WasmPosition {
+impl WasmGame {
     #[wasm_bindgen(constructor)]
     pub fn new(fen: &str) -> Self {
-        let pos = match Position::from_fen(fen) {
-            Ok(pos) => pos,
-            Err(_) => Position::new(),
-        };
+        let state = GameState::from_fen(fen).unwrap_or_else(|_| GameState::new());
 
-        let legal_moves = legal_moves(&pos);
-        Self { pos, legal_moves, undo_stack: Vec::new(), redo_stack: Vec::new() }
+        let legal_moves = legal_moves(&state.pos);
+        Self { state, legal_moves, undo_stack: Vec::new(), redo_stack: Vec::new() }
     }
 
     pub fn fen(&self) -> String {
-        self.pos.fen()
+        self.state.pos.fen()
     }
 
     pub fn debug_string(&self) -> String {
-        utils::debug_string(&self.pos)
+        utils::debug_string(&self.state.pos)
     }
 
     pub fn board_string(&self) -> String {
-        utils::board_string(&self.pos)
+        utils::board_string(&self.state.pos)
     }
 
     pub fn legal_moves(&self) -> Vec<String> {
@@ -109,7 +106,7 @@ impl WasmPosition {
     }
 
     pub fn turn(&self) -> u8 {
-        self.pos.side_to_move.as_u8()
+        self.state.pos.side_to_move.as_u8()
     }
 
     pub fn make_move(&mut self, mv_str: String) -> Option<WasmMove> {
@@ -127,20 +124,39 @@ impl WasmPosition {
 
         for mv in self.legal_moves.iter().copied() {
             if mv.src_sq() == src && mv.dst_sq() == dst && mv.get_promotion() == promtion {
-                let undo_state = self.pos.make_move(mv);
+                let undo_state = self.state.make_move(mv);
 
                 self.undo_stack.push((mv, undo_state));
                 self.redo_stack.clear();
 
-                final_mv = Some(WasmMove::new(mv, self.pos.state.captured_piece));
+                final_mv = Some(WasmMove::new(mv, self.state.pos.state.captured_piece));
                 break;
             }
         }
 
         if !final_mv.is_none() {
-            self.legal_moves = legal_moves(&self.pos);
+            self.legal_moves = legal_moves(&self.state.pos);
         }
         final_mv
+    }
+
+    pub fn get_game_status(&self) -> String {
+        if self.legal_moves.len() == 0 {
+            return if self.state.pos.is_in_check() {
+                if self.state.pos.white_to_move() { "black wins" } else { "white wins" }
+            } else {
+                "stalemate"
+            }
+            .into();
+        }
+        if self.state.is_fifty_draw() {
+            return "fifty".into();
+        }
+        if self.state.is_three_fold() {
+            return "threefold".into();
+        }
+
+        return "playing".into();
     }
 }
 
