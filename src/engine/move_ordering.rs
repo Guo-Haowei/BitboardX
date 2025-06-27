@@ -1,7 +1,7 @@
 use crate::core::position::Position;
 use crate::core::types::*;
 use crate::engine::evaluation::get_piece_value;
-use crate::engine::search::{PVLine, SearchContext};
+use crate::engine::search::{PVLine, Searcher};
 
 struct ScoredMove {
     mv: Move,
@@ -10,14 +10,14 @@ struct ScoredMove {
 
 pub fn sort_moves(
     pos: &Position,
-    ctx: &SearchContext,
+    ctx: &Searcher,
     move_list: &mut MoveList,
     ply: u8,
     pv_line: &PVLine,
     cached_mv: Move,
 ) {
     fn move_score_guess(
-        ctx: &SearchContext,
+        ctx: &Searcher,
         pos: &Position,
         ply: u8,
         mv: Move,

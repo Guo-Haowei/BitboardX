@@ -8,7 +8,7 @@ use crate::utils;
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 2;
-const VERSION_PATCH: u32 = 0;
+const VERSION_PATCH: u32 = 2;
 
 // need an extra layer to track 50 move rule, and threefold repetition
 
@@ -40,9 +40,14 @@ impl Engine {
         *self = Self::new();
     }
 
-    pub fn best_move(&mut self, depth: u8) -> Option<Move> {
-        let mut searcher = search::SearchContext::new();
-        searcher.find_best_move(self, depth)
+    pub fn best_move(&mut self, time: f64) -> Option<Move> {
+        let mut searcher = search::Searcher::new(time);
+        searcher.find_best_move(self)
+    }
+
+    pub fn best_move_depth(&mut self, max_depth: u8) -> Option<Move> {
+        let mut searcher = search::Searcher::new(f64::MAX);
+        searcher.find_best_move_depth(self, max_depth)
     }
 
     pub fn make_move(&mut self, mv_str: &str) -> bool {
@@ -175,7 +180,8 @@ impl Engine {
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
             _ => {
-                let mv = self.best_move(5).unwrap();
+                const TIME: f64 = 2000.0;
+                let mv = self.best_move(TIME).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
         }

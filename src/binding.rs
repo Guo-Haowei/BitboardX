@@ -179,8 +179,8 @@ impl WasmEngine {
         self.engine.handle_uci_cmd(&mut null, args);
     }
 
-    pub fn best_move(&mut self, depth: u8) -> String {
-        match self.engine.best_move(depth) {
+    pub fn best_move(&mut self, time: f64) -> String {
+        match self.engine.best_move(time) {
             Some(mv) => mv.to_string(),
             None => "".to_string(),
         }

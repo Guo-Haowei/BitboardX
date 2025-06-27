@@ -475,11 +475,11 @@ export interface Player {
 
 export class BotPlayer implements Player {
   async getMove(history: string): Promise<string> {
-    const searchDepth = 5;
+    const SEARCH_TIME = 2000;
 
     engine?.set_position(history);
 
-    const bestMove = engine?.best_move(searchDepth);
+    const bestMove = engine?.best_move(SEARCH_TIME);
 
     if (bestMove) {
       return bestMove;
