@@ -325,7 +325,8 @@ impl Searcher {
     pub fn find_best_move_depth(&mut self, engine: &mut Engine, max_depth: u8) -> Option<Move> {
         debug_assert!(max_depth > 0, "Depth should be greater than 0");
 
-        let move_list = move_gen::legal_moves(&engine.state.pos);
+        // @TODO: fix it?
+        let move_list = move_gen::legal_moves(&mut engine.state.pos);
         if move_list.is_empty() {
             return None;
         }
@@ -354,7 +355,8 @@ impl Searcher {
     }
 
     pub fn find_best_move(&mut self, engine: &mut Engine) -> Option<Move> {
-        let move_list = move_gen::legal_moves(&engine.state.pos);
+        // @TODO: fix it?
+        let move_list = move_gen::legal_moves(&mut engine.state.pos);
         if move_list.is_empty() {
             return None;
         }

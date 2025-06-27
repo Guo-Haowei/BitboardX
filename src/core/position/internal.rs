@@ -201,10 +201,6 @@ pub fn update_cache(pos: &mut Position) -> bool {
     pos.state.king_squares[0] = Square::new(white_king_mask.trailing_zeros() as u8);
     pos.state.king_squares[1] = Square::new(black_king_mask.trailing_zeros() as u8);
 
-    // maybe only need to update the side to move attack map?
-    pos.state.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);
-    pos.state.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(pos, Color::BLACK);
-
     true
 }
 

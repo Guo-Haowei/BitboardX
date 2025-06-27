@@ -2,17 +2,16 @@ use super::position::Position;
 use super::types::*;
 
 mod generator;
-mod validation;
 
 pub use generator::PAWN_EN_PASSANT_MASKS;
 pub use generator::{calc_attack_map_and_checker, pseudo_legal_capture_moves, pseudo_legal_moves};
 
 /// Legal move generation
-pub fn legal_moves(pos: &Position) -> MoveList {
+pub fn legal_moves(pos: &mut Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
     let mut moves = MoveList::new();
     for mv in pseudo_moves.iter().copied() {
-        if validation::is_pseudo_move_legal(pos, mv) {
+        if is_pseudo_move_legal(pos, mv) {
             moves.add(mv);
         }
     }
@@ -20,12 +19,10 @@ pub fn legal_moves(pos: &Position) -> MoveList {
     moves
 }
 
-pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
-    validation::is_pseudo_move_legal(pos, mv)
-}
-
-pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
-    generator::generate_pin_map(pos, color)
+pub fn is_pseudo_move_legal(pos: &mut Position, mv: Move) -> bool {
+    let (undo_state, ok) = pos.make_move(mv);
+    pos.unmake_move(mv, &undo_state);
+    ok
 }
 
 // #[cfg(test)]

@@ -17,39 +17,41 @@ fn perft_test_inner(pos: &mut Position, depth: u8) -> u64 {
 
     let move_list = move_gen::legal_moves(pos);
 
-    if depth == 1 {
-        return move_list.len() as u64;
-    }
-
     let mut nodes = 0u64;
     for mv in move_list.iter().copied() {
-        let (undo_state, _ok) = pos.make_move(mv);
-        nodes += perft_test_inner(pos, depth - 1);
+        let (undo_state, ok) = pos.make_move(mv);
+        if ok {
+            nodes += perft_test_inner(pos, depth - 1);
+        }
         pos.unmake_move(mv, &undo_state);
     }
 
     nodes
 }
 
-fn perft_test(pos: &Position, depth: u8) -> u64 {
+fn perft_test(pos: &mut Position, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
     }
 
     let move_list = move_gen::legal_moves(pos);
-    let move_count = move_list.len() as u64;
-
-    if depth == 1 {
-        return move_count;
-    }
 
     let mut handles = Vec::new();
 
+    let mut count = 0u64;
     for mv in move_list.iter().copied() {
         let mut child = pos.clone();
-        child.make_move(mv);
+        let (_, ok) = child.make_move(mv);
+        if !ok {
+            continue;
+        }
         let handle = thread::spawn(move || perft_test_inner(&mut child, depth - 1));
         handles.push(handle);
+        count += 1;
+    }
+
+    if depth == 1 {
+        return count;
     }
 
     // Wait for all threads and sum the results

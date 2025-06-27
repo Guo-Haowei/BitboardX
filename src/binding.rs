@@ -83,9 +83,9 @@ pub struct WasmGame {
 impl WasmGame {
     #[wasm_bindgen(constructor)]
     pub fn new(fen: &str) -> Self {
-        let state = GameState::from_fen(fen).unwrap_or_else(|_| GameState::new());
+        let mut state = GameState::from_fen(fen).unwrap_or_else(|_| GameState::new());
 
-        let legal_moves = legal_moves(&state.pos);
+        let legal_moves = legal_moves(&mut state.pos);
         Self { state, legal_moves, undo_stack: Vec::new(), redo_stack: Vec::new() }
     }
 
@@ -137,7 +137,7 @@ impl WasmGame {
         }
 
         if !final_mv.is_none() {
-            self.legal_moves = legal_moves(&self.state.pos);
+            self.legal_moves = legal_moves(&mut self.state.pos);
         }
         final_mv
     }

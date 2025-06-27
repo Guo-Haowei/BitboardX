@@ -1,4 +1,4 @@
-use crate::core::position::{CheckerList, Position, SmallSquareList};
+use crate::core::position::{CheckerList, Position};
 use crate::core::types::bitboard::*;
 use crate::core::types::*;
 
@@ -250,62 +250,6 @@ fn sliding_mask<const START: u8, const END: u8, const MASK: u8>(
         MV_MASK_CAPTURE => masks & enemy_occupancy,
         _ => panic!("Invalid mask type: {}", MASK),
     }
-}
-
-pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
-    let mut pin_map = BitBoard::new();
-
-    let occupied = pos.state.occupancies[Color::BOTH.as_usize()];
-    let king_bb = pos.bitboards[Piece::get_piece(color, PieceType::KING).as_usize()];
-    debug_assert!(king_bb.count() == 1, "There must be exactly one king on the board");
-
-    for i in 0..8 {
-        let mut next_bb = SHIFT_FUNCS[i as usize](&king_bb);
-
-        let mut squares = SmallSquareList::new();
-
-        loop {
-            let next_sq = match next_bb.to_square() {
-                Some(sq) => sq,
-                None => break, // No more squares in this direction
-            };
-            if occupied.test_sq(next_sq) {
-                squares.add(next_sq);
-                if squares.count() == 2 {
-                    break; // Found two pieces in this direction
-                }
-            }
-            next_bb = SHIFT_FUNCS[i as usize](&next_bb);
-        }
-
-        if squares.count() != 2 {
-            continue; // No pin found in this direction
-        }
-
-        let sq0 = squares.get(0).unwrap();
-        let sq1 = squares.get(1).unwrap();
-        let pinned = pos.get_piece_at(sq0);
-        let attacker = pos.get_piece_at(sq1);
-
-        // pinned piece must be of the same color as the king
-        // and the attacked piece must be of the opposite color
-        if !(pinned.color() == color && attacker.color() == color.flip()) {
-            continue;
-        }
-
-        let pinned = match attacker.get_type() {
-            PieceType::QUEEN => true,
-            PieceType::ROOK => i < 4, // Rook moves in 0-3 directions
-            PieceType::BISHOP => i >= 4 && i < 8, // Bishop moves in 4-7 directions
-            _ => false,
-        };
-        if pinned {
-            // If the pinned piece is a rook or bishop, add the pin mask
-            pin_map |= sq0.to_bitboard();
-        }
-    }
-
-    pin_map
 }
 
 fn rook_mask<const MASK: u8>(sq: Square, mine: BitBoard, enemy: BitBoard) -> BitBoard {

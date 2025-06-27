@@ -38,9 +38,6 @@ impl CheckerList {
     }
 }
 
-// @TODO: move zobrist key out in stack
-// @TODO: remove pin map and use do_move and take_back instead
-
 #[derive(Debug, Clone, Copy)]
 pub struct UndoState {
     pub castling_rights: u8,
@@ -53,8 +50,6 @@ pub struct UndoState {
     pub occupancies: [BitBoard; 3],
     pub attack_mask: [BitBoard; Color::COUNT],
 
-    // @TODO: pin map generation is expensive, consider use do move and take back instead of pin map
-    pub pin_map: [BitBoard; Color::COUNT],
     pub checkers: [CheckerList; Color::COUNT],
 
     pub king_squares: [Square; Color::COUNT],
@@ -106,7 +101,6 @@ impl Position {
             captured_piece: Piece::NONE,
             occupancies: [BitBoard::new(); 3],
             attack_mask: [BitBoard::new(); Color::COUNT],
-            pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
             king_squares: [Square::NONE; Color::COUNT],
         };
@@ -190,11 +184,6 @@ impl Position {
         self.state.king_squares[color.as_usize()]
     }
 
-    pub fn is_square_pinned(&self, sq: Square, color: Color) -> bool {
-        let pin_map = &self.state.pin_map[color.as_usize()];
-        pin_map.test(sq.as_u8())
-    }
-
     pub fn is_in_check(&self, color: Color) -> bool {
         let checker_count = self.state.checkers[color.as_usize()].count();
 
@@ -271,25 +260,6 @@ mod tests {
             sq1,
             sq2
         );
-    }
-
-    #[test]
-    fn test_is_square_pinned() {
-        // 2 . . . . . . . k
-        // 1 K B . . . . . r
-        //   a b c d e f g h
-        let pos = Position::from_fen("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
-
-        assert!(pos.is_square_pinned(Square::B1, Color::WHITE));
-    }
-
-    #[test]
-    fn test_rook_pin_pawn() {
-        let pos = Position::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
-
-        let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
-
-        assert!(is_pinned, "Pawn B5 is pinned by rook on H5");
     }
 
     #[test]
