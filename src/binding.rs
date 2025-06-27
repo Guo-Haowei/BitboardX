@@ -142,7 +142,7 @@ impl WasmGame {
 
     pub fn get_game_status(&self) -> String {
         if self.legal_moves.len() == 0 {
-            return if self.state.pos.is_in_check() {
+            return if self.state.pos.is_in_check(self.state.pos.side_to_move) {
                 if self.state.pos.white_to_move() { "black wins" } else { "white wins" }
             } else {
                 "stalemate"

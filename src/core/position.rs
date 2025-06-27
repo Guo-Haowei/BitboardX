@@ -190,8 +190,7 @@ impl Position {
         pin_map.test(sq.as_u8())
     }
 
-    pub fn is_in_check(&self) -> bool {
-        let color = self.side_to_move;
+    pub fn is_in_check(&self, color: Color) -> bool {
         let checker_count = self.state.checkers[color.as_usize()].count();
 
         if cfg!(debug_assertions) && checker_count != 0 {

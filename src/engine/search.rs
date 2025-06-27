@@ -94,9 +94,6 @@ impl Searcher {
             return 0;
         }
 
-        // @TODO: order
-        let move_list = move_gen::capture_moves(&engine.state.pos);
-
         let eval = self.evaluate(&engine.state.pos);
         if eval >= beta {
             // searchDiagnostics.numCutOffs++;
@@ -110,12 +107,19 @@ impl Searcher {
             return eval;
         }
 
-        if move_list.is_empty() {
-            return self.evaluate(&engine.state.pos);
-        }
+        let move_list = move_gen::pseudo_legal_capture_moves(&engine.state.pos);
 
+        let mut has_legal_moves = false;
+        let side_to_move = engine.state.pos.side_to_move;
         for mv in move_list.iter().copied() {
             let undo_state = engine.state.make_move(mv);
+            if engine.state.pos.is_in_check(side_to_move) {
+                engine.state.unmake_move(mv, &undo_state);
+                continue;
+            }
+
+            has_legal_moves = true;
+
             let score = -self.quiescence(engine, -beta, -alpha, depth - 1);
 
             if self.should_cancel() {
@@ -130,6 +134,15 @@ impl Searcher {
             }
             if score > alpha {
                 alpha = score;
+            }
+        }
+
+        // @TODO: revisit this logic, might want to add ply to it
+        if !has_legal_moves {
+            if engine.state.pos.is_in_check(side_to_move) {
+                return -(IMMEDIATE_MATE_SCORE + depth);
+            } else {
+                return DRAW_PENALTY;
             }
         }
 
@@ -165,21 +178,7 @@ impl Searcher {
             }
         }
 
-        // --- 2) Check for terminal node (mate/stalemate) ---
-        let mut move_list = move_gen::legal_moves(&engine.state.pos);
-        if move_list.is_empty() {
-            let score = if engine.state.pos.is_in_check() {
-                // shallower checkmate should have higher score
-                // because it's a position where the side to move is losing,
-                // so we negate the score
-                -(IMMEDIATE_MATE_SCORE + ply_remaining as i32)
-            } else {
-                DRAW_PENALTY
-            };
-            return (score, Move::null());
-        }
-
-        // --- 3) Probe transposition table ---
+        // --- 2) Probe transposition table ---
         let mut cached_move = Move::null();
         if let Some(entry) = engine.tt.probe(key) {
             if entry.depth >= ply_remaining {
@@ -200,22 +199,35 @@ impl Searcher {
             );
         }
 
-        // --- 4) Check depth cutoff (leaf node) ---
+        // --- 3) Check depth cutoff (leaf node) ---
         if ply_remaining == 0 {
             return (self.quiescence(engine, alpha, beta, 4), Move::null());
         }
 
-        // --- 5) Move ordering ---
+        // @NOTE: we pseudo-legal moves here for speed, the illegal moves will be filtered out later
+        let mut move_list = move_gen::pseudo_legal_moves(&engine.state.pos);
+
+        // --- 4) Move ordering ---
         sort_moves(&engine.state.pos, &self, &mut move_list, ply_remaining, pv_line, cached_move);
         let mut best_move = Move::null();
         let mut best_score = MIN;
 
         let ply = (max_ply - ply_remaining) as usize;
 
-        // --- 6) Main search loop ---
+        // --- 5) Main search loop ---
+        let mut has_legal_moves = false;
         let mut mv_left = move_list.len();
+        let side_to_move = engine.state.pos.side_to_move.clone();
         for mv in move_list.iter().copied() {
             let undo_state = engine.state.make_move(mv);
+
+            // check if king is in check after the move, if so, it's an illegal move
+            if engine.state.pos.is_in_check(side_to_move) {
+                engine.state.unmake_move(mv, &undo_state);
+                continue; // skip illegal moves
+            }
+
+            has_legal_moves = true;
             let captured_piece = engine.state.pos.state.captured_piece;
 
             let (score, _) =
@@ -256,6 +268,20 @@ impl Searcher {
             }
             mv_left -= 1;
         }
+
+        // --- 6) Check for terminal node (mate/stalemate) ---
+        if !has_legal_moves {
+            let score = if engine.state.pos.is_in_check(side_to_move) {
+                // shallower checkmate should have higher score
+                // because it's a position where the side to move is losing,
+                // so we negate the score
+                -(IMMEDIATE_MATE_SCORE + ply_remaining as i32)
+            } else {
+                DRAW_PENALTY
+            };
+            return (score, Move::null());
+        }
+
         self.pruned_count += mv_left as u64;
         self.total_moves += move_list.len() as u64;
 
