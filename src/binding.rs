@@ -83,9 +83,9 @@ pub struct WasmGame {
 impl WasmGame {
     #[wasm_bindgen(constructor)]
     pub fn new(fen: &str) -> Self {
-        let state = GameState::from_fen(fen).unwrap_or_else(|_| GameState::new());
+        let mut state = GameState::from_fen(fen).unwrap_or_else(|_| GameState::new());
 
-        let legal_moves = legal_moves(&state.pos);
+        let legal_moves = legal_moves(&mut state.pos);
         Self { state, legal_moves, undo_stack: Vec::new(), redo_stack: Vec::new() }
     }
 
@@ -124,7 +124,9 @@ impl WasmGame {
 
         for mv in self.legal_moves.iter().copied() {
             if mv.src_sq() == src && mv.dst_sq() == dst && mv.get_promotion() == promtion {
-                let undo_state = self.state.make_move(mv);
+                let (undo_state, ok) = self.state.pos.make_move(mv);
+                debug_assert!(ok);
+                self.state.push_zobrist();
 
                 self.undo_stack.push((mv, undo_state));
                 self.redo_stack.clear();
@@ -135,14 +137,14 @@ impl WasmGame {
         }
 
         if !final_mv.is_none() {
-            self.legal_moves = legal_moves(&self.state.pos);
+            self.legal_moves = legal_moves(&mut self.state.pos);
         }
         final_mv
     }
 
     pub fn get_game_status(&self) -> String {
         if self.legal_moves.len() == 0 {
-            return if self.state.pos.is_in_check() {
+            return if self.state.pos.is_in_check(self.state.pos.side_to_move) {
                 if self.state.pos.white_to_move() { "black wins" } else { "white wins" }
             } else {
                 "stalemate"

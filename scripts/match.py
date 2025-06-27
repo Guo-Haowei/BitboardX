@@ -25,18 +25,29 @@ def main():
 
     cubechess_cli = 'cutechess-cli.exe'
     engine1 = get_file_name(sys.argv[1])
-    engine2 = get_file_name(sys.argv[2])
+
+    # TODO: parse score
+    if sys.argv[2] == 'stockfish':
+        engine2 = 'stockfish1600'
+        elo = 1600
+        engine2_setup = [
+            '-engine', f'name={engine2}',
+            f'cmd=stockfish', 'option.UCI_LimitStrength=true', f'option.UCI_Elo={elo}'
+        ]
+    else:
+        engine2 = get_file_name(sys.argv[2])
+        engine2_setup = ['-engine', f'name={engine2}', f'cmd=./releases/{engine2}.exe']
 
     run_command([
         cubechess_cli,
         '-engine', f'name={engine1}', f'cmd=./releases/{engine1}.exe',
-        '-engine', f'name={engine2}', f'cmd=./releases/{engine2}.exe',
+        *engine2_setup,
         '-each',
         'proto=uci',
-        'tc=40/120',
+        'tc=40/60',
         '-rounds', '100',
         '-pgnout', f'{engine1}-vs-{engine2}.pgn',
-        '-debug', 'all'
+        # '-debug', 'all'
     ])
 
 main()

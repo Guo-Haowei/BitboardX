@@ -1,5 +1,5 @@
+use crate::core::move_gen;
 use crate::core::zobrist::*;
-use crate::core::{move_gen, zobrist};
 
 use super::types::*;
 
@@ -38,8 +38,6 @@ impl CheckerList {
     }
 }
 
-// @TODO store in undo state
-
 #[derive(Debug, Clone, Copy)]
 pub struct UndoState {
     pub castling_rights: u8,
@@ -51,9 +49,8 @@ pub struct UndoState {
     pub captured_piece: Piece,
     pub occupancies: [BitBoard; 3],
     pub attack_mask: [BitBoard; Color::COUNT],
-    pub pin_map: [BitBoard; Color::COUNT],
+
     pub checkers: [CheckerList; Color::COUNT],
-    pub hash: ZobristHash,
 
     pub king_squares: [Square; Color::COUNT],
 }
@@ -104,9 +101,7 @@ impl Position {
             captured_piece: Piece::NONE,
             occupancies: [BitBoard::new(); 3],
             attack_mask: [BitBoard::new(); Color::COUNT],
-            pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
-            hash: ZobristHash(0),
             king_squares: [Square::NONE; Color::COUNT],
         };
 
@@ -129,6 +124,10 @@ impl Position {
             self.state.halfmove_clock,
             self.state.fullmove_number
         )
+    }
+
+    pub fn zobrist(&self) -> ZobristHash {
+        zobrist_hash(&self)
     }
 
     pub fn white_to_move(&self) -> bool {
@@ -185,13 +184,7 @@ impl Position {
         self.state.king_squares[color.as_usize()]
     }
 
-    pub fn is_square_pinned(&self, sq: Square, color: Color) -> bool {
-        let pin_map = &self.state.pin_map[color.as_usize()];
-        pin_map.test(sq.as_u8())
-    }
-
-    pub fn is_in_check(&self) -> bool {
-        let color = self.side_to_move;
+    pub fn is_in_check(&self, color: Color) -> bool {
         let checker_count = self.state.checkers[color.as_usize()].count();
 
         if cfg!(debug_assertions) && checker_count != 0 {
@@ -207,7 +200,7 @@ impl Position {
         checker_count != 0
     }
 
-    pub fn make_move(&mut self, mv: Move) -> UndoState {
+    pub fn make_move(&mut self, mv: Move) -> (UndoState, bool) {
         internal::make_move(self, mv)
     }
 
@@ -270,25 +263,6 @@ mod tests {
     }
 
     #[test]
-    fn test_is_square_pinned() {
-        // 2 . . . . . . . k
-        // 1 K B . . . . . r
-        //   a b c d e f g h
-        let pos = Position::from_fen("8/8/8/8/8/8/7k/KB5r w - - 0 1").unwrap();
-
-        assert!(pos.is_square_pinned(Square::B1, Color::WHITE));
-    }
-
-    #[test]
-    fn test_rook_pin_pawn() {
-        let pos = Position::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
-
-        let is_pinned = pos.is_square_pinned(Square::B5, Color::WHITE);
-
-        assert!(is_pinned, "Pawn B5 is pinned by rook on H5");
-    }
-
-    #[test]
     fn test_full_move_number() {
         let mut pos = Position::new();
         assert_eq!(pos.state.fullmove_number, 1);
@@ -307,7 +281,7 @@ mod tests {
         let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
         let mv = Move::new(Square::E8, Square::G8, MoveType::Castling, None);
 
-        let undo_state = pos.make_move(mv);
+        let undo_state = pos.make_move(mv).0;
 
         assert_eq!(pos.get_piece_at(Square::G8), Piece::B_KING);
         assert_eq!(pos.get_piece_at(Square::F8), Piece::B_ROOK);
@@ -323,7 +297,7 @@ mod tests {
         pos.make_move(mv);
 
         let mv = Move::new(Square::A5, Square::B6, MoveType::EnPassant, None);
-        let undo_state = pos.make_move(mv);
+        let undo_state = pos.make_move(mv).0;
 
         assert_eq!(pos.get_piece_at(Square::B6), Piece::W_PAWN);
         assert_eq!(pos.get_piece_at(Square::A5), Piece::NONE);
@@ -339,7 +313,7 @@ mod tests {
     fn undo_should_revert_promoted_piece() {
         let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
         let mv = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::BISHOP));
-        let undo_state = pos.make_move(mv);
+        let undo_state = pos.make_move(mv).0;
 
         assert_eq!(pos.get_piece_at(Square::C2), Piece::NONE);
         assert_eq!(pos.get_piece_at(Square::C1), Piece::B_BISHOP);

@@ -8,7 +8,7 @@ use crate::utils;
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 2;
-const VERSION_PATCH: u32 = 2;
+const VERSION_PATCH: u32 = 3;
 
 // need an extra layer to track 50 move rule, and threefold repetition
 
@@ -50,6 +50,7 @@ impl Engine {
         searcher.find_best_move_depth(self, max_depth)
     }
 
+    // @TODO: reduce the number of this function calls
     pub fn make_move(&mut self, mv_str: &str) -> bool {
         let mv = utils::parse_move(mv_str);
         if mv.is_none() {
@@ -58,13 +59,14 @@ impl Engine {
         }
 
         let mv = mv.unwrap();
-        let legal_moves = move_gen::legal_moves(&self.state.pos);
+        let legal_moves = move_gen::legal_moves(&mut self.state.pos);
         let src_sq = mv.src_sq();
         let dst_sq = mv.dst_sq();
         let promotion = mv.get_promotion();
         for mv in legal_moves.iter().copied() {
             if mv.src_sq() == src_sq && mv.dst_sq() == dst_sq && mv.get_promotion() == promotion {
-                self.state.make_move(mv);
+                self.state.pos.make_move(mv);
+                self.state.push_zobrist();
                 return true;
             }
         }
@@ -179,11 +181,22 @@ impl Engine {
                 };
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
-            _ => {
-                const TIME: f64 = 2000.0;
-                let mv = self.best_move(TIME).unwrap();
+            ["wtime", wtime, "btime", btime, "movestogo", movestogo, _rest @ ..] => {
+                let wtime: i32 = wtime.trim().parse().unwrap();
+                let btime: i32 = btime.trim().parse().unwrap();
+                let movestogo: i32 = movestogo.trim().parse().unwrap();
+
+                let time = if self.state.pos.white_to_move() { wtime } else { btime };
+                let time = time as f64 / movestogo as f64;
+                let time = time * 0.9;
+
+                let mut searcher = search::Searcher::new(time);
+                let mv = searcher.find_best_move(self).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
+            _ => panic!(
+                "Error: Invalid 'go' command arguments. Expected 'perft <depth>' or 'wtime <wtime> btime <btime> movestogo <movestogo>'."
+            ),
         }
     }
 
@@ -192,12 +205,17 @@ impl Engine {
             return 1;
         }
 
-        let move_list = move_gen::legal_moves(&self.state.pos);
+        let move_list = move_gen::pseudo_legal_moves(&mut self.state.pos);
 
         let mut nodes = 0u64;
         let should_print = depth == max_depth;
         for mv in move_list.iter().copied() {
-            let undo_state = self.state.pos.make_move(mv);
+            let (undo_state, ok) = self.state.pos.make_move(mv);
+            if !ok {
+                self.state.pos.unmake_move(mv, &undo_state);
+                continue;
+            }
+
             let count = self.uci_cmd_go_perft(writer, depth - 1, max_depth);
             nodes += count;
             self.state.pos.unmake_move(mv, &undo_state);

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chess Game Results</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #fdfdfd;
+      color: #222;
+    }
+    h2 { margin-top: 2rem; }
+    hr { margin: 2rem 0; }
+    .bar-container {
+      background: #eee;
+      border: 1px solid #ccc;
+      width: 200px;
+      height: 16px;
+      margin-bottom: 4px;
+    }
+    .bar-fill {
+      height: 100%;
+    }
+    .stat-label {
+      font-weight: bold;
+    }
+    .merged-bar {
+      display: flex;
+      height: 20px;
+      width: 600px;
+      border: 1px solid #aaa;
+      margin: 8px 0;
+    }
+
+    .bar-segment {
+      height: 100%;
+    }
+
+    .win  { background-color: #4caf50; }  /* Green */
+    .draw { background-color: #9e9e9e; }  /* Gray */
+    .loss { background-color: #f44336; }  /* Red */
+
+    textarea {
+      width: 100%;
+      height: 200px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 6px 12px;
+    }
+  </style>
+</head>
+<body>
+<h1>Chess Game Report</h1>
+<h2>BitboardX_v0.2.2 Results</h2>
+
+    <div class="merged-bar">
+      <div class="bar-segment win" style="flex: 29;"></div>
+      <div class="bar-segment draw" style="flex: 2;"></div>
+      <div class="bar-segment loss" style="flex: 20;"></div>
+    </div>
+    <div>
+      Wins: 29 &nbsp; Draws: 2 &nbsp; Losses: 20
+    </div>
+    <h2>stockfish1600 Results</h2>
+
+    <div class="merged-bar">
+      <div class="bar-segment win" style="flex: 20;"></div>
+      <div class="bar-segment draw" style="flex: 2;"></div>
+      <div class="bar-segment loss" style="flex: 29;"></div>
+    </div>
+    <div>
+      Wins: 20 &nbsp; Draws: 2 &nbsp; Losses: 29
+    </div>
+    <h2>Game 1: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-1" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 c6 2. c4 Nf6 3. Nc3 d6 4. Bg5 Nbd7 5. Nf3 Qa5 6. Qd3 g6 7. Rb1 h6 8. Bd2 Qc7 9. Nh4 e5 10. Nxg6 e4 11. Nxe4 fxg6 12. Nxf6+ Kf7 13. Nxd7 Bg7 14. Qf3+ Ke8 15. Qe4+ Kd8 16. Qxg6 Bxd4 17. Nf6 Rf8 18. Ne4 d5 19. Qxh6 Rf5 20. Bg5+ Ke8 21. cxd5 Rxf2 22. Nd6+ Qxd6 23. Qxd6 Kf7 24. dxc6 Bb6 25. Qe7+ Kg8 26. cxb7 Kh8 27. bxa8=Q Ba5+ 28. Kxf2 Bb6+ 29. Kf3 Bd8 30. Qxc8 Kg8 31. Qcxd8#</textarea>
+<button onclick="copyPGN(1)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 2: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-2" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. c4 Nf6 2. Nc3 g6 3. d4 d5 4. e3 Bg7 5. Be2 Nc6 6. Nf3 Be6 7. O-O dxc4 8. Re1 Qd6 9. e4 Ng4 10. Nb5 Qd7 11. d5 Nce5 12. a4 Nxf3+ 13. Bxf3 Be5 14. h3 Nxf2 15. Kxf2 Bxh3 16. gxh3 Qxh3 17. Rh1 Qg3+ 18. Kf1 O-O 19. Nc3 Bxc3 20. bxc3 f5 21. e5 Qxe5 22. Qd2 Qg3 23. Qg2 Qxg2+ 24. Bxg2 f4 25. Ba3 Rf7 26. Bh3 Kf8 27. Rd1 c6 28. Bc5 cxd5 29. a5 b6 30. axb6 axb6 31. Bd4 Ra7 32. Re1 f3 33. Rh2 f2 34. Rxf2 Rxf2+ 35. Bxf2 Ra3 36. Be6 Rxc3 37. Be3 Rb3 38. Bd4 Rf3+ 39. Kg1 Rg3+ 40. Kh1 Ra3 41. Rf1+ Ke8 42. Bg7 Kd8 43. Bxd5 Kc7 44. Bxc4 Kd6 45. Re1 Rh3+ 46. Kg2 Rh4 47. Rd1+ Kc5 48. Be2 Re4 49. Kf2 Rf4+ 50. Kg2 g5 51. Bb2 Kb4 52. Bc1 Rf7 53. Rd8 Kc3 54. Be3 Kb4 55. Kh1 Rf6 56. Kg1 Re6 57. Bd2+ Kb3 58. Bf3 Kb2 59. Bd5 Re5 60. Bf3 Kc2 61. Bb4 Kb3 62. Bd2 Kc4 63. Kf1 Rf5 64. Ke2 h6 65. Be3 Kb5 66. Rb8 Rf6 67. Ra8 Rg6 68. Re8 Re6 69. Kd2 Ka5 70. Rc8 Rf6 71. Ke2 Kb5 72. Bd5 Rd6 73. Bf7 Rf6 74. Bh5 Ka6 75. Bg4 Kb5 76. Rc1 Ka6 77. Bf3 Re6 78. Bg4 Rf6 79. Rb1 Rg6 80. Bf2 Ka7 81. Rb4 Rc6 82. Ra4+ Kb8 83. Bg3+ Kb7 84. Re4 Rf6 85. Rxe7+ Ka6 86. Rc7 Ka5 87. Be5 Rg6 88. Bf5 Rg8 89. Bd6 Rd8 90. Bd7 Ka6 91. Be5 Rg8 92. Kd3 Rb8 93. Bd6 Rd8 94. Ke3 Rg8 95. Bc6 Rg6 96. Be5 Ka5 97. Kd3 Kb4 98. Bc3+ Kb3 99. Be5 Kb4 100. Bh1 Ka5 101. Bc3+ Kb5 102. Bg2 Rd6+ 103. Kc2 Ka6 104. Bb4 Rf6 105. Be4 Rf2+ 106. Kb3 Rf6 107. Rd7 Kb5 108. Rd1 Rf4 109. Rd4 Rh4 110. Bf8 Rh3+ 111. Rd3 Rh4 112. Rd4 Rh3+ 113. Bd3+ Kc6 114. Kc4 Kc7 115. Kb4 Kb7 116. Be4+ Kc7 117. Be7 Kb8 118. Kb5 Rb3+ 119. Kc6 Rc3+ 120. Kxb6 Rb3+ 121. Kc6 Rc3+ 122. Kb6 Rb3+ 123. Bb4 Rxb4+ 124. Rxb4 Kc8 125. Rb1 Kd7 126. Bf5+ Ke7 127. Bg6 Kf6 128. Bc2 h5 129. Be4 Ke5 130. Bh7 Kf6 131. Kc5 g4 132. Rb6+ Kg5 133. Kd5 Kf4 134. Be4 h4 135. Kd4 h3 136. Rb1 g3 137. Rb6 Kg4 138. Ke3 h2 139. Kd4 Kh4 140. Bg2 Kg5 141. Ke4 h1=Q 142. Rb5+ Kf6 143. Bxh1 Ke6 144. Rf5 Kd6 145. Rd5+ Ke6 146. Re5+ Kd6 147. Kd4 Kc7 148. Re7+ Kd8 149. Rg7 Ke8 150. Be4 Kf8 151. Ra7 g2 152. Ra1 Ke8 153. Rg1 Kf7 154. Ra1 Ke8 155. Bxg2 Ke7 156. Ke5 Kf7 157. Rg1 Ke7 158. Ra1 Kf7 159. Rc1 Kg6 160. Rf1 Kg5 161. Bd5 Kg4 162. Bg2 Kg5 163. Rf6 Kg4 164. Re6 Kg3 165. Rg6+ Kf2 166. Bh1 Ke3 167. Rh6 Kd2 168. Be4 Kc3 169. Ba8 Kc4 170. Rh7 Kc5 171. Rd7 Kc4 172. Rc7+ Kb3 173. Bd5+ Ka4 174. Kd4 Kb5 175. Rc6 Ka4 176. Kc4 Ka3 177. Kc3 Ka4 178. Bc4 Ka3 179. Rg6 Ka4 180. Rc6 Ka3 181. Rb6 Ka4 182. Bf1 Ka3 183. Ra6#</textarea>
+<button onclick="copyPGN(2)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 3: BitboardX_v0.2.2 vs stockfish1600 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-3" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. e4 e5 2. Nf3 d6 3. Bc4 c5 4. Nc3 Nc6 5. d3 Be6 6. Bxe6 fxe6 7. Ng5 Qf6 8. Qh5+ Qg6 9. Qxg6+ hxg6 10. Nxe6 Kd7 11. Nxf8+ Rxf8 12. Bg5 Rh5 13. Be3 g5 14. Ne2 g4 15. O-O Rh7 16. Nc3 Nge7 17. f4 exf4 18. Rxf4 Rfh8 19. Rxg4 Ne5 20. Rxg7 Rxg7 21. Bf4 N5c6 22. Bg3 Rgg8 23. Nb5 Nd4 24. Nxd4 cxd4 25. Rf1 Rf8 26. Rxf8 Rxf8 27. Bf2 Nc6 28. Be1 Rc8 29. c3 b5 30. Kf1 Rh8 31. Bg3 Re8 32. cxd4 d5 33. exd5 Nb4 34. Kf2 a5 35. Be5 Nxa2 36. Kf3 a4 37. d6 b4 38. Ke3 b3 39. Kd2 Ra8 40. d5 Rc8 41. Ke3 Rg8 42. g3 Nb4 43. Kd2 Rc8 44. Ke3 Re8 45. Kd4 Nc2+ 46. Kc4 Rxe5 47. Kc3 Re8 48. Kd2 Nb4 49. Kc3 Nc2 50. Kd2 Kxd6 51. g4 Nb4 52. Kc3 Rb8 53. Kd2 Rc8 54. Ke2 Nxd5 55. Kf2 a3 56. bxa3 Ne7 57. Ke2 Kc6 58. Kd1 Kd7 59. Ke2 b2 60. Kf2 Nd5 61. Kg3 Rc3 62. Kh3 b1=Q 63. Kh4 Rxd3 64. Kh5 Rxa3 65. Kg5 Qb6 66. Kf5 Qf6+ 67. Ke4 Qf3+ 68. Ke5 Qf4+ 69. Kxd5 Ra5#</textarea>
+<button onclick="copyPGN(3)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 4: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-4" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. c4 Nf6 2. e3 Ne4 3. d4 Nc6 4. Bd3 Nf6 5. Nc3 Nb4 6. Bb1 Nc6 7. f4 Nb4 8. d5 Na6 9. e4 d6 10. Nf3 Nc5 11. b4 Na6 12. a3 Bg4 13. e5 Nd7 14. h3 Bxf3 15. Qxf3 dxe5 16. c5 Naxc5 17. bxc5 Nxc5 18. Bc2 exf4 19. Qxf4 Qd6 20. O-O Qxf4 21. Bxf4 c6 22. Rab1 cxd5 23. Be3 e6 24. Nb5 Rc8 25. Bf4 Na6 26. Bd1 Bxa3 27. Nxa3 Nc5 28. Be3 O-O 29. Nb5 Ne4 30. Nd4 Rb8 31. Bf3 Nc3 32. Rb2 Rfe8 33. Ra1 a6 34. Rc2 Ne4 35. Rcc1 Rbc8 36. Ne2 Rxc1+ 37. Rxc1 Nd6 38. Bf4 Nb5 39. Rb1 Rd8 40. Be5 Rd7 41. Rc1 f6 42. Ba1 Kf7 43. Rf1 Ke7 44. Rd1 Rd8 45. Bb2 g5 46. Nc3 Nxc3 47. Bxc3 Rd7 48. Rd3 Kf7 49. Be2 Rc7 50. Rf3 f5 51. Kf2 Rc6 52. g4 f4 53. h4 h6 54. hxg5 hxg5 55. Bd4 Ke7 56. Be5 Rb6 57. Bd4 Rc6 58. Rb3 Rc7 59. Be5 Rd7 60. Rh3 Kd8 61. Rh5 Rf7 62. Bd3 Kd7 63. Be2 f3 64. Bxf3 Kc6 65. Ke3 Kc5 66. Rxg5 Rd7 67. Kf2 Rf7 68. Kg2 Kc4 69. Rh5 Rd7 70. g5 Re7 71. g6 Re8 72. Rh2 Kb5 73. Rh1 Kb6 74. Rb1+ Kc6 75. Rc1+ Kb5 76. Rb1+ Kc6 77. Rh1 Kb6 78. Be2 Rc8 79. Rb1+ Ka7 80. Kh3 Rg8 81. Bh5 Rc8 82. Bd4+ Ka8 83. Rf1 Kb8 84. g7 Rg8 85. Rc1 Rd8 86. Bg4 e5 87. Bxe5+ Ka7 88. Bh5 Rg8 89. Rb1 Rc8 90. Rf1 Rg8 91. Bd4+ b6 92. Rf7+ Kb8 93. Bg1 Rxg7 94. Bh2+ Kc8 95. Rxg7 a5 96. Bg4+ Kd8 97. Bf4 b5 98. Bd6 Ke8 99. Be6 Kd8 100. Rg8#</textarea>
+<button onclick="copyPGN(4)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 5: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-5" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 e6 2. c4 a6 3. Nf3 d5 4. cxd5 exd5 5. Nc3 Nf6 6. Bf4 Bd6 7. Ne5 Nh5 8. Qa4+ c6 9. Be3 Nd7 10. Nxc6 Qb6 11. Nxd5 Qxc6 12. Qxc6 bxc6 13. Nc3 Nb6 14. Ne4 Be7 15. Rc1 f5 16. Rxc6 Na4 17. b3 Kd7 18. Rc4 Ke8 19. Rxa4 g6 20. Nc3 Bd7 21. Ra5 Bb4 22. Re5+ Kd8 23. Bg5+ Kc7 24. Kd2 Bd6 25. Ra5 Bb4 26. Re5 Bd6 27. Ra5 Kb6 28. Rd5 Kc6 29. e3 h6 30. Bh4 Be6 31. Ra5 Kc7 32. Rxa6 f4 33. Nb5+ Kb7 34. Nxd6+ Kb8 35. Rxa8+ Kxa8 36. Be2 Bd7 37. Bxh5 gxh5 38. exf4 Rg8 39. g3 Rg6 40. Be7 h4 41. gxh4 Re6 42. Re1 Bc8 43. Nxc8 Rg6 44. Bc5 Rg4 45. Nd6 Rg8 46. Re6 Rf8 47. Rxh6 Kb8 48. Bb6 Rg8 49. Rh5 Rd8 50. Bxd8 Ka7 51. Bc7 Ka6 52. Ra5#</textarea>
+<button onclick="copyPGN(5)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 6: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-6" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 c5 2. Nc3 Nc6 3. Nge2 Nf6 4. d4 cxd4 5. Nxd4 e5 6. Nb3 Bb4 7. Bd3 Bxc3+ 8. bxc3 O-O 9. c4 Nb4 10. Ba3 Nxd3+ 11. Qxd3 Re8 12. f4 Nxe4 13. O-O Qb6+ 14. c5 Qc6 15. Na5 Qa4 16. Nb3 exf4 17. Bb2 Ng5 18. Qd5 Ne6 19. Rae1 Qxa2 20. Ba1 Qxc2 21. Nd4 Qd2 22. Qg5 f6 23. Qd5 Rf8 24. h3 Rf7 25. Re2 Qb4 26. Nf5 Qxc5+ 27. Rff2 Qxd5 28. Re4 Qxe4 29. Nd6 Qb1+ 30. Kh2 Qxa1 31. Ne4 Qe5 32. Re2 f3+ 33. g3 fxe2 34. Kg2 Qxe4+ 35. Kf2 e1=Q#</textarea>
+<button onclick="copyPGN(6)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 7: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-7" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 e6 2. c4 Be7 3. Nc3 d5 4. cxd5 Nf6 5. dxe6 fxe6 6. Nf3 O-O 7. Bg5 h6 8. Bxf6 Rxf6 9. d5 exd5 10. Qxd5+ Kh8 11. Qxd8+ Bxd8 12. Ne4 Re6 13. Rd1 Nc6 14. Nc5 Rf6 15. Nd2 Bf5 16. Nxb7 Be7 17. Rc1 Bh7 18. Nc5 Nb4 19. Nce4 Rb6 20. Rxc7 Bd8 21. Rf7 Bf6 22. Nxf6 Nc2+ 23. Kd1 Rxf6 24. Rxf6 gxf6 25. Rg1 Rb8 26. Nc4 Nb4 27. a3 Na6 28. e3 Rd8+ 29. Ke2 Bg8 30. Kf3 Rd1 31. Na5 Nb8 32. Rh1 Bd5+ 33. e4 Be6 34. Kg3 h5 35. Kh4 Nd7 36. Nc6 Bc4 37. Nxa7 Ne5 38. f4 Ng6+ 39. Kxh5 Ne7 40. Kg4 Be6+ 41. Kg3 Ba2 42. e5 fxe5 43. fxe5 Kh7 44. Bc4 Nf5+ 45. Kh3 Rxh1 46. Bxa2 Ra1 47. Be6 Ne7 48. Bc4 Kg6 49. Nb5 Nc6 50. e6 Kf6 51. Nc3 Nd8 52. Kg3 Rc1 53. Kf3 Ke7 54. Ke4 Nxe6 55. Nd5+ Kd6 56. Ne3 Re1 57. Ba2 Ng5+ 58. Kd3 Ke5 59. Bb3 Rb1 60. Ba2 Rh1 61. Bb3 Rg1 62. Bd5 Ne6 63. Kd2 Nf4 64. Bf3 Kd4 65. Bb7 Rb1 66. Nc2+ Kc5 67. b4+ Kb5 68. Ke3 Kb6 69. Be4 Nd5+ 70. Bxd5 Rh1 71. h3 Rd1 72. Ke4 Rd2 73. Ne3 Kc7 74. Ke5 Re2 75. Kd4 Re1 76. Nc4 Ra1 77. Ke5 Kd7 78. Be4 Rd1 79. Ne3 Ra1 80. Nc4 Kc7 81. Bf3 Re1+ 82. Be4 Rc1 83. Ne3 Rc3 84. Nd5+ Kb7 85. Nxc3+ Kc8 86. Kd6 Kb8 87. Kd7 Ka7 88. Kc7 Ka6 89. Bb7+ Ka7 90. Nb5#</textarea>
+<button onclick="copyPGN(7)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 8: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-8" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 c5 2. Bc4 Nc6 3. Nc3 Ne5 4. Be2 Nf6 5. f4 Ng6 6. f5 Ne5 7. d3 Nc6 8. Bg5 Qb6 9. Na4 Qb5 10. c4 Qa5+ 11. Kf2 Nd4 12. e5 Nxe2 13. exf6 Nd4 14. Nc3 gxf6 15. Bd2 Nxf5 16. Qh5 Nd4 17. Nf3 Nxf3 18. b4 Qxb4 19. Kxf3 Qb2 20. Rhd1 e6 21. Ke2 Bd6 22. Rf1 Rg8 23. g4 Bxh2 24. Rab1 Qxb1 25. Nxb1 Be5 26. g5 f5 27. Qh4 h6 28. Na3 hxg5 29. Qf2 d6 30. Nb5 Ke7 31. Rh1 Bd7 32. Kd1 Rg7 33. d4 cxd4 34. Rh5 Bxb5 35. cxb5 g4 36. Qh4+ Kd7 37. Qh1 Rb8 38. Rh8 Rxh8 39. Qxb7+ Kd8 40. Qa8+ Kd7 41. Qxa7+ Kd8 42. Qb8+ Ke7 43. Qxh8 Rg6 44. Qh1 Rg8 45. b6 Bg3 46. Qg2 Be5 47. a3 Kf6 48. Qh1 Rb8 49. Qh4+ Kg7 50. Qg5+ Kh7 51. Qh6+ Kg8 52. Ba5 Bg3 53. Kc2 Be5 54. Kd1 Bg3 55. Qg5+ Kf8 56. Qc1 Kg7 57. Qg5+ Kf8 58. a4 Be5 59. Be1 Ra8 60. a5 Rc8 61. Bd2 Rb8 62. Be1 Rc8 63. b7 Rb8 64. a6 f6 65. Qh6+ Kf7 66. a7 d5 67. axb8=Q Bxb8 68. Bb4 Kg8 69. Qxf6 Bg3 70. Qxe6+ Kg7 71. Qxd5 Bb8 72. Qxd4+ Kf7 73. Qd7+ Kg6 74. Qc8 Bg3 75. Qe6+ Kg7 76. Bc3+ Kf8 77. b8=R+ Bxb8 78. Qxf5+ Ke7 79. Bf6+ Kd6 80. Be5+ Kc5 81. Qc8+ Kd5 82. Bxb8 g3 83. Ke2 Kd4 84. Qe6 g2 85. Ba7+ Kc3 86. Bg1 Kb4 87. Qf6 Kb3 88. Qg5 Kc2 89. Ke3 Kb1 90. Kd3 Kb2 91. Qg8 Ka3 92. Qg5 Kb3 93. Qg3 Kb2 94. Qg8 Ka3 95. Qxg2 Ka4 96. Qg6 Kb3 97. Qe4 Kb2 98. Qa4 Kb1 99. Qb3+ Kc1 100. Qa2 Kd1 101. Qb1#</textarea>
+<button onclick="copyPGN(8)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 9: BitboardX_v0.2.2 vs stockfish1600 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-9" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 e6 2. c4 Nf6 3. Nf3 Ne4 4. Qd3 d5 5. cxd5 Qxd5 6. Nc3 Nxc3 7. bxc3 Be7 8. Bf4 c5 9. Be5 c4 10. Qe3 b5 11. Bxg7 Rg8 12. Qh6 Qe4 13. Rc1 Qg6 14. Qxg6 fxg6 15. Bh6 g5 16. Rb1 b4 17. cxb4 Nc6 18. b5 Rb8 19. Rc1 Na5 20. Ne5 Bb4+ 21. Kd1 Rxb5 22. Nxc4 Ba6 23. Ne5 Rxe5 24. dxe5 Rg6 25. Bxg5 Rxg5 26. Rc7 Kd8 27. Rxh7 Bb7 28. Rg1 Be4 29. Rxa7 Rxe5 30. Kc1 Rc5+ 31. Kb2 Bc3+ 32. Ka3 Nc4+ 33. Kb3 Nd2+ 34. Ka3 Rb5 35. e3 Rb2 36. Be2 Bd5 37. Ra8+ Kc7 38. Ra7+ Kd8 39. Ra8+ Ke7 40. Re8+ Kxe8 41. Ka4 Kd7 42. Bd3 Bc4 43. Bxc4 Kd6 44. Bb3 Kd7 45. Rd1 Ke8 46. Bxe6 Rb7 47. Bd5 Rb2 48. Rc1 Bb4 49. Rc7 Bd6 50. Rh7 Nb1 51. Rh8+ Kd7 52. Rh7+ Kd8 53. Ka5 Nc3 54. Rh8+ Kc7 55. Rh7+ Kd8 56. Rh8+ Kd7 57. Rh7+ Be7 58. Bc4 Kd6 59. Rh6+ Kc7 60. Rh7 Kd6 61. Rh6+ Kd7 62. Be6+ Ke8 63. Rh8+ Bf8 64. Bd7+ Ke7 65. a4 Nd5 66. Bc6 Nc7 67. Rh7+ Kd6 68. Rf7 Be7 69. Bb5 Ke6 70. Bc4+ Kd6 71. Rf4 Kc6 72. Bd3 Kb7 73. Rc4 Nd5 74. Rc8 Nc7 75. Rxc7+ Kxc7 76. Ka6 Rb6+ 77. Ka7 Bc5 78. Bc4 Rd6+ 79. Ka8 Rd8#</textarea>
+<button onclick="copyPGN(9)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 10: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-10" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 e5 2. Bc4 Nf6 3. Nc3 Nc6 4. Nf3 Ng4 5. d3 Bc5 6. Rf1 Nxf2 7. Rxf2 Bxf2+ 8. Kxf2 Qe7 9. Kg1 Qc5+ 10. Kf1 O-O 11. Qe1 Nd4 12. Nxd4 exd4 13. Nd5 Kh8 14. b4 Qc6 15. Qf2 f5 16. Qxd4 fxe4+ 17. Ke1 exd3 18. Bxd3 Qd6 19. Qh4 Qe5+ 20. Kd2 g6 21. Qe7 Rf2+ 22. Kd1 Qxa1 23. h3 Qxa2 24. Qe5+ Kg8 25. Qd4 Rxg2 26. Nf6+ Kf8 27. Be4 Rxc2 28. Bd5 Rxc1+ 29. Kxc1 Qa3+ 30. Kd2 Qxh3 31. Ng4 d6 32. Qf6+ Ke8 33. Qf7+ Kd8 34. Qf8+ Kd7 35. Qf7+ Kd8 36. Qf8+ Kd7 37. Nf6#</textarea>
+<button onclick="copyPGN(10)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 11: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-11" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. c4 e5 2. Nc3 Be7 3. Nf3 Nc6 4. Qc2 Nb4 5. Qb3 Nf6 6. Nxe5 c5 7. Nd5 a5 8. Nxb4 a4 9. Qg3 cxb4 10. Qxg7 Rf8 11. Ng4 d6 12. Nxf6+ Bxf6 13. Qxh7 Be5 14. Qe4 b3 15. axb3 Bd7 16. d4 axb3 17. Rxa8 Qxa8 18. dxe5 Qa5+ 19. Kd1 dxe5 20. Qxb7 Qc5 21. Qxb3 Qa5 22. Qb8+ Qd8 23. Qxe5+ Qe7 24. Qb8+ Qd8 25. Qxd8+ Kxd8 26. Bg5+ Kc8 27. Kc2 Rg8 28. Be3 Bc6 29. Rg1 Be4+ 30. Kc3 Kd7 31. Kd4 Rb8 32. Kxe4 f5+ 33. Kxf5 Re8 34. Bd4 Re6 35. Rh1 Rc6 36. c5 Rxc5+ 37. Bxc5 Kc6 38. Be3 Kd6 39. h4 Ke7 40. h5 Kf8 41. h6 Ke8 42. h7 Kd7 43. h8=Q Kd6 44. Qc3 Ke7 45. Qc7+ Kf8 46. Rh8#</textarea>
+<button onclick="copyPGN(11)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 12: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-12" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e3 Nc6 2. d4 Nf6 3. Nf3 Nb4 4. c4 Ne4 5. Nbd2 Nf6 6. e4 Ng4 7. h3 Nf6 8. Qb3 Nc6 9. e5 Nh5 10. Qe3 Nb4 11. Qb3 e6 12. Nb1 Nc6 13. d5 exd5 14. cxd5 Nb4 15. d6 cxd6 16. Bd2 Nc6 17. Bc4 Qe7 18. Bg5 f6 19. Be3 fxe5 20. Bd5 Nf6 21. Nc3 Nxd5 22. Bg5 Nf6 23. Nd5 Qd8 24. Qa3 Rg8 25. Rc1 Be7 26. Qd3 Qa5+ 27. Kf1 Qxd5 28. Qe2 e4 29. Qe3 exf3 30. gxf3 Qb5+ 31. Kg1 Qxb2 32. Re1 Qxa2 33. Kh2 Nd5 34. Kg2 Nxe3+ 35. Bxe3 Qf7 36. Bg5 Qg6 37. f4 h6 38. Kh2 hxg5 39. Re3 Qc2 40. Kg1 gxf4 41. Rb3 Qxb3 42. f3 Qxf3 43. Rh2 Nd4 44. Ra2 Ne2+ 45. Rxe2 Qxe2 46. Kh1 f3 47. Kg1 Qg2#</textarea>
+<button onclick="copyPGN(12)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 13: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-13" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. e4 d5 2. exd5 Nf6 3. d4 Nxd5 4. Nf3 Nf6 5. Nc3 e6 6. Be3 Nbd7 7. Bc4 Nb6 8. Bb5+ Nbd7 9. O-O a6 10. Bd3 b5 11. Bxb5 Bb4 12. Bc6 Rb8 13. Qd3 Be7 14. Bg5 O-O 15. Rfb1 h6 16. Bf4 Rb6 17. Qc4 Rb4 18. Qe2 Nb8 19. Ba4 c5 20. a3 Rb6 21. Qc4 Nbd7 22. Bxd7 Bxd7 23. dxc5 Bb5 24. Qb4 Nd7 25. Bc7 Qxc7 26. cxb6 Qxb6 27. Qxe7 Ra8 28. Nxb5 Qxb5 29. Nd4 Qd5 30. Rd1 Ne5 31. Qc7 Rf8 32. Ne2 Nf3+ 33. gxf3 Qb5 34. Qc3 Qf5 35. Ng3 Rb8 36. Nxf5 exf5 37. Rd6 Re8 38. Rxa6 g6 39. Ra7 Re6 40. Ra8+ Kh7 41. Rh8#</textarea>
+<button onclick="copyPGN(13)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 14: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-14" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 c6 2. Nc3 d5 3. Nf3 dxe4 4. Nxe4 Nf6 5. Bd3 Nxe4 6. Bxe4 Qa5 7. O-O Be6 8. Re1 Bxa2 9. b3 Nd7 10. c4 Qa6 11. Bb2 Nc5 12. Ne5 Nxb3 13. Qc2 Nxa1 14. Rxa1 f6 15. Bxh7 fxe5 16. Bg6+ Kd7 17. Qd3+ Kc8 18. Qf5+ Kd8 19. Qd3+ Kc8 20. Be8 Kc7 21. Qd7+ Kb6 22. Bxe5 Qxc4 23. Bc7+ Kb5 24. Be5 Ka6 25. Bg6 Qb3 26. Bd3+ Ka5 27. Bf1 Rh5 28. Qc7+ Ka4 29. Be2 Rxe5 30. Qxe5 Kb4 31. Qd4+ Ka3 32. Bc4 e5 33. Qe4 Qb2 34. Rxa2+ Qxa2 35. Qe3+ Ka4 36. Bxa2 Ka5 37. g4 Kb5 38. Kf1 Ka6 39. Bc4+ Ka5 40. Kg2 Bd6 41. Ba2 Bf8 42. g5 Bd6 43. h4 Bf8 44. Be6 Ka6 45. h5 Rd8 46. Bf5 c5 47. g6 Rd4 48. Qxe5 Rxd2 49. Qe6+ Rd6 50. Qe8 Rf6 51. h6 Kb6 52. Qc8 Rxf5 53. Qxf5 gxh6 54. Qf6+ Kb5 55. Qxf8 h5 56. Kh3 Kb4 57. Qf4+ Ka5 58. g7 b5 59. Qd6 c4 60. Qd2+ Ka4 61. g8=Q a5 62. Qd7 Kb4 63. Qg5 Kc3 64. Qgd2+ Kb3 65. Qxb5+ Ka3 66. Qc3+ Ka2 67. Qd2+ Ka1 68. Qbb2#</textarea>
+<button onclick="copyPGN(14)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 15: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-15" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 c6 2. c4 d5 3. Nf3 dxc4 4. e3 b5 5. a4 Bb7 6. Nc3 Nf6 7. axb5 cxb5 8. Nxb5 Nc6 9. Bxc4 Nd7 10. Qb3 e6 11. Bd2 Nb6 12. Bxe6 Qf6 13. Nc7+ Ke7 14. d5 Rd8 15. dxc6 Bxc6 16. Rxa7 fxe6 17. Nd5+ Kd6 18. Bb4#</textarea>
+<button onclick="copyPGN(15)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 16: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-16" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. d4 Nf6 2. c3 Nc6 3. e3 Nd5 4. Nf3 Na5 5. b4 Nc6 6. Be2 Ndxb4 7. cxb4 Nxb4 8. a3 Nc6 9. e4 e5 10. d5 Bd6 11. Bg5 Be7 12. Be3 Bf8 13. Bc1 Bd6 14. Bb2 Qf6 15. dxc6 dxc6 16. O-O Bg4 17. Qc2 Bxf3 18. Bxf3 O-O-O 19. Nd2 Kb8 20. Rfd1 Be7 21. Nb3 Rxd1+ 22. Rxd1 Bxa3 23. Bc3 Qe7 24. Be2 Bb4 25. Bxb4 Qxb4 26. Nc5 Qa5 27. Kf1 Ka8 28. Qc1 Rc8 29. Qc2 Re8 30. Qc4 Rf8 31. Qc2 Rg8 32. Qc4 Rf8 33. Nd7 Rc8 34. Qxf7 Qa4 35. Nc5 Qc2 36. Qe6 Rb8 37. Nd7 Rh8 38. Qxe5 Rg8 39. Nc5 Kb8 40. Qd4 a5 41. Qe5 g6 42. Nd7+ Kc8 43. Nb6+ Kb8 44. Nc4 Qb3 45. g3 Qc2 46. Qd4 Re8 47. Qe3 Qa2 48. Ne5 Qe6 49. Nf3 Qh3+ 50. Kg1 Qe6 51. h4 Qe7 52. Kg2 Qe6 53. Ng5 Qe5 54. Bg4 h6 55. Nf3 Qf6 56. h5 g5 57. Rd2 Qe7 58. e5 Rd8 59. Rd4 Rxd4 60. Qxd4 Ka8 61. Qc4 Ka7 62. Qe4 Qf7 63. Bh3 Kb8 64. Qf5 Qxf5 65. Bxf5 g4 66. Nd4 Ka7 67. Bxg4 a4 68. e6 a3 69. Nb3 c5 70. e7 c4 71. Na1 Kb6 72. e8=Q Kc5 73. Nc2 a2 74. Qe7+ Kb6 75. Qb4+ Ka7 76. Qa4+ Kb6 77. Bf3 c6 78. Qb4+ Kc7 79. Qa5+ Kd6 80. Bg4 a1=Q 81. Qb4+ Kc7 82. Nxa1 Kb8 83. Qd6+ Ka8 84. Qf4 Ka7 85. Nc2 Kb6 86. Qb8 c3 87. Bf3 Ka6 88. Kh3 Kb5 89. Qc7 Kc4 90. Qf4+ Kb3 91. Nd4+ Ka3 92. Qc1+ Kb4 93. g4 Kc4 94. Ne6 c2 95. Qxc2+ Kb4 96. Qc5+ Kb3 97. Nd4+ Kb2 98. Be4 Ka2 99. Qc2+ Ka1 100. Qc1+ Ka2 101. Qc2+ Ka1 102. f3 b6 103. Nb3#</textarea>
+<button onclick="copyPGN(16)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 17: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-17" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. c4 c5 2. Nf3 e6 3. g3 d5 4. cxd5 Qxd5 5. Nc3 Qc6 6. Bg2 Be7 7. Rg1 Qa6 8. Ne5 Bd7 9. d4 cxd4 10. Qxd4 h5 11. Bd2 Nf6 12. Bg5 Bc6 13. Qf4 Bxg2 14. Rxg2 Nc6 15. Nc4 O-O-O 16. Bxf6 gxf6 17. Ne4 Rd4 18. Ncd6+ Kc7 19. Nb5+ Kd7 20. Qc7+ Ke8 21. Nxd4 Nxd4 22. Qc8+ Bd8 23. Nxf6+ Ke7 24. Qc5+ Kxf6 25. Qxd4+ e5 26. Qd5 Qa5+ 27. Qxa5 Bxa5+ 28. Kf1 Rd8 29. g4 b5 30. gxh5 Rh8 31. Rc1 Rxh5 32. Rc6+ Kf5 33. Rc5 Ke6 34. Rxb5 Bc7 35. Rb3 e4 36. Ra3 Rd5 37. Rg4 f5 38. Rg6+ Ke7 39. Rxa7 Kf7 40. Rc6 f4 41. Raxc7+ Kf8 42. Rf6+ Ke8 43. Rxf4 Rg5 44. Rh4 Rf5 45. Rhh7 Kd8 46. Ra7 Rxf2+ 47. Kxf2 e3+ 48. Kxe3 Kc8 49. Ra8#</textarea>
+<button onclick="copyPGN(17)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 18: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-18" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 Nf6 2. Nc3 d5 3. exd5 Nxd5 4. Bc4 Nf6 5. Qe2 Nc6 6. d3 Nd4 7. Qd1 Be6 8. Nf3 Bxc4 9. Nxd4 Qxd4 10. dxc4 Qxc4 11. Be3 Ng4 12. Qd4 Nxe3 13. fxe3 Qxd4 14. exd4 O-O-O 15. O-O-O Rd6 16. Rhe1 Kb8 17. Ne4 Rh6 18. Ng5 Rxh2 19. Rd2 f6 20. g4 Rxd2 21. Nf7 Rxd4 22. Rh1 Rg8 23. Rh5 Rxg4 24. Kb1 Rg1#</textarea>
+<button onclick="copyPGN(18)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 19: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-19" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. Nf3 c6 2. Nc3 d6 3. Ne4 Bf5 4. Ng3 e6 5. Nxf5 exf5 6. e3 Nf6 7. Nd4 g6 8. Bd3 Nbd7 9. O-O a6 10. Re1 c5 11. Nf3 Bg7 12. Rb1 Rc8 13. Ra1 Qc7 14. Bc4 d5 15. Bd3 Ng4 16. Be2 O-O 17. Rb1 d4 18. exd4 Bxd4 19. Rf1 Rfd8 20. Bc4 b5 21. Be2 c4 22. Qe1 Ba7 23. h3 Nxf2 24. Rxf2 Qb6 25. Ra1 g5 26. Nxg5 Ne5 27. Nf3 Re8 28. Nxe5 Rc6 29. Nxc6 Rxe2 30. Qxe2 Qxf2+ 31. Qxf2 Bb6 32. Qxb6 a5 33. Nd4 f6 34. Qxf6 f4 35. Nf5 b4 36. Nh6#</textarea>
+<button onclick="copyPGN(19)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 20: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-20" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. c4 e5 2. Nc3 Nf6 3. d3 Nc6 4. g3 Bb4 5. a3 Bxc3+ 6. bxc3 e4 7. Bg2 exd3 8. Nh3 dxe2 9. Qxe2+ Qe7 10. Nf4 Qxe2+ 11. Nxe2 Ne5 12. Nd4 Nxc4 13. O-O O-O 14. a4 Nb6 15. Nf5 Re8 16. a5 Nbd5 17. a6 Nxc3 18. axb7 Ne2+ 19. Kh1 Bxb7 20. Bxb7 Ng4 21. Bf3 Nxc1 22. Raxc1 Nxf2+ 23. Rxf2 c6 24. Nd6 Re6 25. Ne4 Rae8 26. Kg2 Rxe4 27. Bxe4 Rxe4 28. Rd1 Re7 29. Ra2 d5 30. Rc2 Kf8 31. Kf3 Re6 32. Ra2 Rf6+ 33. Ke3 Re6+ 34. Kf3 Rf6+ 35. Kg4 Rh6 36. Rc1 Rg6+ 37. Kf3 Rf6+ 38. Kg2 Ke7 39. Ra6 Kd7 40. Ra2 Kc8 41. h4 Kb8 42. g4 Rg6 43. Re1 Rxg4+ 44. Kf3 Rxh4 45. Re7 Rh3+ 46. Kf4 Rh1 47. Rexa7 Rf1+ 48. Ke5 Rf6 49. Kd4 Kc8 50. Re7 Kd8 51. Raa7 Rf4+ 52. Kc5 Rf1 53. Rec7 Rf2 54. Re7 Rf1 55. Reb7 Kc8 56. Rxf7 Kb8 57. Rfb7+ Kc8 58. Rxg7 Kb8 59. Rae7 Rf8 60. Kb6 c5 61. Rb7+ Ka8 62. Ra7+ Kb8 63. Rgb7+ Kc8 64. Ra8#</textarea>
+<button onclick="copyPGN(20)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 21: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-21" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. e4 e5 2. Nf3 Nf6 3. Nxe5 Nxe4 4. Qe2 f5 5. Qh5+ g6 6. Nxg6 hxg6 7. Qxg6+ Ke7 8. Qxf5 Nf6 9. Nc3 Nc6 10. Bd3 d6 11. Nd5+ Nxd5 12. Qxd5 Be6 13. Qg5+ Ke8 14. Bg6+ Bf7 15. Qxd8+ Rxd8 16. Be4 Bg7 17. Kf1 Nb4 18. a3 Na2 19. Rxa2 Bc4+ 20. Kg1 Rh4 21. Bg6+ Ke7 22. b3 Kf6 23. Bd3 Bxd3 24. Bb2+ Kg6 25. cxd3 Re8 26. Kf1 a5 27. Bxg7 Kxg7 28. Rc2 Kf6 29. Rxc7 b5 30. Ra7 Kg6 31. Rxa5 Rd4 32. Rxb5 Kh6 33. Rf5 Kg6 34. Rf3 Rb8 35. Rg3+ Kh6 36. Rh3+ Rh4 37. Rxh4+ Kg5 38. Rb4 Kf6 39. Rxb8 Kg7 40. Rb6 Kg8 41. Rxd6 Kg7 42. a4 Kg8 43. Rd7 Kf8 44. Ke2 Ke8 45. Ra7 Kf8 46. Rc1 Ke8 47. Rc8#</textarea>
+<button onclick="copyPGN(21)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 22: stockfish1600 vs BitboardX_v0.2.2 (Draw)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1/2-1/2</li>
+</ul>
+<textarea id="pgn-22" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. c3 Nf6 5. e5 dxc3 6. exf6 cxb2 7. Qe2+ Qe7 8. Bxb2 Qxe2+ 9. Bxe2 g6 10. a3 Nb4 11. Kd1 Nd5 12. Bc4 Bxa3 13. Bxa3 Nf4 14. Bc1 Nxg2 15. Bh6 d6 16. Nbd2 Bg4 17. Bf1 Nh4 18. Be2 Nxf3 19. Bg7 Nxd2 20. Bxg4 Ne4 21. Re1 d5 22. f3 Rg8 23. Kc2 h5 24. Be6 fxe6 25. fxe4 dxe4 26. Rab1 O-O-O 27. Ra1 Kb8 28. h3 Rd6 29. f7 Rc6+ 30. Kd2 Rd8+ 31. Ke2 Rc2+ 32. Ke3 Rh2 33. Kxe4 Rxh3 34. Ke5 Rf3 35. Rf1 Rxf1 36. Rxf1 Kc8 37. Rg1 Kd7 38. Bh6 Ke7 39. Rf1 Rd5+ 40. Ke4 Rf5 41. f8=R Kd6 42. Rh1 Re5+ 43. Kf3 Ke7 44. Rg8 Rf5+ 45. Ke2 Re5+ 46. Kf2 Rf5+ 47. Kg2 Kf6 48. Rg1 Rc5 49. Kh3 Rc3+ 50. Kg2 Rc2+ 51. Kh3 Rc3+ 52. Rg3 Rxg3+ 53. Kxg3 Ke5 54. Rb8 b6 55. Kf3 Kd6 56. Bg5 Kc6 57. Rd8 h4 58. Ke4 h3 59. Rd1 Kb5 60. Kd3 c5 61. Bf6 Kc6 62. Be5 Kd5 63. Bf6 h2 64. Bg7 c4+ 65. Kc2+ Ke4 66. Rh1 Kd5 67. Rxh2 Kc5 68. Bc3 b5 69. Rh3 b4 70. Bb2 c3 71. Bxc3 bxc3 72. Re3 Kd6 73. Rd3+ Ke5 74. Rg3 Kf6 75. Rf3+ Ke7 76. Re3 Kf7 77. Rxc3 Kf6 78. Kd1 Ke5 79. Kc2 Kf5 80. Rc4 Ke5 81. Kd1 Kf5 82. Ke1 Ke5 83. Ra4 Kf5 84. Ra5+ Kf6 85. Kf2 Ke7 86. Ke3 Kf6 87. Ke2 g5 88. Kf3 Kg6 89. Ke4 Kf6 90. Ra3 g4 91. Ra5 g3 92. Rc5 g2 93. Rc1 Ke7 94. Rg1 Kd6 95. Ke3 Kc6 96. Rxg2 Kb7 97. Re2 Kb8 98. Rg2 Kb7 99. Rg6 e5 100. Rg5 e4 101. Rg3 Kc7 102. Kd4 Kb6 103. Rc3 Kb5 104. Re3 Kc6 105. Rg3 Kb6 106. Rg7 a5 107. Rf7 Kb5 108. Re7 Kb4 109. Rf7 Kb5 110. Rg7 e3 111. Re7 a4 112. Kxe3 Kc4 113. Rc7+ Kb3 114. Kd3 Kb4 115. Re7 Kc5 116. Ra7 Kb4 117. Rf7 Kc5 118. Rh7 Kb6 119. Kc2 Kc5 120. Kc3 Kd5 121. Ra7 a3 122. Ra8 Kc5 123. Ra6 Kd5 124. Ra8 Kc5 125. Ra6 Kd5 126. Kd3 Kc5 127. Ra5+ Kb4 128. Ra7 Kb3 129. Rb7+ Ka4 130. Kc3 Ka5 131. Ra7+ Kb6 132. Rg7 Ka6 133. Kb3 Kb6 134. Rg1 Kc5 135. Rg7 a2 136. Kb2 a1=Q+ 137. Kxa1 Kd5 138. Rg1 Ke5 139. Kb1 Kd4 140. Rg7 Ke5 141. Kc2 Kf5 142. Rg2 Ke6 143. Rf2 Kd6 144. Rg2 Kc6 145. Rg1 Kc5 146. Kc1 Kd5 147. Rg7 Ke4 148. Rh7 Kd4 149. Rg7 Ke5 150. Rg1 Kf6 151. Kd1 Kf5 152. Re1 Kf6 153. Rf1+ Kg5 154. Rh1 Kf6 155. Rg1 Kf5 156. Rf1+ Ke5 157. Rf8 Kd6 158. Kd2 Ke6 159. Kc1 Kd6 160. Rf2 Kd7 161. Re2 Kc6 162. Rf2 Kd5 163. Kb1 Kd4 164. Kc2 Ke4 165. Rh2 Kd5 166. Kb3 Kd6 167. Rg2 Ke6 168. Kc4 Ke5 169. Kc3 Kd6 170. Kc2 Kc6 171. Rd2 Kb6 172. Kd1 Kb5 173. Kc1 Kc6 174. Kd1 Kc5 175. Kc1 Kc4 176. Kc2 Kb4 177. Kd3 Kc5 178. Rh2 Kd5 179. Rc2 Ke5 180. Rd2 Ke6 181. Rf2 Ke5 182. Rc2 Kf6 183. Ke2 Kg6 184. Ra2 Kh6 185. Rb2 Kg7 186. Rb1 Kf6 187. Rf1+</textarea>
+<button onclick="copyPGN(22)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 23: BitboardX_v0.2.2 vs stockfish1600 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-23" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. c4 e5 2. Nc3 Nc6 3. Nf3 b6 4. Nd5 e4 5. Ng5 Nf6 6. Nxf6+ gxf6 7. Nxe4 f5 8. Nc3 Bg7 9. Qc2 O-O 10. Qxf5 Nb4 11. Nd5 d6 12. Qb1 c5 13. Nxb4 cxb4 14. Qc2 Re8 15. Qb3 Be6 16. Qxb4 a5 17. Qb5 a4 18. Rb1 d5 19. cxd5 Ra5 20. Qxa5 bxa5 21. dxe6 Qc7 22. exf7+ Kxf7 23. Kd1 Rc8 24. e3 Qc2+ 25. Ke2 h5 26. Ra1 a3 27. Ke1 Bxb2 28. Be2 Bxa1 29. Bxh5+ Kf6 30. Bxa3 Rd8 31. Bb4 Qc1+ 32. Ke2 Qxh1 33. Bxa5 Rg8 34. Bc7 Rc8 35. Bg3 Qb1 36. Bg4 Re8 37. a3 Bc3 38. Bd7 Qb2 39. Bxe8 Ke7 40. Bg6 Qxd2+ 41. Kf3 Kf6 42. Bh7 Qd1+ 43. Ke4 Qb1+ 44. Kf3 Qxh7 45. Bf4 Qh5+ 46. Kg3 Ke6 47. Bc7 Qg5+ 48. Kf3 Qd5+ 49. Kg3 Be1 50. Bb6 Qd6+ 51. Kf3 Qf8+ 52. Kg4 Qxf2 53. g3 Qf5+ 54. Kh4 Qh7+ 55. Kg5 Bf2 56. Kg4 Qf5+ 57. Kh4 Kf6 58. e4 Qxe4+ 59. Kh3 Qe6+ 60. Kg2 Qxb6 61. g4 Bg1 62. Kh1 Qf2 63. g5+ Ke6 64. h3 Kd5 65. a4 Kc4 66. a5 Kd3 67. h4 Qh2#</textarea>
+<button onclick="copyPGN(23)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 24: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-24" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. d4 Nf6 2. c4 e6 3. Nf3 Bb4+ 4. Nfd2 Nc6 5. e3 O-O 6. Be2 e5 7. d5 Ne7 8. Qa4 Bc5 9. a3 Nf5 10. Qc2 Nxe3 11. fxe3 Bxe3 12. Nf1 Bxc1 13. Nc3 Bf4 14. Qd3 Ne8 15. Ng3 Qh4 16. d6 Bxg3+ 17. Qxg3 Qxg3+ 18. Kd1 Qxg2 19. Kc2 Nxd6 20. Rhg1 Qxh2 21. Rh1 Qf2 22. Rac1 Nxc4 23. Kb1 Qd4 24. Rxh7 Kxh7 25. Rh1+ Kg6 26. Rh5 Nxa3+ 27. Kc1 Qf4+ 28. Kd1 Qb4 29. Bf3 Qb3+ 30. Ke2 Qxb2+ 31. Ke3 Qxc3+ 32. Ke2 e4 33. Rh6+ Kxh6 34. Bxe4 Re8 35. Kf1 Qd2 36. Kg1 Rxe4 37. Kh1 Re1#</textarea>
+<button onclick="copyPGN(24)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 25: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-25" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 c6 2. c4 Qa5+ 3. Nc3 Nf6 4. Nf3 d5 5. cxd5 Nxd5 6. Bd2 Qc7 7. Nxd5 cxd5 8. Qb3 Qb6 9. Qxb6 axb6 10. Ne5 Bf5 11. Be3 e6 12. Rg1 h5 13. Bf4 Nc6 14. Nxc6 f6 15. Nb8 Bb4+ 16. Kd1 Kd8 17. h3 h4 18. Rh1 Rh5 19. e3 Rh8 20. Be2 g5 21. Bh2 g4 22. hxg4 Bg6 23. Bf3 Ke7 24. Bc7 Re8 25. Rxh4 Rg8 26. Rh6 e5 27. dxe5 Ra5 28. exf6+ Ke6 29. Bxb6 Kxf6 30. Bxa5 Bxa5 31. Nd7+ Ke7 32. Bxd5 Rg7 33. Bxb7 Bd3 34. Ne5 Bb5 35. Bc6 Ba6 36. Bd5 Bc8 37. Nc6+ Kd7 38. Nxa5 Rg5 39. Be6+ Ke8 40. Bxc8 Kd8 41. Bf5 Ke8 42. Nc6 Kf7 43. Ne5+ Kf8 44. Rc1 Rxf5 45. Rc7 Rxf2 46. Rh8#</textarea>
+<button onclick="copyPGN(25)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 26: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-26" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. c4 Nf6 2. d4 e6 3. Nf3 b6 4. a3 Bb7 5. e3 Bd6 6. Bd3 Ng4 7. h3 Nf6 8. Bc2 O-O 9. Qd3 Bxf3 10. gxf3 Nc6 11. f4 Ne7 12. e4 Nxe4 13. c5 bxc5 14. Qxe4 f5 15. Qe3 Nd5 16. Qg3 cxd4 17. Kf1 Qb8 18. Nd2 Nxf4 19. Qb3 Rf7 20. Qxb8+ Rxb8 21. Nc4 Ng6 22. Nxd6 cxd6 23. b4 Rc8 24. Ba4 Rc3 25. Bd2 Rf3 26. Bd1 Rd3 27. Ke2 Ne5 28. Ba4 Rf3 29. Bb5 f4 30. h4 Rb3 31. a4 Rb2 32. Rhb1 Rc2 33. f3 Rxd2+ 34. Kxd2 Nxf3+ 35. Kc2 Nxh4 36. a5 Re7 37. Bd3 Ng6 38. a6 Ne5 39. Bf1 Re8 40. Kb3 Rc8 41. b5 Nf3 42. Rc1 Nd2+ 43. Ka3 Rxc1 44. Rxc1 Nxf1 45. Rxf1 Kf7 46. b6 axb6 47. Rxf4+ Kg6 48. a7 d3 49. Rf2 b5 50. Kb3 d2 51. Rg2+ Kf6 52. Rg1 d1=Q+ 53. Rxd1 Ke7 54. Rd2 h6 55. a8=Q d5 56. Qh8 g5 57. Qg7+ Kd6 58. Qh8 Ke7 59. Rf2 Kd6 60. Qg7 d4 61. Qf8+ Kc6 62. Rf1 d3 63. Qa8+ Kc7 64. Rc1+ Kd6 65. Rf1 d2 66. Qf8+ Kc6 67. Qf3+ Kc7 68. Qc3+ Kd6 69. Qd4+ Kc6 70. Qxd2 d6 71. Qa5 Kc5 72. Qc3+ Kd5 73. Qb4 Kc6 74. Qd4 e5 75. Qa7 h5 76. Rc1+ Kd5 77. Qb7+ Ke6 78. Qc8+ Kf6 79. Rc7 e4 80. Rc1 Ke5 81. Qe8+ Kf5 82. Rf1+ Kg4 83. Qxe4+ Kg3 84. Rg1+ Kf2 85. Rg2+ Kf1 86. Qf3+ Ke1 87. Qe4+ Kd1 88. Rh2 Kc1 89. Qe2 Kb1 90. Qd1#</textarea>
+<button onclick="copyPGN(26)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 27: BitboardX_v0.2.2 vs stockfish1600 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-27" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 e6 2. c4 Nf6 3. Nc3 d6 4. Nf3 Be7 5. d5 O-O 6. Be3 e5 7. Nb5 Bf5 8. Bxa7 c6 9. dxc6 Qa5+ 10. Qd2 Qa6 11. cxb7 Qxb7 12. Nxd6 Qd7 13. Nxf7 Rxf7 14. Nxe5 Qxd2+ 15. Kxd2 Bb4+ 16. Kc1 Rfxa7 17. a3 Bd6 18. Nf3 Nc6 19. Kd2 Kh8 20. Ra2 Ne4+ 21. Ke3 Bc5+ 22. Kf4 Bg6 23. Rg1 Re8 24. Kg4 Ne7 25. Ng5 Nxf2+ 26. Kg3 Nf5+ 27. Kf4 Nd4 28. Kg3 Rf8 29. Nh3 Bd6+ 30. Nf4 Rxf4 31. e4 Nd1 32. e5 Bxe5 33. Kh3 Ne6 34. g4 Rf3+ 35. Kh4 h6 36. Bg2 Bf6+ 37. g5 Bxg5+ 38. Kg4 Rf2 39. Kg3 Bh5 40. Rxd1 Bh4+ 41. Kxh4 Rxg2 42. Rd8+ Kh7 43. Rd4 Bf3 44. b3 Rg6 45. Rad2 Rg1 46. R2d3 g5+ 47. Kh3 Nxd4 48. Rxd4 h5 49. b4 Bg4+ 50. Rxg4 hxg4#</textarea>
+<button onclick="copyPGN(27)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 28: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-28" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 c5 2. Nc3 Nc6 3. Nf3 g6 4. Bc4 Bg7 5. a4 Bxc3 6. bxc3 Nf6 7. e5 Ng4 8. O-O Ncxe5 9. Bb5 Qc7 10. h3 Nxf3+ 11. Qxf3 Qh2#</textarea>
+<button onclick="copyPGN(28)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 29: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-29" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 e6 2. e4 c5 3. Nf3 d5 4. exd5 exd5 5. Bb5+ Bd7 6. Qe2+ Be7 7. dxc5 Nf6 8. Nc3 Nc6 9. Bg5 a6 10. Bxc6 Bxc6 11. Bxf6 gxf6 12. Nd4 Qc7 13. Rd1 O-O 14. Nf5 Rfe8 15. Qg4+ Kf8 16. Qg7#</textarea>
+<button onclick="copyPGN(29)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 30: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-30" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e3 Nc6 2. Bb5 Nb4 3. d4 Nf6 4. Nf3 Ne4 5. O-O Nd6 6. Ba4 Nd5 7. Bb3 Nf6 8. Nbd2 Nfe4 9. c4 Rb8 10. Nxe4 Nxe4 11. Qc2 Nf6 12. Re1 e6 13. Qe2 Bd6 14. a3 O-O 15. Qc2 Re8 16. e4 Ng4 17. e5 Be7 18. c5 Bh4 19. g3 Be7 20. Ba2 Rf8 21. h3 Nxf2 22. Kxf2 f6 23. Kg2 Qe8 24. exf6 Bxf6 25. Qe4 Be7 26. Bd2 Ra8 27. Bb1 Qh5 28. Ba2 Qf5 29. Re2 Qxe4 30. Rxe4 Bd8 31. Rc1 Rf7 32. Bf4 Rf6 33. a4 Rf5 34. g4 Rf7 35. Ne5 Rxf4 36. Bxe6+ dxe6 37. Rxf4 Bg5 38. Rcf1 Bxf4 39. Rxf4 b6 40. c6 Ba6 41. Rf7 Rc8 42. Re7 Be2 43. h4 Bd1 44. g5 Bxa4 45. h5 Bb3 46. Rd7 Kh8 47. Kg3 Bd5 48. h6 gxh6 49. gxh6 Be4 50. Kh4 Bb1 51. Kg5 Bc2 52. Kf6 Rf8+ 53. Kxe6 Re8+ 54. Kf7 Rc8 55. Ke7 Kg8 56. Rd8+ Rxd8 57. Kxd8 Kf8 58. Kd7 b5 59. Kxc7 Ke7 60. d5 Be4 61. d6+ Ke6 62. d7 Kxe5 63. d8=Q Bf5 64. Qe7+ Kd5 65. Qf7+ Ke4 66. Qf6 a6 67. Kd6 Bg4 68. Qe7+ Kf4 69. Qxh7 Bf5 70. Qg7 a5 71. h7 Bxh7 72. b4 Bf5 73. Qd4+ Kf3 74. Qd5+ Kf4 75. Qxf5+ Kxf5 76. Kc5 Ke6 77. bxa5 b4 78. Kxb4 Kd6 79. Kb5 Kc7 80. Kc5 Kb8 81. Kb5 Kc7 82. Kc5 Kb8 83. Kd6 Ka8 84. a6 Ka7 85. Kd7 Kb6 86. Kd6 Kb5 87. a7 Kc4 88. a8=Q Kb3 89. c7 Kc3 90. Qa5+ Kd3 91. c8=Q Ke3 92. Qca6 Kf3 93. Qf1+ Kg3 94. Qa3+ Kg4 95. Qah3+ Kg5 96. Qg1+ Kf4 97. Qgg3+ Ke4 98. Qgh4#</textarea>
+<button onclick="copyPGN(30)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 31: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-31" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 c6 2. c4 e6 3. Nf3 a5 4. Nc3 f5 5. d5 Na6 6. dxe6 dxe6 7. Qxd8+ Kxd8 8. Bg5+ Nf6 9. Bxf6+ Kc7 10. Be5+ Kd7 11. Na4 Ke8 12. Nb6 Bc5 13. Nxa8 Ba7 14. Bxg7 Nb4 15. Nc7+ Kd7 16. Rd1+ Ke7 17. Bxh8 f4 18. Be5 Bd7 19. Bd6+ Kd8 20. Bxb4 Kc8 21. Bxa5 b6 22. Ne5 bxa5 23. Rxd7 Bd4 24. Nxe6 c5 25. Rc7+ Kb8 26. Nc6+ Ka8 27. Ra7#</textarea>
+<button onclick="copyPGN(31)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 32: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-32" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. d4 Nf6 2. Bg5 e6 3. e3 Bb4+ 4. c3 Be7 5. Nf3 Nc6 6. Bd3 Nd5 7. Bxe7 Qxe7 8. c4 Qb4+ 9. Nc3 Nxc3 10. bxc3 Qxc3+ 11. Ke2 Nb4 12. Qb3 Qxb3 13. axb3 Nxd3 14. Kxd3 O-O 15. b4 b6 16. Nd2 Bb7 17. e4 Rfb8 18. f3 Bc8 19. Rhb1 Bb7 20. g4 Kf8 21. g5 Kg8 22. Rb3 Bc8 23. e5 Rb7 24. c5 bxc5 25. bxc5 Rxb3+ 26. Nxb3 Bb7 27. Na5 Bxf3 28. h4 Bd5 29. Kc3 Be4 30. h5 Bd5 31. Nc4 Bc6 32. Kd2 Bg2 33. Rg1 Bd5 34. Na5 Rb8 35. Kc2 Rb4 36. Rb1 Be4+ 37. Kc3 Rxb1 38. Nb7 Bxb7 39. Kd2 Rg1 40. h6 g6 41. Ke2 Rxg5 42. Kd1 Rg4 43. Kc1 Rxd4 44. Kb2 Rc4 45. Ka3 Rxc5 46. Kb3 Rxe5 47. Kc2 Re3 48. Kd2 Rh3 49. Kc1 Rh2 50. Kb1 g5 51. Ka1 g4 52. Kb1 g3 53. Kc1 Rf2 54. Kb1 g2 55. Kc1 g1=Q#</textarea>
+<button onclick="copyPGN(32)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 33: BitboardX_v0.2.2 vs stockfish1600 (Draw)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1/2-1/2</li>
+</ul>
+<textarea id="pgn-33" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 Nf6 2. c4 g6 3. Nc3 d6 4. e4 e5 5. Nf3 exd4 6. Nxd4 Na6 7. Bd3 Nc5 8. O-O Bg7 9. Bg5 h6 10. Bf4 Nxd3 11. Qxd3 b6 12. Rae1 Nh5 13. Be3 O-O 14. Nd5 Bd7 15. Qd2 g5 16. Nf3 Re8 17. Bxg5 hxg5 18. Nxg5 Rc8 19. Nxf7 Kxf7 20. Qd3 Qg5 21. Nxc7 Nf4 22. Qg3 Qxg3 23. fxg3 Bd4+ 24. Kh1 Rxc7 25. Rxf4+ Kg8 26. b3 Be6 27. Rd1 Be5 28. Rh4 Rce7 29. Rd3 Rc8 30. Rh6 Kg7 31. Rh5 Rh8 32. Rxh8 Kxh8 33. Kg1 Kg7 34. Kf2 Bg4 35. Kg1 Rf7 36. Rd2 Be6 37. Rd1 Kg8 38. Rd3 Bd7 39. Rd1 Bc6 40. Re1 b5 41. cxb5 Bd4+ 42. Kh1 Bb7 43. Rc1 Bc5 44. b4 Bxb4 45. Kg1 Re7 46. Rc4 Ba3 47. e5 d5 48. Rc2 Kf8 49. Re2 Ke8 50. Kf2 Bc5+ 51. Kf3 Bb6 52. Kg4 Bc8+ 53. Kf4 Be6 54. Kg5 d4 55. Kf6 d3 56. Rd2 Bd7 57. a4 Rf7+ 58. Kg6 Bd8 59. e6 Rf6+ 60. Kg7 Bxe6 61. Rd1 Bd5 62. Rxd3 Rd6 63. Re3+ Kd7 64. Re2 Be6 65. Rf2 Bb3 66. Re2 Bf6+ 67. Kh7 Bc3 68. Re3 Bc2+ 69. Kg8 Bb4 70. Rf3 Rd5 71. Rf7+ Ke6 72. Rf3 Rg5+ 73. Kh8 Bd6 74. Re3+ Kd7 75. Re2 Bd3 76. Re3 Bf5 77. h4 Rg6 78. b6 axb6 79. Rf3 Be4 80. Re3 Bf5 81. Rf3 Bb1 82. Rf7+ Ke6 83. Rf1 Bf5 84. Rxf5 Be5+ 85. Rxe5+ Kxe5 86. Kh7 Kf6 87. Kh8 Rg4 88. Kh7 Rg7+ 89. Kh8 Rxg3 90. Kh7 Rxg2 91. a5 bxa5 92. h5 Ke5 93. Kh8 Rg3 94. Kh7 Rg2 95. Kh8 Ke6 96. Kh7 Kf7 97. Kh6 Rb2 98. Kg5 Rf2 99. Kg4 Rc2 100. Kg3 Re2 101. Kf3 Re5 102. Kg4 Rxh5 103. Kxh5 Kg7 104. Kg4 Kf8 105. Kf3 a4 106. Ke2 a3 107. Kd3 a2 108. Ke4 Ke7 109. Kf4 Ke6 110. Ke3 Ke5 111. Kd3 Ke6 112. Kc4 Kf6 113. Kd4 Kf5 114. Kd3 Kf6 115. Kd2 Kg7 116. Ke2 Kf8 117. Kd3 Ke7 118. Kc2 a1=R 119. Kb2 Ra4 120. Kb3 Rg4 121. Kc3 Kd8 122. Kd3 Ke7 123. Kc3 Kd8 124. Kd3 Kd7 125. Ke3 Ra4 126. Kf3 Rc4 127. Kf2 Rc7 128. Ke3 Rc5 129. Ke2 Rc7 130. Ke3 Kc8 131. Kd2 Rg7 132. Ke2 Kd8 133. Kd3 Kc7 134. Ke4 Kc8 135. Kd3 Kd7 136. Ke4 Kd8 137. Kd3 Kd7 138. Ke4 Ke8 139. Kd3 Kd8 140. Kc3 Rh7 141. Kc2 Re7 142. Kd1 Kc7 143. Kc2 Rh7 144. Kd2 Re7 145. Kd3 Kc6 146. Kd2 Kd7 147. Kc2 Re6 148. Kd3 Ke7 149. Kd2 Kf8 150. Kc1 Rg6 151. Kd1 Re6 152. Kc1 Ke7 153. Kc2 Re5 154. Kd2 Kf8 155. Kc3 Re7 156. Kc4 Re5 157. Kc3 Re8 158. Kd4 Kg8 159. Kd5 Kh8 160. Kc5 Re1 161. Kd4 Re8 162. Kc5 Re4 163. Kd5 Ra4 164. Ke5 Ra2 165. Kf6 Re2 166. Kf7 Kh7 167. Kf6 Rh2 168. Kf5 Ra2</textarea>
+<button onclick="copyPGN(33)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 34: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-34" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. c4 c5 2. g3 Nf6 3. d3 Nc6 4. e4 Nd4 5. Ne2 Nf3#</textarea>
+<button onclick="copyPGN(34)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 35: BitboardX_v0.2.2 vs stockfish1600 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-35" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 c6 2. c4 Nf6 3. Nc3 d5 4. e3 Bf5 5. Qb3 Qc7 6. cxd5 cxd5 7. Nxd5 Qc8 8. Nxf6+ gxf6 9. Bc4 e6 10. d5 Be7 11. Nf3 O-O 12. Nd4 b5 13. Nxb5 Na6 14. Nxa7 Rxa7 15. dxe6 Kh8 16. exf7 Rc7 17. e4 Bg6 18. Bxa6 Qxa6 19. Bh6 Rfc8 20. f8=Q+ Bxf8 21. Bxf8 Bh5 22. g4 Bxg4 23. f3 Rc2 24. Qe3 Rxf8 25. fxg4 Rd8 26. Qf3 Rd3 27. Qf2 Rxf2 28. Kxf2 Rd2+ 29. Kg3 Qd6+ 30. Kh3 Qd3+ 31. Kh4 Kg7 32. e5 Qg6 33. Rad1 h5 34. Rdg1 Kh6 35. exf6 Qg5+ 36. Kh3 Rd3+ 37. Rg3 Qxg4+ 38. Kg2 Rd2+ 39. Kf1 Qe2+ 40. Kg1 Rd1#</textarea>
+<button onclick="copyPGN(35)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 36: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-36" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bc4 Nf6 5. Ng5 d5 6. exd5 Na5 7. Be2 Nxd5 8. Ne4 Be6 9. Nbc3 Nc6 10. d3 Nxc3 11. Nxc3 Bb4 12. a3 Bxc3+ 13. bxc3 Qd5 14. Bf3 Qc5 15. Bb2 Qb6 16. Rb1 Ba2 17. c4 Bxb1 18. Qc1 Ba2 19. Qa1 Bxc4 20. dxc4 Nd4 21. Bxd4 exd4 22. Be4 O-O-O 23. O-O Qc5 24. Bxb7+ Kxb7 25. Re1 Qxc4 26. Re5 Qxc2 27. a4 Kb6 28. Qe1 Qxa4 29. Re7 Qc4 30. g4 Rd6 31. Re5 Rd5 32. Qe4 Rxe5 33. Qf5 Rxf5 34. h3 Rf3 35. g5 Qe2 36. Kh2 Qxf2+ 37. Kh1 Rxh3#</textarea>
+<button onclick="copyPGN(36)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 37: BitboardX_v0.2.2 vs stockfish1600 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-37" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 c6 2. c4 d5 3. Nf3 e6 4. e3 Nd7 5. cxd5 cxd5 6. Nc3 Be7 7. Bd3 a6 8. Qc2 h6 9. Ne5 Nxe5 10. dxe5 Qb6 11. O-O Bd7 12. Na4 Qc6 13. Qxc6 Bxc6 14. Nc3 Rc8 15. Bd2 f6 16. exf6 Bxf6 17. Rac1 Rd8 18. Rc2 h5 19. Ne2 Kd7 20. Ba5 Rb8 21. Bb6 Ra8 22. Nd4 Nh6 23. Nxc6 bxc6 24. Rfc1 Ng4 25. Rxc6 Be5 26. Rc7+ Bxc7 27. Rxc7+ Kd6 28. Rxg7 a5 29. Bc7+ Kc5 30. Be2 Kc6 31. Rxg4 hxg4 32. Bxg4 a4 33. Bxe6 Kxc7 34. Bxd5 Rhd8 35. e4 Ra7 36. Kf1 Re8 37. h3 Rb8 38. b3 Kc8 39. Ke2 Re7 40. bxa4 Rg7 41. Kf3 Rb2 42. g3 Kc7 43. Ke3 Rg6 44. h4 Kd7 45. e5 Rg4 46. Bb3 Rb1 47. Kf3 Rg7 48. Bc4 Rc1 49. Bb3 Re1 50. Kf4 Ke7 51. Bc4 Rh7 52. Bb3 Rh8 53. Kg4 Rxe5 54. f3 Kf8 55. Kf4 Rc5 56. Ke4 Ke7 57. Kd4 Rc6 58. Ke3 Rc1 59. Kf4 Ra8 60. Ke4 Kd7 61. Kd3 Rd8 62. Kd2 Rcc8 63. Kd3 Ke7+ 64. Ke4 Rc1 65. g4 Rf8 66. Ke3 Rf1 67. Bd5 Re1+ 68. Kd2 Re5 69. Be4 Rc5 70. Kd3 Rc1 71. Ke2 Rh1 72. Ke3 Rb8 73. h5 Kf8 74. Bc2 Rh3 75. Bb3 Rh4 76. Kf2 Rh1 77. Kg3 Rc8 78. Kg2 Re1 79. h6 Rc6 80. Kf2 Rec1 81. h7 Rh1 82. Ke3 Rxh7 83. Kd4 Rc1 84. Kd3 Rh2 85. Kd4 Rh6 86. Ke4 Rh7 87. Kd3 Rh6 88. Ke4 Ra6 89. Kd3 Rd6+ 90. Ke4 Rc5 91. f4 Ra5 92. Ke3 Raa6 93. f5 Ra5 94. Bc2 Rb6 95. Kd3 Rb4 96. Bd1 Ra6 97. Kc3 Re4 98. Kb2 Rb6+ 99. Kc1 Re8 100. Bb3 Rd6 101. Kb2 Re2+ 102. Kc3 Re4 103. g5 Re5 104. Be6 Re2 105. Kb3 Ke7 106. Bc4 Re5 107. f6+ Kf8 108. f7 Re4 109. a5 Rf4 110. Be2 Re6 111. Bd3 Rd4 112. Kc3 Rg4 113. g6 Kg7 114. Bf5 Rgxg6 115. f8=Q+ Kxf8 116. Bxe6 Rxe6 117. Kb4 Re2 118. Kb3 Re1 119. Ka4 Ke7 120. a6 Kd7 121. a7 Re8 122. Kb5 Kc7 123. Ka4 Kb6 124. Ka3 Ra8 125. Kb4 Kxa7 126. Kb3 Rg8 127. Kb2 Rh8 128. Ka3 Kb8 129. Kb4 Re8 130. Kb3 Kb7 131. Kc3 Rh8 132. a3 Kc8 133. Kb4 Rh6 134. Ka5 Rh7 135. Kb5 Rh8 136. Kc6 Rh6+ 137. Kb5 Kd8 138. a4 Kc8 139. Kc4 Kd8 140. Kb5 Rh3 141. Kc6 Re3 142. a5 Ra3 143. Kb6 Rb3+ 144. Kc6 Rb2 145. a6 Kc8 146. Kd6 Rf2 147. Kc6 Rf6+ 148. Kb5 Rf1 149. Kc5 Rf7 150. Kb6 Kb8 151. Kb5 Rf1 152. Kc4 Rd1 153. Kb5 Ka7 154. Kc5 Rd3 155. Kc4 Rd1 156. Kc5 Rd8 157. Kb5 Re8 158. Kc4 Rd8 159. Kc5 Rd1 160. Kc6 Re1 161. Kd5 Rb1 162. Kd4 Kb8 163. a7+ Kb7 164. a8=Q+ Kxa8 165. Kd3 Rb8 166. Ke3 Rd8 167. Kf3 Kb7 168. Ke3 Re8+ 169. Kf3 Rc8 170. Ke2 Ka7 171. Kf2 Rf8+ 172. Ke3 Re8+ 173. Kd4 Kb6 174. Kd5 Kb7 175. Kd6 Rd8+ 176. Ke5 Ka7 177. Ke4 Kb7 178. Ke5 Kb6 179. Kf4 Kb5 180. Ke3 Kc6 181. Ke4 Kc5 182. Kf3 Re8 183. Kf4 Kd6 184. Kf3 Kc6 185. Kf4 Kb6 186. Kf3 Ka7 187. Kg3 Kb6 188. Kf4 Kc5 189. Kf5 Kb5 190. Kf4 Kb6 191. Kf3 Kb5 192. Kg3 Kc4 193. Kf4 Kc5 194. Kf5 Re3 195. Kf4 Kd4 196. Kf5 Re7 197. Kf4 Re1 198. Kf5 Kd5 199. Kg4 Rf1 200. Kg5 Kd6 201. Kg4 Ke5 202. Kg3 Rf7 203. Kg4 Rf5 204. Kg3 Kf6 205. Kg2 Ke5 206. Kg3 Rf6 207. Kg2 Rf4 208. Kh2 Rg4 209. Kh3 Rg5 210. Kh2 Ke4 211. Kh3 Kf4 212. Kh2 Kf3 213. Kh1 Kf2 214. Kh2 Rh5#</textarea>
+<button onclick="copyPGN(37)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 38: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-38" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 c5 2. c3 Nf6 3. Qe2 Nc6 4. f4 Qb6 5. Nf3 Rb8 6. g3 Nd8 7. Bg2 Qe6 8. e5 Ng8 9. d4 cxd4 10. a4 dxc3 11. Nxc3 Qg4 12. O-O Nc6 13. Be3 Nh6 14. Qf2 a6 15. Nh4 Nb4 16. h3 Qe6 17. a5 Nd3 18. Qe2 Nxe5 19. Nd5 Qd6 20. Rac1 Ng6 21. Bb6 Nxh4 22. Nc7+ Kd8 23. Nxa6+ Qxb6+ 24. axb6 bxa6 25. Qc4 e5 26. Qc7+ Ke7 27. b7 Rxb7 28. Qc5+ d6 29. Qxc8 Rxb2 30. Rc7+ Kf6 31. Qd8+ Ke6 32. Qc8+ Kf6 33. Be4 Ng6 34. Qd7 exf4 35. h4 Rb3 36. gxf4 Rg3+ 37. Kh1 Rg4 38. Bxg6 Rxh4+ 39. Kg2 Kxg6 40. Kf3 Rh5 41. Rg1+ Kf6 42. Qd8+ Kf5 43. Rg5+ Rxg5 44. fxg5 Kg6 45. gxh6 Kxh6 46. Qh4+ Kg6 47. Qg3+ Kf6 48. Kf4 g6 49. Qc3+ Ke6 50. Qc4+ d5 51. Qe2+ Kd6 52. Qe5#</textarea>
+<button onclick="copyPGN(38)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 39: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-39" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. d4 c6 2. c4 Nf6 3. Nc3 e6 4. Nf3 d5 5. Bg5 h6 6. Bxf6 Qxf6 7. e3 Nd7 8. Bd3 g6 9. O-O Qd8 10. cxd5 cxd5 11. Qb3 Bd6 12. Nxd5 O-O 13. Nc3 Kg7 14. Nb5 Bb8 15. Rac1 e5 16. dxe5 Nxe5 17. Nxe5 Bxe5 18. Bc4 Qb6 19. f4 a6 20. fxe5 axb5 21. Rxf7+ Rxf7 22. Bxf7 Bh3 23. gxh3 h5 24. Kg2 Rxa2 25. Qxa2 Qxe3 26. Rf1 Qxe5 27. Bd5 Qxd5+ 28. Qxd5 b6 29. Rf7+ Kg8 30. Rd7+ Kf8 31. Qa8#</textarea>
+<button onclick="copyPGN(39)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 40: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-40" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 d6 2. Nc3 g6 3. Nf3 Bg7 4. d4 Nf6 5. h4 Nc6 6. Be3 Ng4 7. Nd5 Be6 8. h5 gxh5 9. c3 Rg8 10. Qd3 Nxe3 11. Nxe3 Bg4 12. Nd2 Qc8 13. a4 Bh6 14. f3 Be6 15. a5 Rg6 16. Kf2 Kf8 17. b4 Bf4 18. Rxh5 Rg7 19. b5 Nb8 20. a6 bxa6 21. Nf5 Bxf5 22. bxa6 Bg6 23. Rha5 e5 24. g3 Bxg3+ 25. Ke3 Nc6 26. R5a3 exd4+ 27. cxd4 Nxd4 28. Nc4 Ne6 29. Qd5 Bf4+ 30. Kf2 Qd8 31. Qb7 Nd4 32. Rb1 Qh4+ 33. Kg1 Qh2#</textarea>
+<button onclick="copyPGN(40)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 41: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-41" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. Nf3 e6 2. g3 Nc6 3. Nc3 Nf6 4. Ng5 Be7 5. Bg2 Bc5 6. Bxc6 dxc6 7. Nf3 O-O 8. O-O b6 9. d3 Bd6 10. Bg5 Be7 11. Ne5 Qe8 12. Qd2 h6 13. Bxh6 gxh6 14. Qxh6 c5 15. Qg5+ Kh8 16. Qf4 Rg8 17. Nb5 Nd5 18. Qh6#</textarea>
+<button onclick="copyPGN(41)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 42: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-42" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. d4 Nf6 2. c4 e6 3. Nf3 b6 4. e3 Bb7 5. Be2 Nc6 6. a3 Bd6 7. b4 Nxb4 8. axb4 Bxb4+ 9. Nfd2 Bxg2 10. Ba3 Bxd2+ 11. Kxd2 Ne4+ 12. Kc2 Nxf2 13. Qg1 Be4+ 14. Kb3 Qf6 15. Nd2 Bxh1 16. Ka2 Bc6 17. Bb2 Ne4 18. d5 Nc3+ 19. Bxc3 Qxc3 20. Ne4 Qc2+ 21. Ka3 Qxe2 22. Re1 Qxc4 23. dxc6 Kf8 24. Qh1 Qd3+ 25. Ka4 dxc6 26. Qg2 b5+ 27. Ka5 Qa3#</textarea>
+<button onclick="copyPGN(42)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 43: BitboardX_v0.2.2 vs stockfish1600 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-43" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. Nf3 d5 2. d4 c6 3. c4 Nf6 4. Qb3 Qb6 5. Qxb6 axb6 6. cxd5 Nxd5 7. Bd2 Nf6 8. Nc3 Bf5 9. Be3 b5 10. Bf4 e6 11. Nh4 b4 12. Nd1 Bc2 13. Ne3 Ba4 14. Nf3 Nbd7 15. Nd2 Be7 16. Bg5 O-O 17. Ng4 Bc2 18. Ne3 Bg6 19. Bh4 c5 20. Nb3 cxd4 21. Nxd4 Rfd8 22. Ng4 b3 23. Nh6+ gxh6 24. Nxb3 Ra4 25. g3 Rxh4 26. gxh4 Bb4+ 27. Nd2 Ne5 28. Bg2 Bxd2+ 29. Kf1 Ba5 30. Bxb7 Rd2 31. b3 Rd7 32. Bg2 Rc7 33. Bf3 Rc2 34. h5 Bf5 35. Rg1+ Kh8 36. Kg2 Bd2 37. h3 Nxf3 38. exf3 Nxh5 39. h4 Rc8 40. Rgd1 Bc3 41. Rac1 f6 42. Kh2 Nf4 43. Rd7 e5 44. Rd6 e4 45. fxe4 Bxe4 46. Rcd1 Bd5 47. Ra6 Bf3 48. Rb1 Ne2 49. Re6 Rg8 50. Rxe2 Bxe2 51. f4 Bg4 52. Rf1 Bd4 53. Rh1 Bh5 54. Kh3 Bg4+ 55. Kh2 Bh5 56. Kh3 Bf2 57. Rc1 Bg1 58. Rc3 Bb6 59. Rg3 Bf7 60. Rxg8+ Kxg8 61. Kg3 Bd5 62. h5 Kg7 63. Kg4 Kf7 64. f5 Kg8 65. Kg3 Kg7 66. Kf4 Kf8 67. Kg4 Bg1 68. Kg3 Bb6 69. Kf4 Bg1 70. Kg3 Ke7 71. Kg4 Ke8 72. Kf4 Ke7 73. Kg4 Bb6 74. Kg3 Kd6 75. Kf4 Bc5 76. Kg4 Bb6 77. Kf4 Bg1 78. b4 Bb6 79. a4 Bg1 80. a5 Bd4 81. b5 Bb7 82. a6 Bd5 83. Kg3 Ba7 84. Kf4 Bc5 85. Kg3 Bg1 86. Kg4 Ke5 87. Kh3 Kxf5 88. Kg3 Bb6 89. Kh3 Bg1 90. Kg3 Ba8 91. Kh3 Bb6 92. Kh4 Bg1 93. Kh3 Be4 94. Kg3 Ke5 95. Kg4 Ba7 96. Kg3 Bb6 97. Kh2 Ba8 98. Kg3 f5 99. a7 Bg1 100. Kh3 Kf4 101. b6 Bf2 102. b7 Bxb7 103. a8=Q Bxa8 104. Kh2 Be3 105. Kh3 Kf3 106. Kh2 Bf2 107. Kh3 Bc5 108. Kh2 Bb6 109. Kh3 Bc5 110. Kh2 Bb6 111. Kh3 Bd4 112. Kh2 Be3 113. Kh3 Bf4 114. Kh4 Bd5 115. Kh3 Bc6 116. Kh4 Ba8 117. Kh3 Bd6 118. Kh4 Bc6 119. Kh3 Kf2 120. Kh4 Bg3+ 121. Kh3 Bg2#</textarea>
+<button onclick="copyPGN(43)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 44: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-44" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e3 Nc6 2. d4 Nf6 3. c4 Ne4 4. Bd3 Nf6 5. Nc3 Nb4 6. Be2 e6 7. e4 Nxa2 8. Rxa2 Bb4 9. Bd3 Bxc3+ 10. bxc3 Kf8 11. Ra1 d5 12. Ba3+ Kg8 13. cxd5 exd5 14. exd5 Qxd5 15. Nf3 Bg4 16. h3 Bxf3 17. gxf3 Qe6+ 18. Kf1 Nd5 19. c4 Nf4 20. Qc2 Nxd3 21. Rd1 Nf4 22. Rh2 Nxh3 23. Re1 Qd7 24. Re7 Qxd4 25. Rxh3 Qa1+ 26. Qc1 Qd4 27. Rg3 Rd8 28. Rg4 Qd1+ 29. Qxd1 Rxd1+ 30. Re1 Rxe1+ 31. Kxe1 h5 32. Rg5 Rh6 33. Rd5 Rc6 34. Bc5 b6 35. Be3 Rxc4 36. Ke2 h4 37. f4 Kh7 38. f3 Rc6 39. Bd4 Re6+ 40. Be3 Rc6 41. Rd1 h3 42. f5 Rc2+ 43. Kf1 h2 44. f6 h1=Q+ 45. Bg1 Qxf3+ 46. Bf2 Qxf2#</textarea>
+<button onclick="copyPGN(44)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 45: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-45" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. e4 e5 2. Nf3 Nf6 3. d4 exd4 4. e5 Ne4 5. Qxd4 Nc5 6. Bb5 Be7 7. Be3 Nc6 8. Qc4 d5 9. Bxc6+ bxc6 10. Qc3 Na4 11. Qxc6+ Bd7 12. Qxd5 Nxb2 13. Qb7 Qb8 14. Qxb8+ Rxb8 15. Bxa7 Rb5 16. Bd4 Rb4 17. e6 Ba4 18. Bxg7 Re4+ 19. Kf1 Rxe6 20. Nd4 Rg8 21. Nxe6 Nd1 22. Nxc7+ Kd8 23. Be5 Bc6 24. Rg1 Nxf2 25. Nc3 Bc5 26. Rb1 Rg6 27. Rb8+ Kd7 28. Na6 Be3 29. Rh8 Ng4 30. Nb8+ Ke7 31. Nxc6+ Kd7 32. Nb8+ Ke6 33. Rh1 Bb6 34. Bg3 f5 35. Rxh7 Ne3+ 36. Ke2 Bc5 37. Nd7 Bd6 38. Kxe3 Bb4 39. Ne2 Rg4 40. Nd4+ Rxd4 41. Kxd4 Bc3+ 42. Kxc3 f4 43. Re1+ Kd5 44. Rh6 f3 45. Re5#</textarea>
+<button onclick="copyPGN(45)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 46: stockfish1600 vs BitboardX_v0.2.2 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-46" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. d4 Nf6 2. Bg5 Ne4 3. Nf3 Nxg5 4. Nxg5 Nc6 5. Nc3 Nb4 6. a3 e6 7. Nh3 Nc6 8. Nf4 Bd6 9. Nh3 Qf6 10. e3 Qg6 11. Nb5 e5 12. Qd2 exd4 13. O-O-O dxe3 14. Qxe3+ Kd8 15. Bc4 Re8 16. Qf3 Ne5 17. Qd5 Nxc4 18. Ng5 Bf4+ 19. Kb1 Nxa3+ 20. Ka2 Nxc2 21. Nxf7+ Ke7 22. Qc5+ Kxf7 23. b3 Ne3 24. fxe3 Qxg2+ 25. Ka3 Bxh2 26. Qh5+ Qg6 27. Qf3+ Kg8 28. Ka2 Qc2+ 29. Ka3 Qc5+ 30. Ka2 Rxe3 31. Qg2 Qxb5 32. Qxg7+ Kxg7 33. Rxh2 Qxb3+ 34. Ka1 Qxd1+ 35. Ka2 Qb3+ 36. Ka1 Re1#</textarea>
+<button onclick="copyPGN(46)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 47: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-47" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. e4 c5 2. Nf3 a6 3. d4 cxd4 4. Nxd4 e6 5. Bd3 Nf6 6. O-O d5 7. exd5 Qxd5 8. Nc3 Qd6 9. Ne4 Nxe4 10. Bxe4 Be7 11. Be3 Qc7 12. Qh5 g6 13. Qh3 Nd7 14. Nxe6 Qc4 15. Ng7+ Kd8 16. Rfd1 Qc7 17. Qe6 f6 18. Qf7 Qe5 19. Bb6+ Qc7 20. Ne6#</textarea>
+<button onclick="copyPGN(47)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 48: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-48" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. c4 c6 2. e4 d5 3. exd5 cxd5 4. d4 Nf6 5. cxd5 Nxd5 6. Nf3 Nc6 7. Be2 Bg4 8. h3 Bxf3 9. Bxf3 Rc8 10. g3 Nxd4 11. Qxd4 Rxc1+ 12. Kd2 Rxh1 13. Bxh1 Qa5+ 14. Nc3 Nxc3 15. Qxc3 Qf5 16. Bf3 Qxh3 17. Ke1 Qe6+ 18. Kd2 b6 19. Rd1 Rg8 20. Rh1 Rh8 21. Re1 Qd6+ 22. Kc2 Qg6+ 23. Be4 f5 24. Bc6+ Kd8 25. Rd1+ Qd6 26. Ba4 Qxd1+ 27. Kxd1 e6 28. Qd3+ Ke7 29. Qd2 Kf7 30. Ke2 Bc5 31. Bb3 Re8 32. g4 fxg4 33. Kf1 Ke7 34. Ba4 Rf8 35. Qd7+ Kf6 36. Kg2 Rf7 37. Qd8+ Ke5 38. Qg5+ Kd6 39. Qd8+ Ke5 40. b4 Rxf2+ 41. Kg3 Rf3+ 42. Kxg4 Rf4+ 43. Kh3 Rf3+ 44. Kg2 Rf2+ 45. Kg3 Rxa2 46. Qd7 Ra3+ 47. Kg2 Bf8 48. Bb5 Ra2+ 49. Kg3 Ra3+ 50. Kg4 Rb3 51. Bd3 Rxb4+ 52. Kf3 Rf4+ 53. Kg3 Rd4 54. Qc7+ Kf6 55. Qc3 Bd6+ 56. Kh3 Be5 57. Qc2 g6 58. Be2 Kg5 59. Qc1+ Rf4 60. Qc8 Rh4+ 61. Kg2 Rh2+ 62. Kf3 Bd4 63. Qd8+ Bf6 64. Qd2+ Kh5 65. Ke4+ Rxe2+ 66. Qxe2+ Kh6 67. Qd2+ Kg7 68. Qf4 Be7 69. Qb8 Bc5 70. Ke5 Kh6 71. Qa8 a5 72. Qc6 Kg7 73. Qe8 g5 74. Qxe6 g4 75. Kf5 Bf2 76. Qd7+ Kg8 77. Qe6+ Kg7 78. Qf6+ Kg8 79. Qe7 Bc5 80. Qe8+ Kg7 81. Qc6 a4 82. Qc7+ Kg8 83. Qd7 Bb4 84. Ke6 g3 85. Qb7 Bc5 86. Qf7+ Kh8 87. Qf3 Kg7 88. Qc3+ Kg6 89. Qf6+ Kh5 90. Qf3+ Kg5 91. Qxg3+ Kh6 92. Kf7 Bf2 93. Qf4+ Kh5 94. Qxf2 Kg4 95. Ke6 b5 96. Ke5 a3 97. Qg2+ Kh4 98. Qf2+ Kg5 99. Qg3+ Kh6 100. Kf5 a2 101. Qg5#</textarea>
+<button onclick="copyPGN(48)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 49: BitboardX_v0.2.2 vs stockfish1600 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 0-1</li>
+</ul>
+<textarea id="pgn-49" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. c4 c5 2. Nf3 g6 3. e4 e5 4. Nxe5 Qe7 5. Nd3 Bg7 6. Qf3 f5 7. Nxc5 Qxc5 8. exf5 d6 9. fxg6 hxg6 10. Bd3 Qe5+ 11. Kd1 Nf6 12. Bxg6+ Kf8 13. Qg3 Qxg3 14. fxg3 Rh6 15. Bd3 Nc6 16. Nc3 Bg4+ 17. Be2 Bxe2+ 18. Kxe2 Re8+ 19. Kd1 Ng4 20. Rf1+ Rf6 21. Rxf6+ Bxf6 22. h3 Nf2+ 23. Kc2 Nd4+ 24. Kb1 Nd3 25. a4 a5 26. Ra3 Re1 27. Nd1 Rxd1 28. Rxd3 Ne2 29. Rxd6 Be7 30. Rb6 Rxc1+ 31. Ka2 Bb4 32. Rxb7 Rc2 33. Rb8+ Kf7 34. Rb7+ Ke6 35. Rb6+ Kf7 36. Rb7+ Kg6 37. Rb6+ Kg7 38. Rb7+ Kf6 39. Rb6+ Ke5 40. Rb5+ Ke4 41. Rb8 Kd3 42. g4 Rxc4 43. Rd8+ Kc2 44. Rb8 Bd6 45. b3 Nc1+ 46. Ka1 Nxb3+ 47. Rxb3 Rxa4+ 48. Ra3 Bxa3 49. g3 Bc5#</textarea>
+<button onclick="copyPGN(49)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 50: stockfish1600 vs BitboardX_v0.2.2 (stockfish1600 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-50" readonly>[White "stockfish1600"]
+[Black "BitboardX_v0.2.2"]
+1. e4 e6 2. d4 d5 3. exd5 exd5 4. Nf3 Bg4 5. h3 Bh5 6. g4 Bg6 7. Qe2+ Ne7 8. Bg2 Nc6 9. Be3 Nb4 10. Qb5+ Nec6 11. O-O Nxc2 12. Ne5 Nxa1 13. Nxc6 bxc6 14. Qxc6+ Ke7 15. Bxd5 Qc8 16. Bg5+ f6 17. Bxf6+ gxf6 18. Re1+ Be4 19. Rxe4+ Qe6 20. Qxc7+ Ke8 21. Bc6#</textarea>
+<button onclick="copyPGN(50)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+<h2>Game 51: BitboardX_v0.2.2 vs stockfish1600 (BitboardX_v0.2.2 wins)</h2>
+<ul>
+  <li><strong>Date</strong>: 2025.06.28</li>
+  <li><strong>Result</strong>: 1-0</li>
+</ul>
+<textarea id="pgn-51" readonly>[White "BitboardX_v0.2.2"]
+[Black "stockfish1600"]
+1. e4 e6 2. d4 a6 3. Nc3 b5 4. Nxb5 axb5 5. Bxb5 Bb7 6. Qe2 c6 7. Bd3 Be7 8. Nf3 c5 9. dxc5 Na6 10. Bxa6 Bxa6 11. Qe3 Qb8 12. Qc3 Nf6 13. Ne5 h6 14. Nxd7 Kxd7 15. Be3 Rc8 16. O-O-O+ Kc6 17. f3 h5 18. Bd4 Rd8 19. Be5 Qb7 20. Rxd8 Bxd8 21. Rd1 Bc7 22. Bxc7 Ne8 23. Bb6 Bb5 24. Kb1 h4 25. Qd4 h3 26. Qd6+ Nxd6 27. Rxd6#</textarea>
+<button onclick="copyPGN(51)">Copy PGN</button>
+<button onclick="openAnalysis()">Open Analysis</button>
+<hr>
+
+  <script>
+    function copyPGN(num) {
+      const textarea = document.getElementById("pgn-" + num);
+      textarea.select();
+      document.execCommand("copy");
+    }
+    function openAnalysis() {
+      window.open("https://www.chess.com/analysis?tab=analysis", "_blank");
+    }
+  </script>
+</body>
+</html>
