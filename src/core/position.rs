@@ -1,5 +1,5 @@
+use crate::core::move_gen;
 use crate::core::zobrist::*;
-use crate::core::{move_gen, zobrist};
 
 use super::types::*;
 
@@ -38,7 +38,8 @@ impl CheckerList {
     }
 }
 
-// @TODO store in undo state
+// @TODO: move zobrist key out in stack
+// @TODO: remove pin map and use do_move and take_back instead
 
 #[derive(Debug, Clone, Copy)]
 pub struct UndoState {
@@ -51,9 +52,10 @@ pub struct UndoState {
     pub captured_piece: Piece,
     pub occupancies: [BitBoard; 3],
     pub attack_mask: [BitBoard; Color::COUNT],
+
+    // @TODO: pin map generation is expensive, consider use do move and take back instead of pin map
     pub pin_map: [BitBoard; Color::COUNT],
     pub checkers: [CheckerList; Color::COUNT],
-    pub hash: ZobristHash,
 
     pub king_squares: [Square; Color::COUNT],
 }
@@ -106,7 +108,6 @@ impl Position {
             attack_mask: [BitBoard::new(); Color::COUNT],
             pin_map: [BitBoard::new(); Color::COUNT],
             checkers: [CheckerList::new(); Color::COUNT],
-            hash: ZobristHash(0),
             king_squares: [Square::NONE; Color::COUNT],
         };
 
@@ -129,6 +130,10 @@ impl Position {
             self.state.halfmove_clock,
             self.state.fullmove_number
         )
+    }
+
+    pub fn zobrist(&self) -> ZobristHash {
+        zobrist_hash(&self)
     }
 
     pub fn white_to_move(&self) -> bool {
@@ -206,7 +211,7 @@ impl Position {
         checker_count != 0
     }
 
-    pub fn make_move(&mut self, mv: Move) -> UndoState {
+    pub fn make_move(&mut self, mv: Move) -> (UndoState, bool) {
         internal::make_move(self, mv)
     }
 
@@ -306,7 +311,7 @@ mod tests {
         let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
         let mv = Move::new(Square::E8, Square::G8, MoveType::Castling, None);
 
-        let undo_state = pos.make_move(mv);
+        let undo_state = pos.make_move(mv).0;
 
         assert_eq!(pos.get_piece_at(Square::G8), Piece::B_KING);
         assert_eq!(pos.get_piece_at(Square::F8), Piece::B_ROOK);
@@ -322,7 +327,7 @@ mod tests {
         pos.make_move(mv);
 
         let mv = Move::new(Square::A5, Square::B6, MoveType::EnPassant, None);
-        let undo_state = pos.make_move(mv);
+        let undo_state = pos.make_move(mv).0;
 
         assert_eq!(pos.get_piece_at(Square::B6), Piece::W_PAWN);
         assert_eq!(pos.get_piece_at(Square::A5), Piece::NONE);
@@ -338,7 +343,7 @@ mod tests {
     fn undo_should_revert_promoted_piece() {
         let mut pos = Position::from_fen(UNDO_TEST_FEN).unwrap();
         let mv = Move::new(Square::C2, Square::C1, MoveType::Promotion, Some(PieceType::BISHOP));
-        let undo_state = pos.make_move(mv);
+        let undo_state = pos.make_move(mv).0;
 
         assert_eq!(pos.get_piece_at(Square::C2), Piece::NONE);
         assert_eq!(pos.get_piece_at(Square::C1), Piece::B_BISHOP);

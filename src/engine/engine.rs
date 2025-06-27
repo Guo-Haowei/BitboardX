@@ -64,7 +64,8 @@ impl Engine {
         let promotion = mv.get_promotion();
         for mv in legal_moves.iter().copied() {
             if mv.src_sq() == src_sq && mv.dst_sq() == dst_sq && mv.get_promotion() == promotion {
-                self.state.make_move(mv);
+                self.state.pos.make_move(mv);
+                self.state.push_zobrist();
                 return true;
             }
         }
@@ -208,7 +209,7 @@ impl Engine {
         let mut nodes = 0u64;
         let should_print = depth == max_depth;
         for mv in move_list.iter().copied() {
-            let undo_state = self.state.pos.make_move(mv);
+            let undo_state = self.state.pos.make_move(mv).0;
             let count = self.uci_cmd_go_perft(writer, depth - 1, max_depth);
             nodes += count;
             self.state.pos.unmake_move(mv, &undo_state);

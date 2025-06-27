@@ -3,7 +3,7 @@ use crate::core::move_gen::PAWN_EN_PASSANT_MASKS;
 use crate::core::position::*;
 
 // Assume passed in moves are legal
-pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
+pub fn make_move(_pos: &mut Position, mv: Move) -> (UndoState, bool) {
     // borrow the position immutably because we are just checking the move at this point, no actual moving
     let pos: &Position = _pos;
 
@@ -105,9 +105,8 @@ pub fn make_move(_pos: &mut Position, mv: Move) -> UndoState {
         pos.state.halfmove_clock += 1; // increment halfmove clock for a pawn move
     }
 
-    update_cache(pos);
-
-    undo_state
+    let ok = update_cache(pos);
+    (undo_state, ok)
 }
 
 pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
@@ -160,7 +159,7 @@ pub fn unmake_move(pos: &mut Position, mv: Move, undo_state: &UndoState) {
     pos.state = *undo_state;
 }
 
-pub fn update_cache(pos: &mut Position) {
+pub fn update_cache(pos: &mut Position) -> bool {
     // update occupancies
     pos.state.occupancies[Color::WHITE.as_usize()] = pos.bitboards[Piece::W_PAWN.as_usize()]
         | pos.bitboards[Piece::W_KNIGHT.as_usize()]
@@ -177,13 +176,7 @@ pub fn update_cache(pos: &mut Position) {
     pos.state.occupancies[Color::BOTH.as_usize()] = pos.state.occupancies[Color::WHITE.as_usize()]
         | pos.state.occupancies[Color::BLACK.as_usize()];
 
-    // update the king squares
-    let white_king_mask = pos.bitboards[Piece::W_KING.as_usize()].get();
-    let black_king_mask = pos.bitboards[Piece::B_KING.as_usize()].get();
-    debug_assert!(white_king_mask.count_ones() == 1);
-    debug_assert!(black_king_mask.count_ones() == 1);
-    pos.state.king_squares[0] = Square::new(white_king_mask.trailing_zeros() as u8);
-    pos.state.king_squares[1] = Square::new(black_king_mask.trailing_zeros() as u8);
+    let prev_color = pos.side_to_move.flip();
 
     // update attack maps
     let (white_attack_map, white_checkers) = move_gen::calc_attack_map_and_checker::<0>(pos);
@@ -194,14 +187,25 @@ pub fn update_cache(pos: &mut Position) {
     // note that for black to move, it needs to check if there are any white checkers
     pos.state.checkers[Color::WHITE.as_usize()] = black_checkers;
     pos.state.checkers[Color::BLACK.as_usize()] = white_checkers;
-    // pos.state.checkers[Color::WHITE.as_usize()] = white_checkers;
-    // pos.state.checkers[Color::BLACK.as_usize()] = black_checkers;
+
+    // the previous player didn't resolve the check, so the move was illegal
+    if pos.state.checkers[prev_color.as_usize()].count() > 0 {
+        return false;
+    }
+
+    // update the king squares
+    let white_king_mask = pos.bitboards[Piece::W_KING.as_usize()].get();
+    let black_king_mask = pos.bitboards[Piece::B_KING.as_usize()].get();
+    debug_assert!(white_king_mask.count_ones() == 1);
+    debug_assert!(black_king_mask.count_ones() == 1);
+    pos.state.king_squares[0] = Square::new(white_king_mask.trailing_zeros() as u8);
+    pos.state.king_squares[1] = Square::new(black_king_mask.trailing_zeros() as u8);
 
     // maybe only need to update the side to move attack map?
     pos.state.pin_map[Color::WHITE.as_usize()] = move_gen::generate_pin_map(pos, Color::WHITE);
     pos.state.pin_map[Color::BLACK.as_usize()] = move_gen::generate_pin_map(pos, Color::BLACK);
 
-    pos.state.hash = zobrist::zobrist_hash(pos);
+    true
 }
 
 fn move_piece(board: &mut BitBoard, from_sq: Square, to_sq: Square) {

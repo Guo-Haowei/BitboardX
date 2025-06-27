@@ -23,7 +23,7 @@ fn perft_test_inner(pos: &mut Position, depth: u8) -> u64 {
 
     let mut nodes = 0u64;
     for mv in move_list.iter().copied() {
-        let undo_state = pos.make_move(mv);
+        let (undo_state, _ok) = pos.make_move(mv);
         nodes += perft_test_inner(pos, depth - 1);
         pos.unmake_move(mv, &undo_state);
     }

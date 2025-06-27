@@ -124,7 +124,9 @@ impl WasmGame {
 
         for mv in self.legal_moves.iter().copied() {
             if mv.src_sq() == src && mv.dst_sq() == dst && mv.get_promotion() == promtion {
-                let undo_state = self.state.make_move(mv);
+                let (undo_state, ok) = self.state.pos.make_move(mv);
+                debug_assert!(ok);
+                self.state.push_zobrist();
 
                 self.undo_stack.push((mv, undo_state));
                 self.redo_stack.clear();

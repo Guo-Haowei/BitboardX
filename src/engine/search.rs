@@ -112,21 +112,24 @@ impl Searcher {
         let mut has_legal_moves = false;
         let side_to_move = engine.state.pos.side_to_move;
         for mv in move_list.iter().copied() {
-            let undo_state = engine.state.make_move(mv);
-            if engine.state.pos.is_in_check(side_to_move) {
-                engine.state.unmake_move(mv, &undo_state);
-                continue;
+            let (undo_state, ok) = engine.state.pos.make_move(mv);
+            if !ok {
+                engine.state.pos.unmake_move(mv, &undo_state);
+                continue; // illegal move
             }
 
             has_legal_moves = true;
 
+            engine.state.push_zobrist();
             let score = -self.quiescence(engine, -beta, -alpha, depth - 1);
 
             if self.should_cancel() {
                 return 0; // cancel the search
             }
 
-            engine.state.unmake_move(mv, &undo_state);
+            engine.state.pop_zobrist();
+
+            engine.state.pos.unmake_move(mv, &undo_state);
 
             if score >= beta {
                 // @TODO: stats
@@ -162,7 +165,7 @@ impl Searcher {
             return (0, Move::null());
         }
 
-        let key = engine.state.pos.state.hash;
+        let key = *engine.state.zobrist_stack.last().unwrap();
         let alpha_orig = alpha;
 
         // --- 1) Check for repetition and 50-move rule ---
@@ -219,17 +222,16 @@ impl Searcher {
         let mut mv_left = move_list.len();
         let side_to_move = engine.state.pos.side_to_move.clone();
         for mv in move_list.iter().copied() {
-            let undo_state = engine.state.make_move(mv);
-
-            // check if king is in check after the move, if so, it's an illegal move
-            if engine.state.pos.is_in_check(side_to_move) {
-                engine.state.unmake_move(mv, &undo_state);
-                continue; // skip illegal moves
+            let (undo_state, ok) = engine.state.pos.make_move(mv);
+            if !ok {
+                engine.state.pos.unmake_move(mv, &undo_state);
+                continue;
             }
 
             has_legal_moves = true;
             let captured_piece = engine.state.pos.state.captured_piece;
 
+            engine.state.push_zobrist();
             let (score, _) =
                 self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha, pv_line);
 
@@ -239,7 +241,8 @@ impl Searcher {
 
             let score = -score; // Negate the score for the opponent
 
-            engine.state.unmake_move(mv, &undo_state);
+            engine.state.pop_zobrist();
+            engine.state.pos.unmake_move(mv, &undo_state);
 
             if score > best_score {
                 if mv.get_type() == MoveType::Normal && captured_piece == Piece::NONE {
@@ -301,7 +304,7 @@ impl Searcher {
     }
 
     fn find_book_move(&mut self, engine: &mut Engine, move_list: &MoveList) -> Option<Move> {
-        if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.state.pos.state.hash) {
+        if let Some(book_mv) = DEFAULT_BOOK.get_move(*engine.state.zobrist_stack.last().unwrap()) {
             for mv in move_list.iter().copied() {
                 if mv.src_sq() == book_mv.src_sq()
                     && mv.dst_sq() == book_mv.dst_sq()
