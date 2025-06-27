@@ -1,7 +1,7 @@
 use crate::core::position::Position;
 use crate::core::types::*;
 use crate::engine::evaluation::get_piece_value;
-use crate::engine::search::SearchContext;
+use crate::engine::search::{PVLine, SearchContext};
 
 struct ScoredMove {
     mv: Move,
@@ -13,7 +13,7 @@ pub fn sort_moves(
     ctx: &SearchContext,
     move_list: &mut MoveList,
     ply: u8,
-    prev_best_move: Move,
+    pv_line: &PVLine,
     cached_mv: Move,
 ) {
     fn move_score_guess(
@@ -21,7 +21,7 @@ pub fn sort_moves(
         pos: &Position,
         ply: u8,
         mv: Move,
-        prev_best_move: Move,
+        pv_line: &PVLine,
         cached_mv: Move,
     ) -> i16 {
         debug_assert!(mv != Move::null(), "move cannot be null");
@@ -32,8 +32,8 @@ pub fn sort_moves(
         }
 
         // move is the previous depth best move, give it a high score
-        if mv == prev_best_move {
-            return 25_000;
+        if mv == pv_line[ply as usize] {
+            return 20_000;
         }
 
         //     Priority:
@@ -58,7 +58,7 @@ pub fn sort_moves(
         // @TODO: killer move ranking
         if captured_piece == Piece::NONE {
             if ctx.is_killer(ply, mv) {
-                return 20_000; // Killer move
+                return 15_000; // Killer move
             }
         }
 
@@ -90,7 +90,7 @@ pub fn sort_moves(
         .iter()
         .map(|&mv| ScoredMove {
             mv,
-            score: move_score_guess(ctx, pos, ply, mv, prev_best_move, cached_mv),
+            score: move_score_guess(ctx, pos, ply, mv, pv_line, cached_mv),
         })
         .collect();
 

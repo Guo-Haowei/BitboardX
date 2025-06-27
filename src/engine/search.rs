@@ -11,7 +11,7 @@ const MAX: i32 = i32::MAX;
 
 const DRAW_PENALTY: i32 = -50;
 const IMMEDIATE_MATE_SCORE: i32 = 40000;
-const MAX_PLY: u8 = 64; // max depth for search, should be enough for most positions
+const MAX_PLY: usize = 64; // max depth for search, should be enough for most positions
 
 macro_rules! if_debug_search {
     ($e:expr) => {
@@ -22,10 +22,13 @@ macro_rules! if_debug_search {
     };
 }
 
+pub type PVLine = [Move; MAX_PLY];
+
 pub struct SearchContext {
     prev_best_move: Move,
-
-    killer_moves: [[Option<Move>; 2]; MAX_PLY as usize],
+    killer_moves: [[Option<Move>; 2]; MAX_PLY],
+    pv_table: [PVLine; MAX_PLY],
+    pv_length: [usize; MAX_PLY],
 
     // for debugging purposes
     pruned_count: u64,
@@ -37,7 +40,9 @@ impl SearchContext {
     pub fn new() -> Self {
         Self {
             prev_best_move: Move::null(),
-            killer_moves: [[None; 2]; MAX_PLY as usize],
+            killer_moves: [[None; 2]; MAX_PLY],
+            pv_table: [[Move::null(); MAX_PLY]; MAX_PLY],
+            pv_length: [0; MAX_PLY],
             pruned_count: 0,
             total_moves: 0,
             leaf_count: 0,
@@ -111,11 +116,11 @@ impl SearchContext {
         ply_remaining: u8,
         mut alpha: i32,
         mut beta: i32,
+        pv_line: &PVLine,
     ) -> (i32, Move) {
         // @TODO: refactor draw detection and mate detection
         let key = engine.state.pos.state.hash;
         let alpha_orig = alpha;
-        let is_root = ply_remaining == max_ply;
 
         // --- 1) Check for repetition and 50-move rule ---
         if max_ply > ply_remaining {
@@ -168,17 +173,11 @@ impl SearchContext {
         }
 
         // --- 5) Move ordering ---
-        let prev_best_move = if is_root { self.prev_best_move } else { Move::null() };
-        sort_moves(
-            &engine.state.pos,
-            &self,
-            &mut move_list,
-            ply_remaining,
-            prev_best_move,
-            cached_move,
-        );
+        sort_moves(&engine.state.pos, &self, &mut move_list, ply_remaining, pv_line, cached_move);
         let mut best_move = Move::null();
         let mut best_score = MIN;
+
+        let ply = (max_ply - ply_remaining) as usize;
 
         // --- 6) Main search loop ---
         let mut mv_left = move_list.len();
@@ -186,7 +185,8 @@ impl SearchContext {
             let undo_state = engine.state.make_move(mv);
             let captured_piece = engine.state.pos.state.captured_piece;
 
-            let (score, _) = self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
+            let (score, _) =
+                self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha, pv_line);
             let score = -score; // Negate the score for the opponent
 
             engine.state.unmake_move(mv, &undo_state);
@@ -202,6 +202,14 @@ impl SearchContext {
                 // so we can only update best_move if score is strictly better than previous score
                 best_score = score;
                 best_move = mv;
+
+                // Update PV
+                self.pv_table[ply][ply] = mv;
+                self.pv_length[ply] = 1;
+                for i in 0..self.pv_length[ply + 1] {
+                    self.pv_table[ply][ply + 1 + i] = self.pv_table[ply + 1][ply + 1 + i];
+                    self.pv_length[ply] += 1;
+                }
             }
 
             alpha = alpha.max(score);
@@ -255,7 +263,7 @@ impl SearchContext {
         }
 
         // iterative deepening
-        for depth in 1..MAX_PLY {
+        for depth in 1..MAX_PLY as u8 {
             // @TODO: time control
             if depth > max_depth {
                 break;
@@ -267,16 +275,28 @@ impl SearchContext {
 
             let begin_time = utils::get_time();
 
-            let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX);
+            let prev_pv = self.pv_table[0];
+            let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX, &prev_pv);
             assert!(!mv.is_null(), "Best move should be valid");
 
             self.prev_best_move = mv;
             if_debug_search!({
-                if depth >= 4 {
+                if depth == max_depth {
                     let end_time = utils::get_time();
+
+                    let pv_moves = &self.pv_table[0][0..self.pv_length[0]];
+                    let mut moves = String::new();
+                    for mv in pv_moves.iter() {
+                        if mv.is_null() {
+                            break;
+                        }
+                        moves.push(' ');
+                        moves.push_str(&mv.to_string());
+                    }
+
                     log::debug!(
-                        "move '{}'(score: {}) found in {} ms, at depth: {}, {} leaves evaluated, {}/{} ({}%) pruned",
-                        mv.to_string(),
+                        "moves: {}(score: {}) found in {} ms, at depth: {}, {} leaves evaluated, {}/{} ({}%) pruned",
+                        moves,
                         score,
                         (end_time - begin_time),
                         depth,
