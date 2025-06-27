@@ -80,7 +80,7 @@ pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
 
         let dst_sq_under_attack =
             pos.state.attack_mask[attacker_color.as_usize()].test(dst_sq.as_u8());
-        assert!(
+        debug_assert!(
             !dst_sq_under_attack,
             "this should be filtered when generating the mask, put an assert here for safety"
         );

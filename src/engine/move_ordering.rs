@@ -1,7 +1,7 @@
 use crate::core::position::Position;
 use crate::core::types::*;
 use crate::engine::evaluation::get_piece_value;
-use crate::engine::search::SearchContext;
+use crate::engine::search::{PVLine, Searcher};
 
 struct ScoredMove {
     mv: Move,
@@ -10,18 +10,18 @@ struct ScoredMove {
 
 pub fn sort_moves(
     pos: &Position,
-    ctx: &SearchContext,
+    ctx: &Searcher,
     move_list: &mut MoveList,
     ply: u8,
-    prev_best_move: Move,
+    pv_line: &PVLine,
     cached_mv: Move,
 ) {
     fn move_score_guess(
-        ctx: &SearchContext,
+        ctx: &Searcher,
         pos: &Position,
         ply: u8,
         mv: Move,
-        prev_best_move: Move,
+        pv_line: &PVLine,
         cached_mv: Move,
     ) -> i16 {
         debug_assert!(mv != Move::null(), "move cannot be null");
@@ -32,7 +32,7 @@ pub fn sort_moves(
         }
 
         // move is the previous depth best move, give it a high score
-        if mv == prev_best_move {
+        if mv == pv_line[ply as usize] {
             return 20_000;
         }
 
@@ -55,9 +55,10 @@ pub fn sort_moves(
             pos.get_piece_at(dst_sq)
         };
 
+        // @TODO: killer move ranking
         if captured_piece == Piece::NONE {
             if ctx.is_killer(ply, mv) {
-                return 10_000; // Killer move
+                return 15_000; // Killer move
             }
         }
 
@@ -74,12 +75,12 @@ pub fn sort_moves(
         // promote a pawn is also a good move
         if move_type == MoveType::Promotion {
             let promo_piece = mv.get_promotion().unwrap();
-            score += get_piece_value(promo_piece);
+            score += get_piece_value(promo_piece) + 5_000; // promotion bonus
         }
 
         // penalize moving a piece to a square that is attacked by an opponent piece
         if pos.state.attack_mask[opponent.as_usize()].test(dst_sq.as_u8()) {
-            score = -src_piece_value;
+            score -= src_piece_value / 2;
         }
 
         score
@@ -89,7 +90,7 @@ pub fn sort_moves(
         .iter()
         .map(|&mv| ScoredMove {
             mv,
-            score: move_score_guess(ctx, pos, ply, mv, prev_best_move, cached_mv),
+            score: move_score_guess(ctx, pos, ply, mv, pv_line, cached_mv),
         })
         .collect();
 

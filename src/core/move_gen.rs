@@ -1,3 +1,5 @@
+use crate::core::move_gen::generator::pseudo_legal_capture_moves;
+
 use super::position::Position;
 use super::types::*;
 
@@ -21,17 +23,13 @@ pub fn legal_moves(pos: &Position) -> MoveList {
     moves
 }
 
-/// Capture move generation
+/// Legal capture move generation
 pub fn capture_moves(pos: &Position) -> MoveList {
-    let pseudo_moves = pseudo_legal_moves(pos);
+    let pseudo_moves = pseudo_legal_capture_moves(pos);
     let mut moves = MoveList::new();
-    let opponent = pos.side_to_move.flip();
     for mv in pseudo_moves.iter().copied() {
-        let dst_sq = mv.dst_sq();
-        if pos.state.occupancies[opponent.as_usize()].test(dst_sq.as_u8()) {
-            if validation::is_pseudo_move_legal(pos, mv) {
-                moves.add(mv);
-            }
+        if validation::is_pseudo_move_legal(pos, mv) {
+            moves.add(mv);
         }
     }
 
@@ -44,4 +42,36 @@ pub fn is_pseudo_move_legal(pos: &Position, mv: Move) -> bool {
 
 pub fn generate_pin_map(pos: &Position, color: Color) -> BitBoard {
     generator::generate_pin_map(pos, color)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::position::Position;
+    use std::collections::HashSet;
+
+    fn assert_eq_unordered<T: Eq + std::hash::Hash + std::fmt::Debug>(a: &[T], b: &[T]) {
+        let set_a: HashSet<_> = a.iter().collect();
+        let set_b: HashSet<_> = b.iter().collect();
+        assert_eq!(set_a, set_b);
+    }
+
+    #[test]
+    fn test_capture_moves() {
+        let fen = "7K/1b2Q1nn/8/N7/8/1r1B4/8/6rk w - - 0 1";
+        let pos = Position::from_fen(fen).unwrap();
+        let moves = capture_moves(&pos);
+        let moves = moves.iter().map(|mv| mv.to_string()).collect::<Vec<_>>();
+
+        let expected: Vec<String> = vec![
+            "a5b3".to_string(),
+            "a5b7".to_string(),
+            "d3h7".to_string(),
+            "e7b7".to_string(),
+            "e7g7".to_string(),
+            "h8h7".to_string(),
+        ];
+
+        assert_eq_unordered(&moves, &expected);
+    }
 }

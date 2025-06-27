@@ -1,5 +1,4 @@
-use crate::core::position::{Position, UndoState};
-use crate::core::{move_gen, types::*};
+use crate::core::{move_gen, position::Position, types::*};
 use crate::engine::Engine;
 use crate::engine::book::*;
 use crate::engine::evaluation::Evaluation;
@@ -12,7 +11,9 @@ const MAX: i32 = i32::MAX;
 
 const DRAW_PENALTY: i32 = -50;
 const IMMEDIATE_MATE_SCORE: i32 = 40000;
-const MAX_PLY: u8 = 64; // max depth for search, should be enough for most positions
+const MAX_PLY: usize = 64; // max depth for search, should be enough for most positions
+// @TODO: add ply optimization, if there are more than 20 plys, it's unlikely to find a book move
+const USE_BOOK: bool = true;
 
 macro_rules! if_debug_search {
     ($e:expr) => {
@@ -23,10 +24,16 @@ macro_rules! if_debug_search {
     };
 }
 
-pub struct SearchContext {
-    prev_best_move: Move,
+pub type PVLine = [Move; MAX_PLY];
 
-    killer_moves: [[Option<Move>; 2]; MAX_PLY as usize],
+pub struct Searcher {
+    killer_moves: [[Option<Move>; 2]; MAX_PLY],
+    pv_table: [PVLine; MAX_PLY],
+    pv_length: [usize; MAX_PLY],
+
+    timer: utils::Timer,
+    time_limit: f64, // in milliseconds
+    cancel: bool,
 
     // for debugging purposes
     pruned_count: u64,
@@ -34,17 +41,34 @@ pub struct SearchContext {
     leaf_count: u64,
 }
 
-impl SearchContext {
-    pub fn new() -> Self {
+impl Searcher {
+    pub fn new(time_limit: f64) -> Self {
         Self {
-            prev_best_move: Move::null(),
-            killer_moves: [[None; 2]; MAX_PLY as usize],
+            killer_moves: [[None; 2]; MAX_PLY],
+            pv_table: [[Move::null(); MAX_PLY]; MAX_PLY],
+            pv_length: [0; MAX_PLY],
+            timer: utils::Timer::new(),
+            time_limit,
+            cancel: false,
             pruned_count: 0,
             total_moves: 0,
             leaf_count: 0,
         }
     }
 
+    pub fn should_cancel(&mut self) -> bool {
+        if self.cancel {
+            return true;
+        }
+        if self.timer.elapsed_ms() >= self.time_limit {
+            log::debug!("Time limit reached, cancelling search");
+            self.cancel = true;
+            return true;
+        }
+        false
+    }
+
+    // @TODO: review killer
     fn add_killer(&mut self, ply: u8, mv: Move) {
         let killers = &mut self.killer_moves[ply as usize];
         if killers[0] != Some(mv) {
@@ -57,21 +81,6 @@ impl SearchContext {
         self.killer_moves[ply as usize].contains(&Some(mv))
     }
 
-    fn make_move(&mut self, engine: &mut Engine, mv: Move) -> UndoState {
-        let undo_state = engine.pos.make_move(mv);
-        let hash = engine.pos.state.hash;
-
-        engine.repetition_add(hash);
-        undo_state
-    }
-
-    fn unmake_move(&mut self, engine: &mut Engine, mv: Move, undo_state: &UndoState) {
-        let hash = engine.pos.state.hash;
-        engine.repetition_remove(hash);
-
-        engine.pos.unmake_move(mv, undo_state);
-    }
-
     fn evaluate(&mut self, pos: &Position) -> i32 {
         self.leaf_count += 1;
 
@@ -81,12 +90,14 @@ impl SearchContext {
     }
 
     fn quiescence(&mut self, engine: &mut Engine, mut alpha: i32, beta: i32, depth: i32) -> i32 {
-        // @TODO: cancel
+        if self.should_cancel() {
+            return 0;
+        }
 
         // @TODO: order
-        let move_list = move_gen::capture_moves(&engine.pos);
+        let move_list = move_gen::capture_moves(&engine.state.pos);
 
-        let eval = self.evaluate(&engine.pos);
+        let eval = self.evaluate(&engine.state.pos);
         if eval >= beta {
             // searchDiagnostics.numCutOffs++;
             return beta;
@@ -100,13 +111,18 @@ impl SearchContext {
         }
 
         if move_list.is_empty() {
-            return self.evaluate(&engine.pos);
+            return self.evaluate(&engine.state.pos);
         }
 
         for mv in move_list.iter().copied() {
-            let undo_state = self.make_move(engine, mv);
+            let undo_state = engine.state.make_move(mv);
             let score = -self.quiescence(engine, -beta, -alpha, depth - 1);
-            self.unmake_move(engine, mv, &undo_state);
+
+            if self.should_cancel() {
+                return 0; // cancel the search
+            }
+
+            engine.state.unmake_move(mv, &undo_state);
 
             if score >= beta {
                 // @TODO: stats
@@ -127,34 +143,32 @@ impl SearchContext {
         ply_remaining: u8,
         mut alpha: i32,
         mut beta: i32,
+        pv_line: &PVLine,
     ) -> (i32, Move) {
-        // @TODO: refactor draw detection and mate detection
-        let key = engine.pos.state.hash;
-        let alpha_orig = alpha;
-        let is_root = ply_remaining == max_ply;
+        if self.should_cancel() {
+            return (0, Move::null());
+        }
 
+        let key = engine.state.pos.state.hash;
+        let alpha_orig = alpha;
+
+        // --- 1) Check for repetition and 50-move rule ---
         if max_ply > ply_remaining {
-            // --- 1) Check for repetition and 50-move rule ---
-            let repetition = engine.repetition_count(key);
-            // threefold draw
-            if repetition >= 3 {
-                assert!(repetition == 3);
+            if engine.state.is_three_fold() {
                 log::debug!("repetition detected at depth: {}", ply_remaining);
                 return (DRAW_PENALTY, Move::null());
             }
 
-            // 50-move rule draw
-            if engine.pos.state.halfmove_clock >= 100 {
-                assert!(engine.pos.state.halfmove_clock == 100);
-                log::debug!("50-move rule draw detected: {}", engine.pos.fen());
+            if engine.state.is_fifty_draw() {
+                log::debug!("50-move rule draw detected: {}", engine.state.pos.fen());
                 return (DRAW_PENALTY, Move::null());
             }
         }
 
         // --- 2) Check for terminal node (mate/stalemate) ---
-        let mut move_list = move_gen::legal_moves(&engine.pos);
+        let mut move_list = move_gen::legal_moves(&engine.state.pos);
         if move_list.is_empty() {
-            let score = if engine.pos.is_in_check() {
+            let score = if engine.state.pos.is_in_check() {
                 // shallower checkmate should have higher score
                 // because it's a position where the side to move is losing,
                 // so we negate the score
@@ -180,7 +194,10 @@ impl SearchContext {
                 }
             }
             cached_move = entry.best_move;
-            assert!(!cached_move.is_null(), "Transposition table entry should have a best move");
+            debug_assert!(
+                !cached_move.is_null(),
+                "Transposition table entry should have a best move"
+            );
         }
 
         // --- 4) Check depth cutoff (leaf node) ---
@@ -189,22 +206,28 @@ impl SearchContext {
         }
 
         // --- 5) Move ordering ---
-        let prev_best_move = if is_root { self.prev_best_move } else { Move::null() };
-        sort_moves(&engine.pos, &self, &mut move_list, ply_remaining, prev_best_move, cached_move);
+        sort_moves(&engine.state.pos, &self, &mut move_list, ply_remaining, pv_line, cached_move);
         let mut best_move = Move::null();
         let mut best_score = MIN;
+
+        let ply = (max_ply - ply_remaining) as usize;
 
         // --- 6) Main search loop ---
         let mut mv_left = move_list.len();
         for mv in move_list.iter().copied() {
-            let undo_state = self.make_move(engine, mv);
+            let undo_state = engine.state.make_move(mv);
+            let captured_piece = engine.state.pos.state.captured_piece;
 
-            let captured_piece = engine.pos.state.captured_piece;
+            let (score, _) =
+                self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha, pv_line);
 
-            let (score, _) = self.negamax(engine, max_ply, ply_remaining - 1, -beta, -alpha);
+            if self.should_cancel() {
+                return (0, Move::null()); // cancel the search
+            }
+
             let score = -score; // Negate the score for the opponent
 
-            self.unmake_move(engine, mv, &undo_state);
+            engine.state.unmake_move(mv, &undo_state);
 
             if score > best_score {
                 if mv.get_type() == MoveType::Normal && captured_piece == Piece::NONE {
@@ -217,6 +240,14 @@ impl SearchContext {
                 // so we can only update best_move if score is strictly better than previous score
                 best_score = score;
                 best_move = mv;
+
+                // Update PV
+                self.pv_table[ply][ply] = mv;
+                self.pv_length[ply] = 1;
+                for i in 0..self.pv_length[ply + 1] {
+                    self.pv_table[ply][ply + 1 + i] = self.pv_table[ply + 1][ply + 1 + i];
+                    self.pv_length[ply] += 1;
+                }
             }
 
             alpha = alpha.max(score);
@@ -237,42 +268,82 @@ impl SearchContext {
             NodeType::Exact
         };
 
-        assert!(!best_move.is_null(), "Best move should be valid");
+        debug_assert!(!best_move.is_null(), "Best move should be valid");
         engine.tt.store(key, ply_remaining, best_score, node_type, best_move);
 
         (best_score, best_move)
     }
 
-    pub fn find_best_move(&mut self, engine: &mut Engine, max_depth: u8) -> Option<Move> {
-        debug_assert!(max_depth > 0);
-
-        let move_list = move_gen::legal_moves(&engine.pos);
-        if move_list.len() == 0 {
-            return None; // no legal moves
+    fn find_book_move(&mut self, engine: &mut Engine, move_list: &MoveList) -> Option<Move> {
+        if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.state.pos.state.hash) {
+            for mv in move_list.iter().copied() {
+                if mv.src_sq() == book_mv.src_sq()
+                    && mv.dst_sq() == book_mv.dst_sq()
+                    && mv.get_promotion() == book_mv.get_promotion()
+                {
+                    log::debug!("Found book move: {:?}", book_mv.to_string());
+                    return Some(mv);
+                }
+            }
+            log::debug!("book move is: {:?}", book_mv.to_string());
+            log::debug!("FEN: {:?}", engine.state.pos.fen());
+            panic!("Should not happen, book move not found in legal moves");
         }
 
-        // @TODO: add ply optimization, if there are more than 20 plys, it's unlikely to find a book move
-        const USE_BOOK: bool = true;
+        None
+    }
+
+    pub fn find_best_move_depth(&mut self, engine: &mut Engine, max_depth: u8) -> Option<Move> {
+        debug_assert!(max_depth > 0, "Depth should be greater than 0");
+
+        let move_list = move_gen::legal_moves(&engine.state.pos);
+        if move_list.is_empty() {
+            return None;
+        }
+
         if USE_BOOK {
-            if let Some(book_mv) = DEFAULT_BOOK.get_move(engine.pos.state.hash) {
-                for mv in move_list.iter().copied() {
-                    if mv.src_sq() == book_mv.src_sq()
-                        && mv.dst_sq() == book_mv.dst_sq()
-                        && mv.get_promotion() == book_mv.get_promotion()
-                    {
-                        return Some(mv);
-                    }
-                }
-                log::debug!("book move is: {:?}", book_mv.to_string());
-                log::debug!("FEN: {:?}", engine.pos.fen());
-                panic!("Should not happen, book move not found in legal moves");
+            let book_move = self.find_book_move(engine, &move_list);
+            if book_move.is_some() {
+                return book_move;
             }
         }
 
+        let mut best_move = Move::null();
+
+        for depth in 1..=max_depth {
+            self.total_moves = 0;
+            self.pruned_count = 0;
+            self.leaf_count = 0;
+
+            let prev_pv = self.pv_table[0];
+            let (_, mv) = self.negamax(engine, depth, depth, MIN, MAX, &prev_pv);
+
+            best_move = mv;
+        }
+
+        return Some(best_move);
+    }
+
+    pub fn find_best_move(&mut self, engine: &mut Engine) -> Option<Move> {
+        let move_list = move_gen::legal_moves(&engine.state.pos);
+        if move_list.is_empty() {
+            return None;
+        }
+
+        if USE_BOOK {
+            let book_move = self.find_book_move(engine, &move_list);
+            if book_move.is_some() {
+                return book_move;
+            }
+        }
+
+        let mut depth = 1;
+        let mut best_move = Move::null();
+        let mut best_score = MIN;
+
         // iterative deepening
-        for depth in 1..MAX_PLY {
-            // @TODO: time control
-            if depth > max_depth {
+        while depth < MAX_PLY as u8 {
+            if self.should_cancel() {
                 break;
             }
 
@@ -280,36 +351,53 @@ impl SearchContext {
             self.pruned_count = 0;
             self.leaf_count = 0;
 
-            let begin_time = utils::get_time();
+            let prev_pv = self.pv_table[0];
+            let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX, &prev_pv);
 
-            let (score, mv) = self.negamax(engine, depth, depth, MIN, MAX);
-            assert!(!mv.is_null(), "Best move should be valid");
+            if self.should_cancel() {
+                break;
+            }
 
-            self.prev_best_move = mv;
-            if_debug_search!({
-                let end_time = utils::get_time();
-                log::debug!(
-                    "move '{}'(score: {}) found in {} ms, at depth: {}, {} leaves evaluated, {}/{} ({}%) pruned",
-                    mv.to_string(),
-                    score,
-                    (end_time - begin_time),
-                    depth,
-                    self.leaf_count,
-                    self.pruned_count,
-                    self.total_moves,
-                    self.pruned_count as f32 / self.total_moves as f32 * 100.0
-                );
-            });
+            debug_assert!(!mv.is_null(), "Best move should be valid");
+
+            best_move = mv;
+            best_score = score;
+
+            depth += 1;
         }
 
-        log::debug!(
-            "tt table {}/{}, {}% full, collisions: {}",
-            engine.tt.count(),
-            engine.tt.capacity(),
-            (engine.tt.count() as f32 / engine.tt.capacity() as f32 * 100.0).round(),
-            engine.tt.collision_count
-        );
+        if_debug_search!({
+            let pv_moves = &self.pv_table[0][0..self.pv_length[0]];
+            let mut moves = String::new();
+            for mv in pv_moves.iter() {
+                if mv.is_null() {
+                    break;
+                }
+                moves.push(' ');
+                moves.push_str(&mv.to_string());
+            }
 
-        Some(self.prev_best_move)
+            log::debug!(
+                "moves: {}(score: {}) found in {} ms, at depth: {}, {} leaves evaluated, {}/{} ({}%) pruned",
+                moves,
+                best_score,
+                self.timer.elapsed_ms(),
+                depth,
+                self.leaf_count,
+                self.pruned_count,
+                self.total_moves,
+                self.pruned_count as f32 / self.total_moves as f32 * 100.0
+            );
+
+            log::debug!(
+                "tt table {}/{}, {}% full, collisions: {}",
+                engine.tt.count(),
+                engine.tt.capacity(),
+                (engine.tt.count() as f32 / engine.tt.capacity() as f32 * 100.0).round(),
+                engine.tt.collision_count
+            );
+        });
+
+        Some(best_move)
     }
 }

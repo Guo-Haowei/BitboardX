@@ -1,20 +1,20 @@
-use std::collections::HashMap;
 use std::io::Write;
 
-use crate::core::{move_gen, position::Position, types::Move, zobrist::ZobristHash};
+use crate::core::{game_state::GameState, move_gen, position::Position, types::Move};
 use crate::engine::search;
 use crate::engine::ttable::TTable;
 use crate::utils;
 
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
-const VERSION_MINOR: u32 = 1;
-const VERSION_PATCH: u32 = 10; // v0.1.10
+const VERSION_MINOR: u32 = 2;
+const VERSION_PATCH: u32 = 2;
+
+// need an extra layer to track 50 move rule, and threefold repetition
 
 pub struct Engine {
-    pub(super) pos: Position,
+    pub(super) state: GameState,
     pub(super) tt: TTable,
-    repetition_table: HashMap<ZobristHash, u32>, // for threefold detection
 }
 
 impl Engine {
@@ -31,31 +31,25 @@ impl Engine {
     }
 
     pub fn from_fen(fen: &str) -> Result<Self, &'static str> {
-        let pos = Position::from_fen(fen)?;
-        let mut repetition_table = HashMap::new();
-        assert!(pos.state.hash != ZobristHash(0));
-        repetition_table.insert(pos.state.hash, 1);
+        let state = GameState::from_fen(fen)?;
 
-        Ok(Self { pos, repetition_table, tt: TTable::new() })
+        Ok(Self { state, tt: TTable::new() })
     }
 
     pub fn reset(&mut self) {
         *self = Self::new();
     }
 
-    pub fn best_move(&mut self, depth: u8) -> Option<Move> {
-        let mut searcher = search::SearchContext::new();
-        searcher.find_best_move(self, depth)
+    pub fn best_move(&mut self, time: f64) -> Option<Move> {
+        let mut searcher = search::Searcher::new(time);
+        searcher.find_best_move(self)
     }
 
-    pub fn set_position(&mut self, pos: Position) {
-        self.pos = pos;
-        self.repetition_table.clear();
-        assert!(pos.state.hash != ZobristHash(0));
-        self.repetition_table.insert(pos.state.hash, 1);
+    pub fn best_move_depth(&mut self, max_depth: u8) -> Option<Move> {
+        let mut searcher = search::Searcher::new(f64::MAX);
+        searcher.find_best_move_depth(self, max_depth)
     }
 
-    // Assume that the move is legal, otherwise it might crash the engine
     pub fn make_move(&mut self, mv_str: &str) -> bool {
         let mv = utils::parse_move(mv_str);
         if mv.is_none() {
@@ -64,38 +58,19 @@ impl Engine {
         }
 
         let mv = mv.unwrap();
-        let legal_moves = move_gen::legal_moves(&self.pos);
+        let legal_moves = move_gen::legal_moves(&self.state.pos);
         let src_sq = mv.src_sq();
         let dst_sq = mv.dst_sq();
         let promotion = mv.get_promotion();
         for mv in legal_moves.iter().copied() {
             if mv.src_sq() == src_sq && mv.dst_sq() == dst_sq && mv.get_promotion() == promotion {
-                self.pos.make_move(mv);
-
-                *self.repetition_table.entry(self.pos.state.hash).or_insert(0) += 1;
+                self.state.make_move(mv);
                 return true;
             }
         }
 
         log::error!("'{}' is not a legal move", mv_str);
         return false;
-    }
-
-    pub fn repetition_add(&mut self, key: ZobristHash) {
-        *self.repetition_table.entry(key).or_insert(0) += 1;
-    }
-
-    pub fn repetition_remove(&mut self, key: ZobristHash) {
-        if let Some(count) = self.repetition_table.get_mut(&key) {
-            if *count > 0 {
-                *count -= 1;
-            }
-        }
-    }
-
-    pub fn repetition_count(&self, key: ZobristHash) -> u32 {
-        let val = self.repetition_table.get(&key).unwrap_or(&0);
-        *val
     }
 
     /// The following methods are for UCI commands
@@ -128,7 +103,7 @@ impl Engine {
     }
 
     pub fn uci_cmd_ucinewgame<W: Write>(&mut self, _: &mut W) {
-        self.set_position(Position::new());
+        self.state.set_position(Position::new());
     }
 
     pub fn uci_cmd_uci<W: Write>(&self, writer: &mut W) {
@@ -138,7 +113,7 @@ impl Engine {
     }
 
     pub fn uci_cmd_d<W: Write>(&self, writer: &mut W) {
-        writeln!(writer, "{}", utils::debug_string(&self.pos)).unwrap();
+        writeln!(writer, "{}", utils::debug_string(&self.state.pos)).unwrap();
     }
 
     pub fn uci_cmd_position(&mut self, args: &str) {
@@ -151,14 +126,14 @@ impl Engine {
 
         match parts.as_slice() {
             ["startpos", _rest @ ..] => {
-                self.set_position(Position::new());
+                self.state.set_position(Position::new());
                 parts.remove(0);
             }
             ["fen", p1, p2, p3, p4, p5, p6, _rest @ ..] => {
                 let result = [*p1, *p2, *p3, *p4, *p5, *p6].join(" ");
                 match Position::from_fen(result.as_str()) {
                     Ok(pos) => {
-                        self.set_position(pos);
+                        self.state.set_position(pos);
                         parts.drain(0..=6); // remove the FEN parts
                     }
                     Err(err) => {
@@ -205,7 +180,8 @@ impl Engine {
                 self.uci_cmd_go_perft(writer, depth, depth);
             }
             _ => {
-                let mv = self.best_move(5).unwrap();
+                const TIME: f64 = 2000.0;
+                let mv = self.best_move(TIME).unwrap();
                 writeln!(writer, "bestmove {}", mv.to_string()).unwrap();
             }
         }
@@ -216,15 +192,15 @@ impl Engine {
             return 1;
         }
 
-        let move_list = move_gen::legal_moves(&self.pos);
+        let move_list = move_gen::legal_moves(&self.state.pos);
 
         let mut nodes = 0u64;
         let should_print = depth == max_depth;
         for mv in move_list.iter().copied() {
-            let undo_state = self.pos.make_move(mv);
+            let undo_state = self.state.pos.make_move(mv);
             let count = self.uci_cmd_go_perft(writer, depth - 1, max_depth);
             nodes += count;
-            self.pos.unmake_move(mv, &undo_state);
+            self.state.pos.unmake_move(mv, &undo_state);
 
             if should_print {
                 writeln!(writer, "{}: {}", mv.to_string(), count).unwrap();

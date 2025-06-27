@@ -12,7 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ["console"] }
+web-sys = { version = "0.3", features = ["console", "Window", "Performance"] }
 static_assertions = "1.1"
 once_cell = "1.19"
 wasm-logger = "0.2"

@@ -33,7 +33,7 @@ impl CheckerList {
     }
 
     pub fn get(&self, index: usize) -> Option<Square> {
-        assert!(index < 2, "Index out of bounds for CheckerList: {}", index);
+        debug_assert!(index < 2, "Index out of bounds for CheckerList: {}", index);
         self.squares[index]
     }
 }
@@ -174,7 +174,7 @@ impl Position {
         }
 
         if !is_white && !is_black {
-            assert!(self.state.occupancies[Color::BOTH.as_usize()].test(sq.as_u8()) == false);
+            debug_assert!(self.state.occupancies[Color::BOTH.as_usize()].test(sq.as_u8()) == false);
             return Color::NONE;
         }
 

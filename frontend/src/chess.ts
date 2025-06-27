@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import init, { WasmPosition, WasmEngine, WasmMove, name } from '../../pkg/bitboard_x';
+import init, { WasmGame, WasmEngine, WasmMove, name } from '../../pkg/bitboard_x';
 
 const PIECE_RES = new Map<string, HTMLImageElement>();
 const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK'];
@@ -80,7 +80,7 @@ export async function initialize(config: Config, callback: () => void) {
 
 // ---------------------------- Chess Board Wrapper -----------------------------
 class ChessBoard {
-  private position: WasmPosition;
+  private _gameState: WasmGame;
   private initialPos: string;
 
   private _boardString = '';
@@ -90,12 +90,16 @@ class ChessBoard {
   private history: WasmMove[];
 
   constructor(fen: string) {
-    this.position = new WasmPosition(fen);
+    this._gameState = new WasmGame(fen);
 
     this.initialPos = `fen ${fen}`;
     this.history = [];
 
     this.updateInternal();
+  }
+
+  get gameState() {
+    return this._gameState;
   }
 
   get boardString() {
@@ -119,9 +123,9 @@ class ChessBoard {
 
   private updateInternal() {
     // board string
-    this._boardString = this.position.board_string();
+    this._boardString = this.gameState.board_string();
     // legal moves
-    this._legalMoves = this.position.legal_moves();
+    this._legalMoves = this.gameState.legal_moves();
     this._legalMovesMap.clear();
 
     for (const move of this._legalMoves) {
@@ -134,16 +138,12 @@ class ChessBoard {
     }
   }
 
-  isGameOver(): boolean {
-    return this._legalMoves.length === 0;
-  }
-
-  turn(): number {
-    return this.position.turn();
+  turn() {
+    return this.gameState.turn();
   }
 
   makeMove(move_str: string) {
-    const move = this.position.make_move(move_str);
+    const move = this.gameState.make_move(move_str);
     if (move) {
       this.history.push(move);
 
@@ -437,22 +437,22 @@ class GameController {
     return this.players[board!.turn()];
   }
 
-  public isGameOver(): boolean {
-    return board!.isGameOver();
-  }
-
   async start(): Promise<string> {
     this.isRunning = true;
 
     while (true) {
       if (!this.isRunning) return 'paused';
-      if (this.isGameOver()) return 'gameover';
+      const status = board!.gameState.get_game_status();
+      if (status !== 'playing') {
+        return status;
+      }
       const activePlayer = this.activePlayer();
       const moveStr = await activePlayer.getMove(board!.uciPosition());
 
       const move = board!.makeMove(moveStr);
 
       if (move) {
+        if (board) console.log(board!.gameState.debug_string());
         await renderer!.draw();
       }
 
@@ -475,11 +475,11 @@ export interface Player {
 
 export class BotPlayer implements Player {
   async getMove(history: string): Promise<string> {
-    const searchDepth = 5;
+    const SEARCH_TIME = 2000;
 
     engine?.set_position(history);
 
-    const bestMove = engine?.best_move(searchDepth);
+    const bestMove = engine?.best_move(SEARCH_TIME);
 
     if (bestMove) {
       return bestMove;
