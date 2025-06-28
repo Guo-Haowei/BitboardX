@@ -76,7 +76,6 @@ pub struct WasmGame {
     legal_moves: MoveList,
 
     undo_stack: Vec<(Move, UndoState)>,
-    redo_stack: Vec<(Move, UndoState)>,
 }
 
 #[wasm_bindgen]
@@ -86,7 +85,7 @@ impl WasmGame {
         let mut state = GameState::from_fen(fen).unwrap_or_else(|_| GameState::new());
 
         let legal_moves = legal_moves(&mut state.pos);
-        Self { state, legal_moves, undo_stack: Vec::new(), redo_stack: Vec::new() }
+        Self { state, legal_moves, undo_stack: Vec::new() }
     }
 
     pub fn fen(&self) -> String {
@@ -129,7 +128,6 @@ impl WasmGame {
                 self.state.push_zobrist();
 
                 self.undo_stack.push((mv, undo_state));
-                self.redo_stack.clear();
 
                 final_mv = Some(WasmMove::new(mv, self.state.pos.state.captured_piece));
                 break;
@@ -142,7 +140,7 @@ impl WasmGame {
         final_mv
     }
 
-    pub fn get_game_status(&self) -> String {
+    pub fn get_result(&self) -> String {
         if self.legal_moves.len() == 0 {
             return if self.state.pos.is_in_check(self.state.pos.side_to_move) {
                 if self.state.pos.white_to_move() { "black wins" } else { "white wins" }
@@ -160,6 +158,20 @@ impl WasmGame {
 
         return "playing".into();
     }
+
+    pub fn undo(&mut self) -> bool {
+        if self.undo_stack.is_empty() {
+            return false;
+        }
+
+        let (mv, undo_state) = self.undo_stack.pop().unwrap();
+        self.state.pos.unmake_move(mv, &undo_state);
+        self.state.pop_zobrist();
+
+        self.legal_moves = legal_moves(&mut self.state.pos);
+
+        true
+    }
 }
 
 // --------------------------- Engine Binding ----------------------------------
@@ -176,9 +188,12 @@ impl WasmEngine {
     }
 
     pub fn set_position(&mut self, args: &str) {
-        use std::io;
-        let mut null = io::sink();
-        self.engine.handle_uci_cmd(&mut null, args);
+        match self.engine.set_position(args) {
+            Ok(_) => {}
+            Err(err) => {
+                log::error!("{}", err);
+            }
+        }
     }
 
     pub fn best_move(&mut self, time: f64) -> String {

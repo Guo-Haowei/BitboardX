@@ -420,13 +420,13 @@ impl Searcher {
                 self.pruned_count as f32 / self.total_moves as f32 * 100.0
             );
 
-            log::debug!(
-                "tt table {}/{}, {}% full, collisions: {}",
-                engine.tt.count(),
-                engine.tt.capacity(),
-                (engine.tt.count() as f32 / engine.tt.capacity() as f32 * 100.0).round(),
-                engine.tt.collision_count
-            );
+            // log::debug!(
+            //     "tt table {}/{}, {}% full, collisions: {}",
+            //     engine.tt.count(),
+            //     engine.tt.capacity(),
+            //     (engine.tt.count() as f32 / engine.tt.capacity() as f32 * 100.0).round(),
+            //     engine.tt.collision_count
+            // );
         });
 
         Some(best_move)
