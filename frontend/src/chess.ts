@@ -1,30 +1,19 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import init, { WasmGame, WasmEngine, WasmMove, name } from '../../pkg/bitboard_x';
-import { Renderer } from './renderer';
+import { BoardView } from './board-view';
+import { InitBoardView2D } from './board-view-2d';
 
 // @TODO: move it to renderer because it's bound to renderer,
-export const PIECE_RES = new Map<string, HTMLImageElement>();
-const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK'];
 
-const BOARD_SIZE = 8;
 const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-let renderer: Renderer | null = null;
+let boardView: BoardView | null = null;
 let engine: WasmEngine | null = null;
 let gameController: GameController | null = null;
 let board: ChessBoard | null = null;
 let controller: GameController | null = null;
 
 // ---------------------------- Initialization -------------------------------
-async function loadImage(code: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = `https://lichess1.org/assets/piece/cburnett/${code}.svg`;
-    img.src = url;
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load: ${url}`));
-  });
-}
 
 interface Config {
   canvas: HTMLCanvasElement;
@@ -33,30 +22,12 @@ interface Config {
 export async function initialize(config: Config, callback: () => void) {
   await init();
 
-  Promise.all(PIECE_CODES.map(loadImage))
-    .then(images => {
-      console.log("✅ All assets loaded");
-      images.forEach((img, index) => {
-        const code = PIECE_CODES[index];
-        const color = code[0];
-        const piece = color === 'w' ? code[1] : code[1].toLowerCase();
-        PIECE_RES.set(piece, img);
-      });
+  boardView = await InitBoardView2D(config.canvas);
+  boardView?.setOnClickCallback((square) => picker.onSquareClicked(square));
 
-      const { canvas } = config;
-
-      // @TODO: create 2D or 3D
-      renderer = new Renderer(canvas);
-      renderer.setOnClickCallback((square) => picker.onSquareClicked(square));
-
-      console.log(`✅ Initializing engine ${name()}`);
-      engine = new WasmEngine();
-
-      callback();
-    })
-    .catch(err => {
-      console.error("❌ One or more images failed to load:", err);
-    });
+  console.log(`✅ Initializing engine ${name()}`);
+  engine = new WasmEngine();
+  callback();
 }
 
 export function startNewGame(white: Player, black: Player, fen?: string) {
@@ -143,7 +114,9 @@ export class ChessBoard {
   }
 
   getPieceAt(square: string) {
-    const index = squareStringToIndex(square);
+    const file = square.charCodeAt(0) - 97; // 'a' is 97
+    const rank = parseInt(square[1], 10) - 1; // '1' is 1
+    const index = rank * 8 + file;
     return this._boardString[index];
   }
 }
@@ -210,16 +183,14 @@ class Picker {
 
       const pieces = ['Q', 'R', 'B', 'N'];
 
-      for (let piece of pieces) {
-        if (!isWhite) {
-          piece = piece.toLowerCase();
-        }
+      for (const piece of pieces) {
+        const url = `https://lichess1.org/assets/piece/cburnett/${isWhite ? 'w' : 'b'}${piece}.svg`
 
         const option = document.createElement('div');
         option.style.width = '64px';
         option.style.height = '64px';
         option.style.cursor = 'pointer';
-        option.style.backgroundImage = `url(${PIECE_RES.get(piece)?.src})`;
+        option.style.backgroundImage = `url(${url})`;
         option.style.backgroundSize = 'contain';
         option.style.backgroundRepeat = 'no-repeat';
         option.style.backgroundPosition = 'center';
@@ -257,8 +228,8 @@ class GameController {
   }
 
   private loop() {
-    if (board && renderer) {
-      renderer.draw(board, picker.selected);
+    if (board && boardView) {
+      boardView.draw(board, picker.selected);
     }
 
     // return one frame later so the end result is rendered
@@ -310,11 +281,4 @@ export class UIPlayer implements Player {
   tryGetMove(history: string): string | null {
     return picker.tryGetMove();
   }
-}
-
-// ---------------------------- Utils ------------------------------------
-function squareStringToIndex(square: string): number {
-  const file = square.charCodeAt(0) - 97; // 'a' is 97
-  const rank = parseInt(square[1], 10) - 1; // '1' is 1
-  return rank * BOARD_SIZE + file;
 }

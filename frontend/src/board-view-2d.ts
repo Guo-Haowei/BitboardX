@@ -1,4 +1,5 @@
-import { ChessBoard, PIECE_RES } from './chess';
+import { ChessBoard } from './chess';
+import { BoardView } from './board-view';
 
 // @TODO: allow user to configure the colors
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
@@ -7,13 +8,51 @@ const YELLOW_COLOR = 'rgba(200, 200, 0, 0.5)';
 const LIGHT_SQUARE_COLOR = 'rgba(240, 217, 181, 1)';
 const DARK_SQUARE_COLOR = 'rgba(181, 136, 99, 1)';
 
-export class Renderer {
+
+const PIECE_RES = new Map<string, HTMLImageElement>();
+const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK'];
+
+async function loadImage(code: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = `https://lichess1.org/assets/piece/cburnett/${code}.svg`;
+    img.src = url;
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load: ${url}`));
+  });
+}
+
+export async function InitBoardView2D(canvas: HTMLCanvasElement): Promise<BoardView | null> {
+  if (!canvas) {
+    throw new Error("Canvas element is required");
+  }
+
+  try {
+    const images = await Promise.all(PIECE_CODES.map(loadImage));
+
+    images.forEach((img, index) => {
+      const code = PIECE_CODES[index];
+      const color = code[0];
+      const piece = color === 'w' ? code[1] : code[1].toLowerCase();
+      PIECE_RES.set(piece, img);
+    });
+
+    console.log("✅ All assets loaded");
+
+    return new BoardView2D(canvas);
+  } catch (error) {
+    console.error("❌ One or more images failed to load:", error);
+    return null;
+  }
+}
+
+class BoardView2D extends BoardView {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private squareSize = 0;
-  private onclickCallback?: ((square: string) => void);
 
   public constructor(canvas: HTMLCanvasElement) {
+    super();
     this.canvas = canvas;
     canvas.addEventListener('resize', () => {
       this.onResize();
@@ -27,10 +66,6 @@ export class Renderer {
     if (!this.ctx) {
       throw new Error("Failed to get canvas context");
     }
-  }
-
-  setOnClickCallback(callback: (square: string) => void) {
-    this.onclickCallback = callback;
   }
 
   draw(board: ChessBoard, selected?: string) {
