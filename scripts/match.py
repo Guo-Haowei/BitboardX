@@ -2,6 +2,7 @@ import subprocess
 import shutil
 import sys
 import os
+import re
 
 def get_file_name(file_path):
     base_name = os.path.basename(file_path)
@@ -26,10 +27,10 @@ def main():
     cubechess_cli = 'cutechess-cli.exe'
     engine1 = get_file_name(sys.argv[1])
 
-    # TODO: parse score
-    if sys.argv[2] == 'stockfish':
-        engine2 = 'stockfish1600'
-        elo = 1600
+    match = re.match(r'stockfish(\d+)', sys.argv[2])
+    if match:
+        engine2 = sys.argv[2]
+        elo = int(match.group(1))
         engine2_setup = [
             '-engine', f'name={engine2}',
             f'cmd=stockfish', 'option.UCI_LimitStrength=true', f'option.UCI_Elo={elo}'

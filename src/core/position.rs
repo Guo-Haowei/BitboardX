@@ -8,7 +8,7 @@ mod utils;
 
 #[derive(Clone, Copy, Debug)]
 pub struct SmallSquareList {
-    squares: [Option<Square>; 2],
+    squares: [Option<(Square, PieceType)>; 2],
     count: u8,
 }
 
@@ -23,16 +23,16 @@ impl CheckerList {
         self.count
     }
 
-    pub fn add(&mut self, sq: Square) -> bool {
+    pub fn add(&mut self, sq: Square, piece_type: PieceType) -> bool {
         if self.count == 2 {
             return false;
         }
-        self.squares[self.count as usize] = Some(sq);
+        self.squares[self.count as usize] = Some((sq, piece_type));
         self.count += 1;
         return true;
     }
 
-    pub fn get(&self, index: usize) -> Option<Square> {
+    pub fn get(&self, index: usize) -> Option<(Square, PieceType)> {
         debug_assert!(index < 2, "Index out of bounds for CheckerList: {}", index);
         self.squares[index]
     }
@@ -252,8 +252,8 @@ mod tests {
 
         let checkers = pos.state.checkers[Color::WHITE.as_usize()];
         assert_eq!(checkers.count(), 2);
-        let sq1 = checkers.get(0).unwrap();
-        let sq2 = checkers.get(1).unwrap();
+        let (sq1, _) = checkers.get(0).unwrap();
+        let (sq2, _) = checkers.get(1).unwrap();
         assert!(
             matches!((sq1, sq2), (Square::C2, Square::E4) | (Square::E4, Square::C2)),
             "Checkers should be at C2 and E4, got {:?} and {:?}",
