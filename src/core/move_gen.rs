@@ -39,11 +39,72 @@ const MV_MASK_MOVE: u8 = 0;
 const MV_MASK_CAPTURE: u8 = 1;
 const MV_MASK_ATTACK: u8 = 2;
 
-fn pseudo_legal_moves_src_sq<const MASK: u8>(
+/// Pseudo-legal move generation
+pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
+    pseudo_legal_moves_impl::<MV_MASK_MOVE>(pos)
+}
+
+pub fn pseudo_legal_capture_moves(pos: &Position) -> MoveList {
+    pseudo_legal_moves_impl::<MV_MASK_CAPTURE>(pos)
+}
+
+fn resolve_check(dst_sq: Square, checker_sq: Square, king_sq: Square) -> bool {
+    let capture_attacker = dst_sq == checker_sq;
+    let block_attacker = dst_sq.same_line_inclusive(checker_sq, king_sq);
+    capture_attacker || block_attacker
+}
+
+fn pseudo_legal_move_pawn<const COLOR: u8, const FILTER_TYPE: u8, const NOT_IN_CHECK: bool>(
+    move_list: &mut MoveList,
+    sq: Square,
+    pos: &Position,
+    checker_sq: Square,
+    king_sq: Square,
+    checker_type: PieceType,
+) {
+    let mask = pawn_mask::<COLOR, FILTER_TYPE>(sq, pos);
+
+    for dst_sq in mask.iter() {
+        let sq_mask = 1u64 << dst_sq.as_u8();
+        let promo_rank = if COLOR == 0 { BitBoard::MASK_8 } else { BitBoard::MASK_1 };
+        if sq_mask & promo_rank != 0 {
+            // Promotion move
+            let promotion_types =
+                [PieceType::QUEEN, PieceType::ROOK, PieceType::BISHOP, PieceType::KNIGHT];
+            for &promotion in &promotion_types {
+                if NOT_IN_CHECK || resolve_check(dst_sq, checker_sq, king_sq) {
+                    move_list.add(Move::new(sq, dst_sq, MoveType::Promotion, Some(promotion)));
+                }
+            }
+        } else {
+            if NOT_IN_CHECK || resolve_check(dst_sq, checker_sq, king_sq) {
+                move_list.add(Move::new(sq, dst_sq, MoveType::Normal, None));
+            }
+        }
+    }
+
+    if let Some(ep_sq) = pos.state.en_passant {
+        let attack_mask = pawn_mask::<{ COLOR }, MV_MASK_ATTACK>(sq, pos);
+        // if attach mask and ep square overlap, then it's an en passant capture
+        if attack_mask.test_sq(ep_sq) {
+            // if we can make an en passant capture, it means the enemy just moved the pawn,
+            // and the pawn formed capture,
+            // so if we can take out the pawn just pushed, then it's a legal move
+            if NOT_IN_CHECK || checker_type == PieceType::PAWN {
+                move_list.add(Move::new(sq, ep_sq, MoveType::EnPassant, None));
+            }
+        }
+    }
+}
+
+fn pseudo_legal_moves_src_sq<const MASK: u8, const NOT_IN_CHECK: bool>(
     pos: &Position,
     sq: Square,
     piece: Piece,
     list: &mut MoveList,
+    checker_sq: Square,
+    king_sq: Square,
+    checker_type: PieceType,
 ) {
     let color = piece.color();
 
@@ -51,10 +112,24 @@ fn pseudo_legal_moves_src_sq<const MASK: u8>(
     let enemy = pos.state.occupancies[color.flip().as_usize()];
 
     if piece == Piece::W_PAWN {
-        return pseudo_legal_move_pawn::<0, MASK>(list, sq, pos);
+        return pseudo_legal_move_pawn::<0, MASK, NOT_IN_CHECK>(
+            list,
+            sq,
+            pos,
+            checker_sq,
+            king_sq,
+            checker_type,
+        );
     }
     if piece == Piece::B_PAWN {
-        return pseudo_legal_move_pawn::<1, MASK>(list, sq, pos);
+        return pseudo_legal_move_pawn::<1, MASK, NOT_IN_CHECK>(
+            list,
+            sq,
+            pos,
+            checker_sq,
+            king_sq,
+            checker_type,
+        );
     }
 
     let mask = match piece {
@@ -65,16 +140,11 @@ fn pseudo_legal_moves_src_sq<const MASK: u8>(
         _ => panic!("Invalid piece type: {:?}", piece),
     };
 
-    pseudo_legal_move_general(list, sq, mask);
-}
-
-/// Pseudo-legal move generation
-pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
-    pseudo_legal_moves_impl::<MV_MASK_MOVE>(pos)
-}
-
-pub fn pseudo_legal_capture_moves(pos: &Position) -> MoveList {
-    pseudo_legal_moves_impl::<MV_MASK_CAPTURE>(pos)
+    for dst_sq in mask.iter() {
+        if NOT_IN_CHECK || resolve_check(dst_sq, checker_sq, king_sq) {
+            list.add(Move::new(sq, dst_sq, MoveType::Normal, None));
+        }
+    }
 }
 
 fn pseudo_legal_moves_impl<const MASK: u8>(pos: &Position) -> MoveList {
@@ -96,70 +166,45 @@ fn pseudo_legal_moves_impl<const MASK: u8>(pos: &Position) -> MoveList {
         return move_list;
     }
 
+    debug_assert!(checkers.count() <= 1, "There should be either 0 or 1 checkers");
+
     // if there is one checker, we need to find the move that blocks the check or captures the checking piece
-    for i in start..end {
-        let piece = Piece::new(i);
+    if checkers.count() == 1 {
+        let (checker_sq, checker_type) = checkers.get(0).unwrap();
+        for i in start..end {
+            let piece = Piece::new(i);
 
-        for sq in pos.bitboards[i as usize].iter() {
-            pseudo_legal_moves_src_sq::<MASK>(pos, sq, piece, &mut move_list);
+            for sq in pos.bitboards[i as usize].iter() {
+                pseudo_legal_moves_src_sq::<MASK, false>(
+                    pos,
+                    sq,
+                    piece,
+                    &mut move_list,
+                    checker_sq,
+                    king_sq,
+                    checker_type,
+                );
+            }
+        }
+    } else {
+        for i in start..end {
+            let piece = Piece::new(i);
+
+            for sq in pos.bitboards[i as usize].iter() {
+                pseudo_legal_moves_src_sq::<MASK, true>(
+                    pos,
+                    sq,
+                    piece,
+                    &mut move_list,
+                    king_sq,
+                    Square::NONE,
+                    PieceType::NONE,
+                );
+            }
         }
     }
-
-    if checkers.count() == 0 {
-        return move_list;
-    }
-
-    debug_assert!(checkers.count() == 1, "There should be either 0 or 1 checkers");
-    let (checker_sq, checker_type) = checkers.get(0).unwrap();
-
-    let mut filtered = MoveList::new();
-    for mv in move_list.iter().copied() {
-        let dst_sq = mv.dst_sq();
-        if mv.src_sq() == king_sq {
-            filtered.add(mv); // king moves are always legal
-        } else if dst_sq == checker_sq {
-            filtered.add(mv); // capturing the checking piece is legal
-        } else if dst_sq.same_line_inclusive(king_sq, checker_sq) {
-            filtered.add(mv); // blocking the check is legal
-        } else if mv.get_type() == MoveType::EnPassant && checker_type == PieceType::PAWN {
-            // if we can make an en passant capture, it means the enemy just moved the pawn,
-            // and the pawn formed capture,
-            // so if we can take out the pawn just pushed, then it's a legal move
-            filtered.add(mv);
-        }
-    }
-
-    filtered
+    move_list
 }
-
-/* #region */
-/// Computes the legal pawn moves from a given bitboard position,
-/// including single and double pushes, captures, promotions, and en passant.
-///
-/// Pawn movement is asymmetric and depends on color. Each pawn moves forward
-/// (toward the opponent’s side), captures diagonally, and promotes on the final rank.
-///
-/// ## Movement Types
-///
-/// - **Single Push**: 1-square forward (N for white, S for black)
-/// - **Double Push**: 2-squares forward from the starting rank
-/// - **Captures**:
-///   - White: NE, NW
-///   - Black: SE, SW
-/// - **Promotion**: On reaching rank 8 (white) or rank 1 (black)
-/// - **En Passant**: Special capture on adjacent file if opponent just advanced a pawn 2 squares
-///
-/// ## Directions
-///
-/// For white pawns:
-/// - N  → Forward (single push)
-/// - 2N → Double push from rank 2
-/// - NE / NW → Diagonal captures
-///
-/// For black pawns:
-/// - S  → Forward (single push)
-/// - 2S → Double push from rank 7
-/// - SE / SW → Diagonal captures
 
 fn pawn_mask<const COLOR: u8, const FILTER_TYPE: u8>(sq: Square, pos: &Position) -> BitBoard {
     let opponent = COLOR ^ 1;
@@ -187,37 +232,6 @@ fn pawn_mask<const COLOR: u8, const FILTER_TYPE: u8>(sq: Square, pos: &Position)
     double_push_mask &= empty_mask & rank;
 
     BitBoard::from(single_push_mask | double_push_mask) | attacks
-}
-
-fn pseudo_legal_move_pawn<const COLOR: u8, const FILTER_TYPE: u8>(
-    move_list: &mut MoveList,
-    sq: Square,
-    pos: &Position,
-) {
-    let mask = pawn_mask::<COLOR, FILTER_TYPE>(sq, pos);
-
-    for dst_sq in mask.iter() {
-        let sq_mask = 1u64 << dst_sq.as_u8();
-        let promo_rank = if COLOR == 0 { BitBoard::MASK_8 } else { BitBoard::MASK_1 };
-        if sq_mask & promo_rank != 0 {
-            // Promotion move
-            let promotion_types =
-                [PieceType::QUEEN, PieceType::ROOK, PieceType::BISHOP, PieceType::KNIGHT];
-            for &promotion in &promotion_types {
-                move_list.add(Move::new(sq, dst_sq, MoveType::Promotion, Some(promotion)));
-            }
-        } else {
-            move_list.add(Move::new(sq, dst_sq, MoveType::Normal, None));
-        }
-    }
-
-    if let Some(ep_sq) = pos.state.en_passant {
-        let attack_mask = pawn_mask::<{ COLOR }, MV_MASK_ATTACK>(sq, pos);
-        // if attach mask and ep square overlap, then it's an en passant capture
-        if attack_mask.test_sq(ep_sq) {
-            move_list.add(Move::new(sq, ep_sq, MoveType::EnPassant, None));
-        }
-    }
 }
 
 fn sliding_mask<const START: u8, const END: u8, const MASK: u8>(
@@ -264,12 +278,6 @@ fn bishop_mask<const MASK: u8>(sq: Square, mine: BitBoard, enemy: BitBoard) -> B
 
 fn queen_mask<const MASK: u8>(sq: Square, mine: BitBoard, enemy: BitBoard) -> BitBoard {
     sliding_mask::<0, 8, MASK>(sq, mine, enemy)
-}
-
-fn pseudo_legal_move_general(move_list: &mut MoveList, sq: Square, move_mask: BitBoard) {
-    for dst_sq in move_mask.iter() {
-        move_list.add(Move::new(sq, dst_sq, MoveType::Normal, None));
-    }
 }
 
 /// Computes the legal knight moves from a given square on a bitboard.
