@@ -127,6 +127,7 @@ class Picker {
   }
 
   public async onSquareClicked(square: string) {
+    controller.resume();
     if (this.selectingPromotion) return;
 
     const { board } = this.controller;
@@ -206,7 +207,7 @@ class Picker {
 };
 
 // ---------------------------- Game Controller -------------------------------
-type GameState = 'waitingInput' | 'paused' | 'gameOver';
+type GameState = 'waitingInput' | 'paused' | 'gameOver' | 'animating';
 
 class GameController {
   private players: [Player, Player];
@@ -232,11 +233,9 @@ class GameController {
 
   private loop() {
     const board = this._board;
-    if (boardView) {
-      boardView.draw(board!, picker.selected);
-    }
 
-    // return one frame later so the end result is rendered
+    boardView!.update(board!, picker.selected);
+
     if (this.result !== 'playing') {
       alert(this.result);
       return;
@@ -249,14 +248,21 @@ class GameController {
         if (moveStr) {
           const move = board!.makeMove(moveStr);
           if (move) {
-            // @TODO: change to animation state
+            const piece = board!.getPieceAt(move.dst_sq());
             console.log(board!.gameState.debug_string());
             this.result = board!.gameState.get_result();
+            this.gameState = 'animating';
+            boardView!.addAnimation(piece, move);
           }
         }
       } break;
       case 'paused': {
         // Do nothing, wait for input to resume
+      } break;
+      case 'animating': {
+        if (!boardView!.hasAnimations()) {
+          this.gameState = 'waitingInput';
+        }
       } break;
       default: throw new Error(`Unknown game state: ${this.gameState}`);
     }
@@ -265,7 +271,7 @@ class GameController {
   }
 
   public undo() {
-    if (this._board) {
+    if (this._board && this.gameState !== 'animating') {
       this._board.undo();
       this.gameState = 'paused';
       this.result = 'playing';
@@ -273,7 +279,9 @@ class GameController {
   }
 
   public resume() {
-    this.gameState = 'waitingInput';
+    if (this.gameState === 'paused') {
+      this.gameState = 'waitingInput';
+    }
   }
 }
 

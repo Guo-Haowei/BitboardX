@@ -1,5 +1,6 @@
 import { ChessBoard } from './chess';
 import { BoardView } from './board-view';
+import { WasmMove } from '../../pkg/bitboard_x';
 
 // @TODO: allow user to configure the colors
 const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
@@ -41,10 +42,22 @@ export async function InitBoardView2D(canvas: HTMLCanvasElement): Promise<BoardV
   return new BoardView2D(canvas);
 }
 
+interface Animation {
+  piece: string;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  dstSq: string;
+  timeLeft: number;
+}
+
 class BoardView2D extends BoardView {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private squareSize = 0;
+  private animations: Animation[] = [];
+  private elapsed: number | null = null;
 
   public constructor(canvas: HTMLCanvasElement) {
     super();
@@ -61,6 +74,74 @@ class BoardView2D extends BoardView {
     if (!this.ctx) {
       throw new Error("Failed to get canvas context");
     }
+  }
+
+  // @TODO: treat castling as a special case
+  addAnimation(piece: string, move: WasmMove): void {
+    const srcSq = move.src_sq();
+    const dstSq = move.dst_sq();
+
+    this.addAnimationImpl(piece, srcSq, dstSq);
+    if (piece === 'K' && srcSq === 'e1') {
+      if (dstSq === 'g1') this.addAnimationImpl('R', 'h1', 'f1');
+      else if (dstSq === 'c1') this.addAnimationImpl('R', 'a1', 'd1');
+    } else if (piece === 'k' && srcSq === 'e8') {
+      if (dstSq === 'g8') this.addAnimationImpl('r', 'h8', 'f8');
+      else if (dstSq === 'c8') this.addAnimationImpl('r', 'a8', 'd8');
+    }
+  }
+
+  private addAnimationImpl(piece: string, srcSq: string, dstSq: string) {
+    const [x0, y0] = this.squareToScreen(srcSq);
+    const [x1, y1] = this.squareToScreen(dstSq);
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+
+    const minDuration = 100;
+    const maxDuration = 500;
+
+    const maxDist = Math.sqrt(7 * 7 + 7 * 7);
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const normalizedDist = Math.min(dist / maxDist, 1);
+    const duration = minDuration + (maxDuration - minDuration) * Math.sqrt(normalizedDist);
+
+    const animation: Animation = {
+      piece,
+      x: x0,
+      y: y0,
+      dx: dx / duration,
+      dy: dy / duration,
+      dstSq,
+      timeLeft: duration,
+    };
+
+    this.animations.push(animation);
+  }
+
+  hasAnimations() {
+    return this.animations.length > 0;
+  }
+
+  update(board: ChessBoard, selected?: string) {
+    if (this.elapsed === null) {
+      this.elapsed = performance.now();
+    } else {
+      const now = performance.now();
+      const elapsed = now - this.elapsed;
+      this.elapsed = now;
+
+      // Update animations
+      this.animations.forEach(animation => {
+        animation.x += animation.dx * elapsed;
+        animation.y += animation.dy * elapsed;
+        animation.timeLeft -= elapsed;
+      });
+
+      // Remove finished animations
+      this.animations = this.animations.filter(animation => animation.timeLeft > 0);
+    }
+
+    this.draw(board, selected);
   }
 
   draw(board: ChessBoard, selected?: string) {
@@ -128,22 +209,25 @@ class BoardView2D extends BoardView {
   }
 
   private drawPieces(board: ChessBoard) {
-    const { squareSize } = this;
-    const boardString = board.boardString;
+    const { boardString } = board;
 
-    // @TODO: fix this
-    const { selected, x, y } = { selected: null, x: -1, y: -1 };
+    const set = new Set<string>();
+    this.animations.forEach(animation => {
+      const { x, y, dstSq } = animation;
+      this.drawPiece(animation.piece, x, y);
+      set.add(dstSq);
+    });
+
     for (let idx = 0; idx < 64; ++idx) {
       const piece = boardString[idx];
       if (piece === '.') continue;
       const [file, rank] = squareToFileRank(idx);
-      const screenX = file * squareSize + squareSize / 2;
-      const screenY = (7 - rank) * squareSize + squareSize / 2;
-      if (fileRankToSquare(file, rank) === selected) {
-        this.drawPiece(piece, x, y);
-      } else {
-        this.drawPiece(piece, screenX, screenY);
+      const square = fileRankToSquare(file, rank);
+      if (set.has(square)) {
+        continue;
       }
+      const [screenX, screenY] = this.fileRankToScreen(file, rank);
+      this.drawPiece(piece, screenX, screenY);
     }
   }
 
@@ -160,6 +244,17 @@ class BoardView2D extends BoardView {
     const file = Math.floor(x / this.squareSize);
     const rank = 7 - Math.floor(y / this.squareSize);
     return fileRankToSquare(file, rank);
+  }
+
+  private squareToScreen(square: string): [number, number] {
+    const file = square.charCodeAt(0) - 97; // 'a' is 97
+    const rank = parseInt(square[1], 10) - 1; // '1' is 1
+    return this.fileRankToScreen(file, rank);
+  }
+
+  private fileRankToScreen(file: number, rank: number): [number, number] {
+    const { squareSize } = this;
+    return [file * squareSize + squareSize / 2, (7 - rank) * squareSize + squareSize / 2];
   }
 }
 

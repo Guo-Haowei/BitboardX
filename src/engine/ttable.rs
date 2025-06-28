@@ -54,10 +54,12 @@ impl<const N: usize> TranspositionTable<N> {
         (key.0 as usize) & (N - 1)
     }
 
+    #[allow(dead_code)]
     pub const fn capacity(&self) -> usize {
         N
     }
 
+    #[allow(dead_code)]
     pub fn count(&self) -> u64 {
         self.count
     }
