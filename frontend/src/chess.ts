@@ -231,7 +231,7 @@ class GameController {
     this.loop();
   }
 
-  private loop() {
+  private async loop() {
     const board = this._board;
 
     boardView!.update(board!, picker.selected);
@@ -244,7 +244,7 @@ class GameController {
     switch (this.gameState) {
       case 'waitingInput': {
         const player = this.players[board!.turn()];
-        const moveStr = player.tryGetMove(board!.uciPosition());
+        const moveStr = await player.tryGetMove(board!.uciPosition());
         if (moveStr) {
           const move = board!.makeMove(moveStr);
           if (move) {
@@ -267,7 +267,9 @@ class GameController {
       default: throw new Error(`Unknown game state: ${this.gameState}`);
     }
 
-    requestAnimationFrame(() => this.loop());
+    await new Promise(requestAnimationFrame);
+
+    this.loop();
   }
 
   public undo() {
@@ -286,30 +288,29 @@ class GameController {
 }
 
 export interface Player {
-  tryGetMove(history: string): string | null;
+  tryGetMove(history: string): Promise<string | null>;
 }
 
 class NullPlayer implements Player {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  tryGetMove(history: string): string | null {
-    return null;
+  async tryGetMove(history: string): Promise<string | null> {
+    return '';
   }
 }
 
 export class BotPlayer implements Player {
-  tryGetMove(history: string): string | null {
+  async tryGetMove(history: string): Promise<string | null> {
     const SEARCH_TIME = 2000;
 
-    engine?.set_position(history);
-
-    const bestMove = engine?.best_move(SEARCH_TIME);
-    return bestMove || null;
+    engine!.set_position(history);
+    const bestMove = engine!.best_move(SEARCH_TIME);
+    return bestMove;
   }
 }
 
 export class UIPlayer implements Player {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  tryGetMove(history: string): string | null {
+  async tryGetMove(history: string): Promise<string | null> {
     return picker.tryGetMove();
   }
 }

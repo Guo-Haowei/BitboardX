@@ -2,69 +2,16 @@
 ///
 use colored::*;
 use pretty_assertions::assert_eq;
-use std::thread;
 use std::time::Instant;
 
-use bitboard_x::core::{move_gen, position::*};
 use bitboard_x::named_test;
 
 const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 8 } else { 5 };
 
-fn perft_test_inner(pos: &mut Position, depth: u8) -> u64 {
-    if depth == 0 {
-        return 1;
-    }
-
-    let move_list = move_gen::legal_moves(pos);
-
-    let mut nodes = 0u64;
-    for mv in move_list.iter().copied() {
-        let (undo_state, ok) = pos.make_move(mv);
-        if ok {
-            nodes += perft_test_inner(pos, depth - 1);
-        }
-        pos.unmake_move(mv, &undo_state);
-    }
-
-    nodes
-}
-
-fn perft_test(pos: &mut Position, depth: u8) -> u64 {
-    if depth == 0 {
-        return 1;
-    }
-
-    let move_list = move_gen::legal_moves(pos);
-
-    let mut handles = Vec::new();
-
-    let mut count = 0u64;
-    for mv in move_list.iter().copied() {
-        let mut child = pos.clone();
-        let (_, ok) = child.make_move(mv);
-        if !ok {
-            continue;
-        }
-        let handle = thread::spawn(move || perft_test_inner(&mut child, depth - 1));
-        handles.push(handle);
-        count += 1;
-    }
-
-    if depth == 1 {
-        return count;
-    }
-
-    // Wait for all threads and sum the results
-    let mut nodes = 0;
-    for handle in handles {
-        nodes += handle.join().expect("Thread panicked");
-    }
-
-    nodes
-}
-
 fn perft_test_wrapper(fen: &str, depth: u8, expectations: &Vec<u64>) {
-    let mut pos = Position::from_fen(fen).unwrap();
+    let engine = bitboard_x::engine::Engine::from_fen(fen).unwrap();
+
+    let mut out = std::io::sink();
 
     for (i, expected) in expectations.iter().enumerate() {
         let test_depth = i as u8;
@@ -73,7 +20,7 @@ fn perft_test_wrapper(fen: &str, depth: u8, expectations: &Vec<u64>) {
         }
 
         let now = Instant::now(); // Start timer
-        let actual = perft_test(&mut pos, test_depth);
+        let actual = engine.perft_test(&mut out, test_depth);
         let elapsed = now.elapsed();
         let msg = format!("depth {}: {} nodes, took {:?}", test_depth, actual, elapsed);
         println!("{}", if actual == *expected { msg.green() } else { msg.red() });
