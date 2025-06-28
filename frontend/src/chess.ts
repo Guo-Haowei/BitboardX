@@ -19,18 +19,9 @@ let engine: WasmEngine | null = null;
 let uiController: UIController | null = null;
 let gameController: GameController | null = null;
 let board: ChessBoard | null = null;
+let controller: GameController | null = null;
 
 // ---------------------------- Initialization -------------------------------
-export function createGame(white: Player, black: Player, fen?: string) {
-  board = new ChessBoard(fen || DEFAULT_FEN);
-
-  gameController = new GameController(
-    white,
-    black,
-  );
-  return gameController;
-}
-
 async function loadImage(code: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -76,6 +67,14 @@ export async function initialize(config: Config, callback: () => void) {
     .catch(err => {
       console.error("❌ One or more images failed to load:", err);
     });
+}
+
+export function startNewGame(white: Player, black: Player, fen?: string) {
+  board = new ChessBoard(fen || DEFAULT_FEN);
+  gameController = new GameController(white, black);
+  controller = gameController;
+
+  controller.start()
 }
 
 // ---------------------------- Chess Board Wrapper -----------------------------
@@ -205,7 +204,7 @@ class Renderer {
     this.viewport = viewport;
   }
 
-  async draw() {
+  draw() {
     const { ctx, viewport } = this;
     const { width, height } = viewport.canvas;
     if (board) {
@@ -319,7 +318,7 @@ class UIController {
       const touch = e.touches[0] || e.changedTouches[0];
       return { x: touch.clientX, y: touch.clientY };
     }
-    return { x: e.clientX, y: e.clientY };
+    return { x: e.offsetX, y: e.offsetY };
   }
 
   private onMouseDown = (event: MouseEvent | TouchEvent) => {
@@ -424,74 +423,80 @@ class UIController {
 };
 
 // ---------------------------- Game Controller -------------------------------
+type GameState = 'waitingInput' | 'paused' | 'gameOver';
+
 class GameController {
   private players: Player[];
-  private isRunning = false;
+  private gameState: GameState = 'waitingInput';
+  private result = 'playing';
 
   constructor(white: Player, black: Player) {
     this.players = [white, black];
     renderer?.draw();
   }
 
-  public activePlayer(): Player {
-    return this.players[board!.turn()];
+  public start() {
+    this.gameState = 'waitingInput';
+    this.loop();
   }
 
-  async start(): Promise<string> {
-    this.isRunning = true;
+  private loop() {
+    renderer!.draw();
 
-    while (true) {
-      if (!this.isRunning) return 'paused';
-      const status = board!.gameState.get_game_status();
-      if (status !== 'playing') {
-        return status;
-      }
-      const activePlayer = this.activePlayer();
-      const moveStr = await activePlayer.getMove(board!.uciPosition());
-
-      const move = board!.makeMove(moveStr);
-
-      if (move) {
-        if (board) console.log(board!.gameState.debug_string());
-        await renderer!.draw();
-      }
-
-      await sleep(200); // at least 200ms between moves
+    // return one frame later so the end result is rendered
+    if (this.result !== 'playing') {
+      alert(this.result);
+      return;
     }
-  }
 
-  stop() {
-    this.isRunning = false;
-  }
-}
+    switch (this.gameState) {
+      case 'waitingInput': {
+        const player = this.players[board!.turn()];
+        const moveStr = player.tryGetMove(board!.uciPosition());
+        if (moveStr) {
+          const move = board!.makeMove(moveStr);
+          if (move) {
+            // @TODO: change to animation state
+            console.log(board!.gameState.debug_string());
+            this.result = board!.gameState.get_result();
+          }
+        }
+      } break;
+      case 'paused': {
+        // Do nothing, wait for input to resume
+      } break;
+      default: throw new Error(`Unknown game state: ${this.gameState}`);
+    }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+    requestAnimationFrame(() => this.loop());
+  }
 }
 
 export interface Player {
-  getMove(history: string): Promise<string>; // returns UCI move, e.g. "e2e4"
+  tryGetMove(history: string): string | null;
 }
 
 export class BotPlayer implements Player {
-  async getMove(history: string): Promise<string> {
+  tryGetMove(history: string): string | null {
     const SEARCH_TIME = 2000;
 
     engine?.set_position(history);
 
     const bestMove = engine?.best_move(SEARCH_TIME);
-
-    if (bestMove) {
-      return bestMove;
-    }
-    throw new Error("No best move found");
+    return bestMove || null;
   }
 }
 
 export class UIPlayer implements Player {
-  getMove(): Promise<string> {
+  private bufferedMove: string | null = null;
 
-    return uiController!.waitForPlayerMove();
+  provideMove(move: string) {
+    this.bufferedMove = move;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  tryGetMove(history: string): string | null {
+    return this.bufferedMove;
   }
 }
 
