@@ -176,9 +176,12 @@ impl WasmEngine {
     }
 
     pub fn set_position(&mut self, args: &str) {
-        use std::io;
-        let mut null = io::sink();
-        self.engine.handle_uci_cmd(&mut null, args);
+        match self.engine.set_position(args) {
+            Ok(_) => {}
+            Err(err) => {
+                log::error!("Failed to set position: {}", err);
+            }
+        }
     }
 
     pub fn best_move(&mut self, time: f64) -> String {
