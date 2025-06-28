@@ -113,7 +113,7 @@ class ChessBoard {
   public uciPosition(): string {
     const { history, initialPos } = this;
     const moves = history.length > 0 ? `moves ${history.map(mv => mv.to_string()).join(' ')}` : '';
-    const uci = `position ${initialPos} ${moves}`;
+    const uci = `${initialPos} ${moves}`;
     return uci;
   }
 

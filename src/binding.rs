@@ -179,7 +179,7 @@ impl WasmEngine {
         match self.engine.set_position(args) {
             Ok(_) => {}
             Err(err) => {
-                log::error!("Failed to set position: {}", err);
+                log::error!("{}", err);
             }
         }
     }
