@@ -1,22 +1,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import init, { WasmGame, WasmEngine, WasmMove, name } from '../../pkg/bitboard_x';
+import { Renderer } from './renderer';
 
-const PIECE_RES = new Map<string, HTMLImageElement>();
+// @TODO: move it to renderer because it's bound to renderer,
+export const PIECE_RES = new Map<string, HTMLImageElement>();
 const PIECE_CODES = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK'];
 
 const BOARD_SIZE = 8;
 const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-// @TODO: allow user to configure the colors
-const GREEN_COLOR = 'rgba(0, 200, 0, 0.5)';
-const RED_COLOR = 'rgba(200, 0, 0, 0.5)';
-const YELLOW_COLOR = 'rgba(200, 200, 0, 0.5)';
-const LIGHT_SQUARE_COLOR = 'rgba(240, 217, 181, 1)';
-const DARK_SQUARE_COLOR = 'rgba(181, 136, 99, 1)';
-
 let renderer: Renderer | null = null;
 let engine: WasmEngine | null = null;
-let uiController: UIController | null = null;
 let gameController: GameController | null = null;
 let board: ChessBoard | null = null;
 let controller: GameController | null = null;
@@ -34,7 +28,6 @@ async function loadImage(code: string): Promise<HTMLImageElement> {
 
 interface Config {
   canvas: HTMLCanvasElement;
-  createUIPlayer: boolean;
 }
 
 export async function initialize(config: Config, callback: () => void) {
@@ -52,12 +45,9 @@ export async function initialize(config: Config, callback: () => void) {
 
       const { canvas } = config;
 
-      const viewport = new Viewport(canvas);
-      renderer = new Renderer(viewport);
-
-      if (config.createUIPlayer) {
-        uiController = new UIController(viewport);
-      }
+      // @TODO: create 2D or 3D
+      renderer = new Renderer(canvas);
+      renderer.setOnClickCallback((square) => picker.onSquareClicked(square));
 
       console.log(`✅ Initializing engine ${name()}`);
       engine = new WasmEngine();
@@ -78,7 +68,7 @@ export function startNewGame(white: Player, black: Player, fen?: string) {
 }
 
 // ---------------------------- Chess Board Wrapper -----------------------------
-class ChessBoard {
+export class ChessBoard {
   private _gameState: WasmGame;
   private initialPos: string;
 
@@ -159,268 +149,107 @@ class ChessBoard {
 }
 
 // ---------------------------- GUI and Renderer -------------------------------
-class Viewport {
-  squareSize = 0;
-  canvas: HTMLCanvasElement;
 
-  constructor(canvas: HTMLCanvasElement) {
-    this.canvas = canvas;
-    window.addEventListener('resize', () => {
-      this.resize();
-    });
-    this.resize();
-  }
-
-  resize() {
-    const { clientWidth, clientHeight } = this.canvas;
-    const minSize = 200;
-    const size = Math.max(minSize, Math.min(clientWidth, clientHeight));
-    this.canvas.width = size;
-    this.canvas.height = size;
-    this.squareSize = size / BOARD_SIZE;
-  }
-
-  screenToSquare(x: number, y: number): string {
-    const file = Math.floor(x / this.squareSize);
-    const rank = 7 - Math.floor(y / this.squareSize);
-    return fileRankToSquare(file, rank);
-  }
-}
-
-class Renderer {
-  private ctx: CanvasRenderingContext2D;
-  private viewport: Viewport;
-
-  private get squareSize() {
-    return this.viewport.squareSize;
-  }
-
-  public constructor(viewport: Viewport) {
-    this.ctx = viewport.canvas.getContext('2d') as CanvasRenderingContext2D;
-    if (!this.ctx) {
-      throw new Error("Failed to get canvas context");
-    }
-
-    this.viewport = viewport;
-  }
-
-  draw() {
-    const { ctx, viewport } = this;
-    const { width, height } = viewport.canvas;
-    if (board) {
-      ctx.clearRect(0, 0, width, height);
-      this.drawBoard(board);
-      this.drawPieces(board);
-    }
-  }
-
-  private fillSquare(col: number, row: number, color: string) {
-    const { squareSize, ctx } = this;
-    ctx.fillStyle = color;
-    ctx.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
-  }
-
-  private drawBoard(board: ChessBoard) {
-    const { ctx, squareSize } = this;
-
-    const selected = uiController?.selected || '';
-    const legalMoves = board.legalMovesMap.get(selected);
-
-    const lastMove = board.lastMove();
-    for (let idx = 0; idx < BOARD_SIZE * BOARD_SIZE; ++idx) {
-      const [file, rank] = squareToFileRank(idx);
-      const sq = fileRankToSquare(file, rank);
-
-      const row = 7 - rank; // flip the rank for rendering
-      this.fillSquare(file, row, (row + file) % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
-      if (sq === selected) {
-        this.fillSquare(file, row, RED_COLOR);
-      } else if (legalMoves && legalMoves.has(sq)) {
-        this.fillSquare(file, row, GREEN_COLOR);
-      }
-      if (lastMove && (sq === lastMove.src_sq() || sq === lastMove.dst_sq())) {
-        this.fillSquare(file, row, YELLOW_COLOR);
-      }
-    }
-
-    const fontSize = Math.floor(squareSize / 4);
-    ctx.font = `${fontSize}px Arial`;
-    ctx.textAlign = 'center';
-    for (let i = 0; i < BOARD_SIZE; ++i) {
-      const color = (i % 2 === 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
-      const fileStr = String.fromCharCode(97 + i); // 'a' + i
-      const rankStr = (i + 1).toString();
-      ctx.fillStyle = color;
-      let x = (i + 0.88) * squareSize;
-      let y = 7.93 * squareSize;
-      ctx.fillText(fileStr, x, y);
-      x = 0.1 * squareSize;
-      y = (7.3 - i) * squareSize;
-      ctx.fillText(rankStr, x, y);
-    }
-  }
-
-  private drawPiece(piece: string, x: number, y: number) {
-    // make it a bit smaller than the tile size so it doesn't block the file/rank labels
-    const pieceSize = this.squareSize * 0.86;
-    const half = pieceSize / 2;
-    const img = PIECE_RES.get(piece);
-    if (img) this.ctx.drawImage(img, x - half, y - half, pieceSize, pieceSize);
-  }
-
-  private drawPieces(board: ChessBoard) {
-    const { squareSize } = this;
-    const boardString = board.boardString;
-
-    const { selected, x, y } = uiController !== null ? uiController : { selected: null, x: -1, y: -1 };
-    for (let idx = 0; idx < 64; ++idx) {
-      const piece = boardString[idx];
-      if (piece === '.') continue;
-      const [file, rank] = squareToFileRank(idx);
-      const screenX = file * squareSize + squareSize / 2;
-      const screenY = (7 - rank) * squareSize + squareSize / 2;
-      if (fileRankToSquare(file, rank) === selected) {
-        this.drawPiece(piece, x, y);
-      } else {
-        this.drawPiece(piece, screenX, screenY);
-      }
-    }
-  }
-}
-
-class UIController {
+class Picker {
   selected: string | null = null;
-  x = -1;
-  y = -1;
-  private selectingPromotion = false;
-  private viewport: Viewport;
-  private resolveMove: ((move: string) => void) | null = null;
 
-  constructor(viewport: Viewport) {
-    viewport.canvas.addEventListener('mousedown', this.onMouseDown);
-    viewport.canvas.addEventListener('mousemove', this.onMouseMove);
-    viewport.canvas.addEventListener('mouseup', this.onMouseUp);
-    viewport.canvas.addEventListener('touchstart', this.onMouseDown);
-    viewport.canvas.addEventListener('touchmove', this.onMouseMove);
-    viewport.canvas.addEventListener('touchend', this.onMouseUp);
-    this.viewport = viewport;
-  }
-
-  waitForPlayerMove(): Promise<string> {
-    return new Promise((resolve) => {
-      this.resolveMove = resolve;
-      this.selected = null;
-    });
-  }
-
-  private normalizeMouseEvent(e: MouseEvent | TouchEvent): { x: number, y: number } {
-    if (e instanceof TouchEvent) {
-      const touch = e.touches[0] || e.changedTouches[0];
-      return { x: touch.clientX, y: touch.clientY };
-    }
-    return { x: e.offsetX, y: e.offsetY };
-  }
-
-  private onMouseDown = (event: MouseEvent | TouchEvent) => {
-    if (!this.resolveMove) return;
-    const { x, y } = this.normalizeMouseEvent(event);
-    const square = this.viewport.screenToSquare(x, y);
-
+  public onSquareClicked(square: string) {
+    console.log(`Square clicked: ${square}`);
     if (board!.legalMovesMap.has(square)) {
       this.selected = square;
     }
-
-    renderer!.draw();
-  };
-
-  private onMouseMove = (event: MouseEvent | TouchEvent) => {
-    if (!this.resolveMove || this.selectingPromotion) return;
-    const { x, y } = this.normalizeMouseEvent(event);
-    this.x = x;
-    this.y = y;
-    renderer!.draw();
-  };
-
-  private onMouseUp = async (event: MouseEvent | TouchEvent) => {
-    if (!this.resolveMove || !this.selected) return;
-    const { x, y } = this.normalizeMouseEvent(event);
-    const square = this.viewport.screenToSquare(x, y);
-
-    if (board!.legalMovesMap.get(this.selected)?.has(square)) {
-      let move = `${this.selected}${square}`;
-
-      const piece = board!.getPieceAt(this.selected);
-
-      let promotion = null;
-      if (piece === 'P' && square[1] === '8') {
-        promotion = true;
-      } else if (piece === 'p' && square[1] === '1') {
-        promotion = false;
-      }
-
-      if (promotion !== null) {
-        this.selected = null;
-        this.selectingPromotion = true;
-        const promotionPiece = await this.waitForPromotionSelection(promotion, event);
-        this.selectingPromotion = false;
-        move += promotionPiece;
-      }
-
-      const resolve = this.resolveMove;
-      this.resolveMove = null;
-      resolve(move);
-    }
-
-    this.selected = null;
-    renderer!.draw();
-  };
-
-  private waitForPromotionSelection(isWhite: boolean, event: MouseEvent | TouchEvent): Promise<string> {
-    const { x, y } = this.normalizeMouseEvent(event);
-
-    return new Promise((resolve) => {
-      const container = document.createElement('div');
-      container.id = 'promotion-dialog';
-      container.style.position = 'absolute';
-      container.style.left = `${x}px`;
-      container.style.top = `${y}px`;
-      container.style.display = 'flex';
-      container.style.gap = '8px';
-      container.style.zIndex = '9999';
-      container.style.background = 'rgba(255, 255, 255, 0.95)';
-      container.style.padding = '6px';
-      container.style.border = '1px solid #ccc';
-      container.style.borderRadius = '4px';
-      container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-
-      const pieces = ['Q', 'R', 'B', 'N'];
-
-      for (let piece of pieces) {
-        if (!isWhite) {
-          piece = piece.toLowerCase();
-        }
-
-        const option = document.createElement('div');
-        option.style.width = '64px';
-        option.style.height = '64px';
-        option.style.cursor = 'pointer';
-        option.style.backgroundImage = `url(${PIECE_RES.get(piece)?.src})`;
-        option.style.backgroundSize = 'contain';
-        option.style.backgroundRepeat = 'no-repeat';
-        option.style.backgroundPosition = 'center';
-
-        option.onclick = () => {
-          document.body.removeChild(container);
-          resolve(piece);
-        };
-
-        container.appendChild(option);
-      }
-
-      document.body.appendChild(container);
-    });
   }
+
+  // private onMouseMove = (event: MouseEvent | TouchEvent) => {
+  //   if (!this.resolveMove || this.selectingPromotion) return;
+  //   const { x, y } = this.normalizeMouseEvent(event);
+  //   this.x = x;
+  //   this.y = y;
+  //   renderer!.draw();
+  // };
+
+  // private onMouseUp = async (event: MouseEvent | TouchEvent) => {
+  //   if (!this.resolveMove || !this.selected) return;
+  //   const { x, y } = this.normalizeMouseEvent(event);
+  //   const square = this.viewport.screenToSquare(x, y);
+
+  //   if (board!.legalMovesMap.get(this.selected)?.has(square)) {
+  //     let move = `${this.selected}${square}`;
+
+  //     const piece = board!.getPieceAt(this.selected);
+
+  //     let promotion = null;
+  //     if (piece === 'P' && square[1] === '8') {
+  //       promotion = true;
+  //     } else if (piece === 'p' && square[1] === '1') {
+  //       promotion = false;
+  //     }
+
+  //     if (promotion !== null) {
+  //       this.selected = null;
+  //       this.selectingPromotion = true;
+  //       const promotionPiece = await this.waitForPromotionSelection(promotion, event);
+  //       this.selectingPromotion = false;
+  //       move += promotionPiece;
+  //     }
+
+  //     const resolve = this.resolveMove;
+  //     this.resolveMove = null;
+  //     resolve(move);
+  //   }
+
+  //   this.selected = null;
+  //   renderer!.draw();
+  // };
+
+  // private waitForPromotionSelection(isWhite: boolean, event: MouseEvent | TouchEvent): Promise<string> {
+  //   const { x, y } = this.normalizeMouseEvent(event);
+
+  //   return new Promise((resolve) => {
+  //     const container = document.createElement('div');
+  //     container.id = 'promotion-dialog';
+  //     container.style.position = 'absolute';
+  //     container.style.left = `${x}px`;
+  //     container.style.top = `${y}px`;
+  //     container.style.display = 'flex';
+  //     container.style.gap = '8px';
+  //     container.style.zIndex = '9999';
+  //     container.style.background = 'rgba(255, 255, 255, 0.95)';
+  //     container.style.padding = '6px';
+  //     container.style.border = '1px solid #ccc';
+  //     container.style.borderRadius = '4px';
+  //     container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+
+  //     const pieces = ['Q', 'R', 'B', 'N'];
+
+  //     for (let piece of pieces) {
+  //       if (!isWhite) {
+  //         piece = piece.toLowerCase();
+  //       }
+
+  //       const option = document.createElement('div');
+  //       option.style.width = '64px';
+  //       option.style.height = '64px';
+  //       option.style.cursor = 'pointer';
+  //       option.style.backgroundImage = `url(${PIECE_RES.get(piece)?.src})`;
+  //       option.style.backgroundSize = 'contain';
+  //       option.style.backgroundRepeat = 'no-repeat';
+  //       option.style.backgroundPosition = 'center';
+
+  //       option.onclick = () => {
+  //         document.body.removeChild(container);
+  //         resolve(piece);
+  //       };
+
+  //       container.appendChild(option);
+  //     }
+
+  //     document.body.appendChild(container);
+  //   });
+  // }
 };
+
+const picker = new Picker();
 
 // ---------------------------- Game Controller -------------------------------
 type GameState = 'waitingInput' | 'paused' | 'gameOver';
@@ -432,7 +261,6 @@ class GameController {
 
   constructor(white: Player, black: Player) {
     this.players = [white, black];
-    renderer?.draw();
   }
 
   public start() {
@@ -441,7 +269,9 @@ class GameController {
   }
 
   private loop() {
-    renderer!.draw();
+    if (board && renderer) {
+      renderer.draw(board);
+    }
 
     // return one frame later so the end result is rendered
     if (this.result !== 'playing') {
@@ -501,14 +331,6 @@ export class UIPlayer implements Player {
 }
 
 // ---------------------------- Utils ------------------------------------
-function fileRankToSquare(file: number, rank: number) {
-  return `${String.fromCharCode(97 + file)}${rank + 1}`;
-};
-
-function squareToFileRank(square: number): [number, number] {
-  return [square % BOARD_SIZE, Math.floor(square / BOARD_SIZE)];
-}
-
 function squareStringToIndex(square: string): number {
   const file = square.charCodeAt(0) - 97; // 'a' is 97
   const rank = parseInt(square[1], 10) - 1; // '1' is 1
