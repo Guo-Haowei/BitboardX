@@ -26,7 +26,7 @@ async function main() {
   const canvas = document.getElementById('chess-board') as HTMLCanvasElement;
   canvas.tabIndex = 0;
 
-  await Chess.initialize({ canvas, createUIPlayer: true }, async () => {
+  await Chess.initialize({ canvas }, async () => {
     document.getElementById('start-button')?.addEventListener('click', async () => {
 
       console.log('Starting new game...');

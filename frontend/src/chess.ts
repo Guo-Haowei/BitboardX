@@ -151,102 +151,90 @@ export class ChessBoard {
 // ---------------------------- GUI and Renderer -------------------------------
 
 class Picker {
-  selected: string | null = null;
+  private bufferdMove: string | null = null;
+  private selectingPromotion = false;
+  selected?: string;
 
-  public onSquareClicked(square: string) {
-    console.log(`Square clicked: ${square}`);
+  public tryGetMove(): string | null {
+    const move = this.bufferdMove;
+    this.bufferdMove = null;
+    return move;
+  }
+
+  public async onSquareClicked(square: string) {
+    if (this.selected) {
+      if (board!.legalMovesMap.get(this.selected)?.has(square)) {
+        this.bufferdMove = await this.getMove(this.selected, square);
+        this.selected = undefined;
+        return;
+      }
+    }
     if (board!.legalMovesMap.has(square)) {
       this.selected = square;
     }
   }
 
-  // private onMouseMove = (event: MouseEvent | TouchEvent) => {
-  //   if (!this.resolveMove || this.selectingPromotion) return;
-  //   const { x, y } = this.normalizeMouseEvent(event);
-  //   this.x = x;
-  //   this.y = y;
-  //   renderer!.draw();
-  // };
+  private async getMove(fromSquare: string, toSquare: string): Promise<string | null> {
+    const piece = board!.getPieceAt(fromSquare);
 
-  // private onMouseUp = async (event: MouseEvent | TouchEvent) => {
-  //   if (!this.resolveMove || !this.selected) return;
-  //   const { x, y } = this.normalizeMouseEvent(event);
-  //   const square = this.viewport.screenToSquare(x, y);
+    let promotionPiece = '';
+    if ((piece === 'P' && toSquare[1] === '8') || (piece === 'p' && toSquare[1] === '1')) {
+      const isWhite = piece === 'P';
+      this.selectingPromotion = true;
+      promotionPiece = await this.waitForPromotionSelection(isWhite);
+      this.selectingPromotion = false;
+    }
 
-  //   if (board!.legalMovesMap.get(this.selected)?.has(square)) {
-  //     let move = `${this.selected}${square}`;
+    const move = `${fromSquare}${toSquare}${promotionPiece}`;
+    return move;
+  }
 
-  //     const piece = board!.getPieceAt(this.selected);
+  private waitForPromotionSelection(isWhite: boolean): Promise<string> {
+    const x = 100;
+    const y = 100;
 
-  //     let promotion = null;
-  //     if (piece === 'P' && square[1] === '8') {
-  //       promotion = true;
-  //     } else if (piece === 'p' && square[1] === '1') {
-  //       promotion = false;
-  //     }
+    return new Promise((resolve) => {
+      const container = document.createElement('div');
+      container.id = 'promotion-dialog';
+      container.style.position = 'absolute';
+      container.style.left = `${x}px`;
+      container.style.top = `${y}px`;
+      container.style.display = 'flex';
+      container.style.gap = '8px';
+      container.style.zIndex = '9999';
+      container.style.background = 'rgba(255, 255, 255, 0.95)';
+      container.style.padding = '6px';
+      container.style.border = '1px solid #ccc';
+      container.style.borderRadius = '4px';
+      container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
 
-  //     if (promotion !== null) {
-  //       this.selected = null;
-  //       this.selectingPromotion = true;
-  //       const promotionPiece = await this.waitForPromotionSelection(promotion, event);
-  //       this.selectingPromotion = false;
-  //       move += promotionPiece;
-  //     }
+      const pieces = ['Q', 'R', 'B', 'N'];
 
-  //     const resolve = this.resolveMove;
-  //     this.resolveMove = null;
-  //     resolve(move);
-  //   }
+      for (let piece of pieces) {
+        if (!isWhite) {
+          piece = piece.toLowerCase();
+        }
 
-  //   this.selected = null;
-  //   renderer!.draw();
-  // };
+        const option = document.createElement('div');
+        option.style.width = '64px';
+        option.style.height = '64px';
+        option.style.cursor = 'pointer';
+        option.style.backgroundImage = `url(${PIECE_RES.get(piece)?.src})`;
+        option.style.backgroundSize = 'contain';
+        option.style.backgroundRepeat = 'no-repeat';
+        option.style.backgroundPosition = 'center';
 
-  // private waitForPromotionSelection(isWhite: boolean, event: MouseEvent | TouchEvent): Promise<string> {
-  //   const { x, y } = this.normalizeMouseEvent(event);
+        option.onclick = () => {
+          document.body.removeChild(container);
+          resolve(piece);
+        };
 
-  //   return new Promise((resolve) => {
-  //     const container = document.createElement('div');
-  //     container.id = 'promotion-dialog';
-  //     container.style.position = 'absolute';
-  //     container.style.left = `${x}px`;
-  //     container.style.top = `${y}px`;
-  //     container.style.display = 'flex';
-  //     container.style.gap = '8px';
-  //     container.style.zIndex = '9999';
-  //     container.style.background = 'rgba(255, 255, 255, 0.95)';
-  //     container.style.padding = '6px';
-  //     container.style.border = '1px solid #ccc';
-  //     container.style.borderRadius = '4px';
-  //     container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+        container.appendChild(option);
+      }
 
-  //     const pieces = ['Q', 'R', 'B', 'N'];
-
-  //     for (let piece of pieces) {
-  //       if (!isWhite) {
-  //         piece = piece.toLowerCase();
-  //       }
-
-  //       const option = document.createElement('div');
-  //       option.style.width = '64px';
-  //       option.style.height = '64px';
-  //       option.style.cursor = 'pointer';
-  //       option.style.backgroundImage = `url(${PIECE_RES.get(piece)?.src})`;
-  //       option.style.backgroundSize = 'contain';
-  //       option.style.backgroundRepeat = 'no-repeat';
-  //       option.style.backgroundPosition = 'center';
-
-  //       option.onclick = () => {
-  //         document.body.removeChild(container);
-  //         resolve(piece);
-  //       };
-
-  //       container.appendChild(option);
-  //     }
-
-  //     document.body.appendChild(container);
-  //   });
-  // }
+      document.body.appendChild(container);
+    });
+  }
 };
 
 const picker = new Picker();
@@ -270,7 +258,7 @@ class GameController {
 
   private loop() {
     if (board && renderer) {
-      renderer.draw(board);
+      renderer.draw(board, picker.selected);
     }
 
     // return one frame later so the end result is rendered
@@ -318,15 +306,9 @@ export class BotPlayer implements Player {
 }
 
 export class UIPlayer implements Player {
-  private bufferedMove: string | null = null;
-
-  provideMove(move: string) {
-    this.bufferedMove = move;
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   tryGetMove(history: string): string | null {
-    return this.bufferedMove;
+    return picker.tryGetMove();
   }
 }
 

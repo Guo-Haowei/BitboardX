@@ -7,18 +7,6 @@ const YELLOW_COLOR = 'rgba(200, 200, 0, 0.5)';
 const LIGHT_SQUARE_COLOR = 'rgba(240, 217, 181, 1)';
 const DARK_SQUARE_COLOR = 'rgba(181, 136, 99, 1)';
 
-// class Viewport {
-
-//   constructor(canvas: HTMLCanvasElement) {
-//     this.canvas = canvas;
-//     window.addEventListener('resize', () => {
-//       this.resize();
-//     });
-//     this.resize();
-//   }
-
-// }
-
 export class Renderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
