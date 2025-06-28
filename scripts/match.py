@@ -45,7 +45,7 @@ def main():
         '-each',
         'proto=uci',
         'tc=40/60',
-        '-rounds', '100',
+        '-rounds', '50',
         '-pgnout', f'{engine1}-vs-{engine2}.pgn',
         # '-debug', 'all'
     ])
