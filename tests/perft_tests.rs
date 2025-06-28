@@ -11,7 +11,7 @@ const DEFAULT_DEPTH: u8 = if cfg!(not(debug_assertions)) { 8 } else { 5 };
 fn perft_test_wrapper(fen: &str, depth: u8, expectations: &Vec<u64>) {
     let engine = bitboard_x::engine::Engine::from_fen(fen).unwrap();
 
-    let mut out = std::io::stdout();
+    let mut out = std::io::sink();
 
     for (i, expected) in expectations.iter().enumerate() {
         let test_depth = i as u8;
