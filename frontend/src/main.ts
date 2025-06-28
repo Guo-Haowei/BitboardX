@@ -25,7 +25,7 @@ function createGame() {
 }
 
 async function main() {
-  const canvas = document.getElementById('chessCanvas') as HTMLCanvasElement;
+  const canvas = document.getElementById('chess-board') as HTMLCanvasElement;
   canvas.tabIndex = 0;
   // canvas.style.margin = '20px auto';
 
