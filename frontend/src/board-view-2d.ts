@@ -22,28 +22,23 @@ async function loadImage(code: string): Promise<HTMLImageElement> {
   });
 }
 
-export async function InitBoardView2D(canvas: HTMLCanvasElement): Promise<BoardView | null> {
+export async function InitBoardView2D(canvas: HTMLCanvasElement): Promise<BoardView> {
   if (!canvas) {
     throw new Error("Canvas element is required");
   }
 
-  try {
-    const images = await Promise.all(PIECE_CODES.map(loadImage));
+  const images = await Promise.all(PIECE_CODES.map(loadImage));
 
-    images.forEach((img, index) => {
-      const code = PIECE_CODES[index];
-      const color = code[0];
-      const piece = color === 'w' ? code[1] : code[1].toLowerCase();
-      PIECE_RES.set(piece, img);
-    });
+  images.forEach((img, index) => {
+    const code = PIECE_CODES[index];
+    const color = code[0];
+    const piece = color === 'w' ? code[1] : code[1].toLowerCase();
+    PIECE_RES.set(piece, img);
+  });
 
-    console.log("✅ All assets loaded");
+  console.log("✅ All assets loaded");
 
-    return new BoardView2D(canvas);
-  } catch (error) {
-    console.error("❌ One or more images failed to load:", error);
-    return null;
-  }
+  return new BoardView2D(canvas);
 }
 
 class BoardView2D extends BoardView {

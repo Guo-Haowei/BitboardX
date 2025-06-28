@@ -76,7 +76,6 @@ pub struct WasmGame {
     legal_moves: MoveList,
 
     undo_stack: Vec<(Move, UndoState)>,
-    redo_stack: Vec<(Move, UndoState)>,
 }
 
 #[wasm_bindgen]
@@ -86,7 +85,7 @@ impl WasmGame {
         let mut state = GameState::from_fen(fen).unwrap_or_else(|_| GameState::new());
 
         let legal_moves = legal_moves(&mut state.pos);
-        Self { state, legal_moves, undo_stack: Vec::new(), redo_stack: Vec::new() }
+        Self { state, legal_moves, undo_stack: Vec::new() }
     }
 
     pub fn fen(&self) -> String {
@@ -129,7 +128,6 @@ impl WasmGame {
                 self.state.push_zobrist();
 
                 self.undo_stack.push((mv, undo_state));
-                self.redo_stack.clear();
 
                 final_mv = Some(WasmMove::new(mv, self.state.pos.state.captured_piece));
                 break;
@@ -159,6 +157,20 @@ impl WasmGame {
         }
 
         return "playing".into();
+    }
+
+    pub fn undo(&mut self) -> bool {
+        if self.undo_stack.is_empty() {
+            return false;
+        }
+
+        let (mv, undo_state) = self.undo_stack.pop().unwrap();
+        self.state.pos.unmake_move(mv, &undo_state);
+        self.state.pop_zobrist();
+
+        self.legal_moves = legal_moves(&mut self.state.pos);
+
+        true
     }
 }
 

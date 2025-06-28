@@ -9,3 +9,10 @@ export abstract class BoardView {
 
   abstract draw(board: ChessBoard, selected?: string): void;
 }
+
+export class NullBoardView extends BoardView {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  draw(board: ChessBoard, selected?: string): void {
+    // Do nothing
+  }
+}

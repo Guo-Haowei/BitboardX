@@ -1,17 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import init, { WasmGame, WasmEngine, WasmMove, name } from '../../pkg/bitboard_x';
-import { BoardView } from './board-view';
+import { BoardView, NullBoardView } from './board-view';
 import { InitBoardView2D } from './board-view-2d';
-
-// @TODO: move it to renderer because it's bound to renderer,
-
-const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-
-let boardView: BoardView | null = null;
-let engine: WasmEngine | null = null;
-let gameController: GameController | null = null;
-let board: ChessBoard | null = null;
-let controller: GameController | null = null;
 
 // ---------------------------- Initialization -------------------------------
 
@@ -19,7 +9,7 @@ interface Config {
   canvas: HTMLCanvasElement;
 }
 
-export async function initialize(config: Config, callback: () => void) {
+export async function initialize(config: Config) {
   await init();
 
   boardView = await InitBoardView2D(config.canvas);
@@ -27,15 +17,7 @@ export async function initialize(config: Config, callback: () => void) {
 
   console.log(`✅ Initializing engine ${name()}`);
   engine = new WasmEngine();
-  callback();
-}
-
-export function startNewGame(white: Player, black: Player, fen?: string) {
-  board = new ChessBoard(fen || DEFAULT_FEN);
-  gameController = new GameController(white, black);
-  controller = gameController;
-
-  controller.start()
+  return controller;
 }
 
 // ---------------------------- Chess Board Wrapper -----------------------------
@@ -47,13 +29,13 @@ export class ChessBoard {
   private _legalMoves: string[] = [];
   private _legalMovesMap = new Map<string, Set<string>>();
 
-  private history: WasmMove[];
+  private _history: WasmMove[];
 
   constructor(fen: string) {
     this._gameState = new WasmGame(fen);
 
     this.initialPos = `fen ${fen}`;
-    this.history = [];
+    this._history = [];
 
     this.updateInternal();
   }
@@ -71,20 +53,18 @@ export class ChessBoard {
   }
 
   public uciPosition(): string {
-    const { history, initialPos } = this;
+    const { _history: history, initialPos } = this;
     const moves = history.length > 0 ? `moves ${history.map(mv => mv.to_string()).join(' ')}` : '';
     const uci = `${initialPos} ${moves}`;
     return uci;
   }
 
   public lastMove(): WasmMove | null {
-    return this.history.length > 0 ? this.history[this.history.length - 1] : null;
+    return this._history.length > 0 ? this._history[this._history.length - 1] : null;
   }
 
   private updateInternal() {
-    // board string
     this._boardString = this.gameState.board_string();
-    // legal moves
     this._legalMoves = this.gameState.legal_moves();
     this._legalMovesMap.clear();
 
@@ -105,12 +85,19 @@ export class ChessBoard {
   makeMove(move_str: string) {
     const move = this.gameState.make_move(move_str);
     if (move) {
-      this.history.push(move);
+      this._history.push(move);
 
       this.updateInternal();
     }
 
     return move;
+  }
+
+  public undo() {
+    if (this.gameState.undo()) {
+      this.updateInternal();
+      this._history.pop();
+    }
   }
 
   getPieceAt(square: string) {
@@ -124,20 +111,28 @@ export class ChessBoard {
 // ---------------------------- GUI and Renderer -------------------------------
 
 class Picker {
-  private bufferdMove: string | null = null;
+  private bufferedMove: string | null = null;
   private selectingPromotion = false;
+  private controller: GameController;
   selected?: string;
 
+  constructor() {
+    this.controller = controller;
+  }
+
   public tryGetMove(): string | null {
-    const move = this.bufferdMove;
-    this.bufferdMove = null;
+    const move = this.bufferedMove;
+    this.bufferedMove = null;
     return move;
   }
 
   public async onSquareClicked(square: string) {
+    if (this.selectingPromotion) return;
+
+    const { board } = this.controller;
     if (this.selected) {
       if (board!.legalMovesMap.get(this.selected)?.has(square)) {
-        this.bufferdMove = await this.getMove(this.selected, square);
+        this.bufferedMove = await this.getMove(this.selected, square);
         this.selected = undefined;
         return;
       }
@@ -148,7 +143,9 @@ class Picker {
   }
 
   private async getMove(fromSquare: string, toSquare: string): Promise<string | null> {
-    const piece = board!.getPieceAt(fromSquare);
+    const board = this.controller.board!;
+
+    const piece = board.getPieceAt(fromSquare);
 
     let promotionPiece = '';
     if ((piece === 'P' && toSquare[1] === '8') || (piece === 'p' && toSquare[1] === '1')) {
@@ -208,28 +205,35 @@ class Picker {
   }
 };
 
-const picker = new Picker();
-
 // ---------------------------- Game Controller -------------------------------
 type GameState = 'waitingInput' | 'paused' | 'gameOver';
 
 class GameController {
-  private players: Player[];
+  private players: [Player, Player];
   private gameState: GameState = 'waitingInput';
   private result = 'playing';
+  private _board?: ChessBoard | null;
 
-  constructor(white: Player, black: Player) {
-    this.players = [white, black];
+  constructor() {
+    this.players = [new NullPlayer(), new NullPlayer()];
   }
 
-  public start() {
+  public get board() {
+    return this._board;
+  }
+
+  public newGame(white: Player, black: Player, fen?: string) {
+    this.players = [white, black];
+    this._board = new ChessBoard(fen || DEFAULT_FEN);
     this.gameState = 'waitingInput';
+
     this.loop();
   }
 
   private loop() {
-    if (board && boardView) {
-      boardView.draw(board, picker.selected);
+    const board = this._board;
+    if (boardView) {
+      boardView.draw(board!, picker.selected);
     }
 
     // return one frame later so the end result is rendered
@@ -259,10 +263,29 @@ class GameController {
 
     requestAnimationFrame(() => this.loop());
   }
+
+  public undo() {
+    if (this._board) {
+      this._board.undo();
+      this.gameState = 'paused';
+      this.result = 'playing';
+    }
+  }
+
+  public resume() {
+    this.gameState = 'waitingInput';
+  }
 }
 
 export interface Player {
   tryGetMove(history: string): string | null;
+}
+
+class NullPlayer implements Player {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  tryGetMove(history: string): string | null {
+    return null;
+  }
 }
 
 export class BotPlayer implements Player {
@@ -282,3 +305,10 @@ export class UIPlayer implements Player {
     return picker.tryGetMove();
   }
 }
+
+// ---------------------------- Global constants -------------------------------
+const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const controller = new GameController();
+const picker = new Picker();
+let boardView: BoardView = new NullBoardView();
+let engine: WasmEngine | null = null;

@@ -26,16 +26,24 @@ async function main() {
   const canvas = document.getElementById('chess-board') as HTMLCanvasElement;
   canvas.tabIndex = 0;
 
-  await Chess.initialize({ canvas }, async () => {
-    document.getElementById('start-button')?.addEventListener('click', async () => {
+  const controller = await Chess.initialize({ canvas });
 
-      console.log('Starting new game...');
+  document.getElementById('start-button')?.addEventListener('click', async () => {
 
-      Chess.startNewGame(...collectGameInfo());
-    });
+    console.log('Starting new game...');
 
-    Chess.startNewGame(...collectGameInfo());
+    controller.newGame(...collectGameInfo());
   });
+
+  document.getElementById('resume-button')?.addEventListener('click', () => {
+    controller.resume();
+  });
+
+  document.getElementById('undo-button')?.addEventListener('click', () => {
+    controller.undo();
+  });
+
+  controller.newGame(...collectGameInfo());
 }
 
 main();
