@@ -35,8 +35,7 @@ impl BitBoard {
     pub const MASK_F: u64 = 0x2020202020202020;
     pub const MASK_G: u64 = 0x4040404040404040;
     pub const MASK_H: u64 = 0x8080808080808080;
-    // @TODO: makes no sence to have ! here,
-    // refactor it
+
     pub const MASK_1: u64 = 0x00000000000000FF;
     pub const MASK_2: u64 = 0x000000000000FF00;
     pub const MASK_3: u64 = 0x0000000000FF0000;
@@ -46,103 +45,66 @@ impl BitBoard {
     pub const MASK_7: u64 = 0x00FF000000000000;
     pub const MASK_8: u64 = 0xFF00000000000000;
 
+    #[inline(always)]
     pub const fn new() -> Self {
         Self(0u64)
     }
 
+    #[inline(always)]
     pub const fn from(val: u64) -> Self {
         Self(val)
     }
 
+    #[inline(always)]
     pub const fn none(&self) -> bool {
         self.0 == 0
     }
 
+    #[inline(always)]
     pub const fn any(&self) -> bool {
         self.0 != 0
     }
 
+    #[inline(always)]
     pub const fn get(&self) -> u64 {
         self.0
     }
 
+    #[inline(always)]
     pub const fn test(&self, bit: u8) -> bool {
         (self.0 & (1u64 << bit)) != 0
     }
 
+    #[inline(always)]
     pub const fn set(&mut self, bit: u8) {
         self.0 |= 1u64 << bit;
     }
 
+    #[inline(always)]
     pub const fn test_sq(&self, sq: Square) -> bool {
         debug_assert!(sq.as_u8() < 64, "Square out of bounds");
         self.test(sq.as_u8())
     }
 
+    #[inline(always)]
     pub const fn set_sq(&mut self, sq: Square) {
         debug_assert!(sq.as_u8() < 64, "Square out of bounds");
         self.set(sq.as_u8());
     }
 
+    #[inline(always)]
     pub const fn unset(&mut self, bit: u8) {
         self.0 &= !(1u64 << bit);
     }
 
+    #[inline(always)]
     pub const fn equal(&self, val: u64) -> bool {
         self.0 == val
     }
 
-    pub fn shift(&self, dir: i32) -> BitBoard {
-        debug_assert!(
-            self.0.count_ones() <= 1,
-            "BitBoard should have at most one bit set for shift operations"
-        );
-        let val = if dir < 0 { self.0 >> -dir } else { self.0 << dir };
-        BitBoard(val)
-    }
-
-    pub fn shift_east(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_H).shift(BitBoard::E)
-    }
-
-    pub fn shift_west(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_A).shift(BitBoard::W)
-    }
-
-    pub fn shift_north(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_8).shift(BitBoard::N)
-    }
-
-    pub fn shift_south(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_1).shift(BitBoard::S)
-    }
-
-    pub fn shift_ne(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_H & !BitBoard::MASK_8).shift(BitBoard::NE)
-    }
-
-    pub fn shift_nw(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_A & !BitBoard::MASK_8).shift(BitBoard::NW)
-    }
-
-    pub fn shift_se(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_H & !BitBoard::MASK_1).shift(BitBoard::SE)
-    }
-
-    pub fn shift_sw(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_A & !BitBoard::MASK_1).shift(BitBoard::SW)
-    }
-
+    #[inline(always)]
     pub fn count(&self) -> u32 {
         self.0.count_ones()
-    }
-
-    pub fn to_square(&self) -> Option<Square> {
-        if self.0.count_ones() == 1 {
-            Some(Square::new(self.0.trailing_zeros() as u8))
-        } else {
-            None
-        }
     }
 
     pub fn to_string(&self) -> String {
@@ -150,7 +112,7 @@ impl BitBoard {
         for rank in (0..8).rev() {
             for file in 0..8 {
                 let sq: u8 = rank * 8 + file;
-                s.push(if self.test(sq) { '1' } else { '0' });
+                s.push(if self.test(sq) { 'X' } else { '.' });
                 if file < 7 {
                     s.push(' ');
                 }
@@ -187,16 +149,17 @@ impl Iterator for BitBoardIter {
     }
 }
 
-/* #region Bitwise Operations */
 impl BitAnd for BitBoard {
     type Output = BitBoard;
 
+    #[inline(always)]
     fn bitand(self, rhs: Self) -> BitBoard {
         BitBoard::from(self.0 & rhs.0)
     }
 }
 
 impl BitAndAssign for BitBoard {
+    #[inline(always)]
     fn bitand_assign(&mut self, rhs: Self) {
         self.0 &= rhs.0;
     }
@@ -205,12 +168,14 @@ impl BitAndAssign for BitBoard {
 impl BitOr for BitBoard {
     type Output = BitBoard;
 
+    #[inline(always)]
     fn bitor(self, rhs: Self) -> BitBoard {
         BitBoard::from(self.0 | rhs.0)
     }
 }
 
 impl BitOrAssign for BitBoard {
+    #[inline(always)]
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
     }
@@ -219,6 +184,7 @@ impl BitOrAssign for BitBoard {
 impl Not for BitBoard {
     type Output = BitBoard;
 
+    #[inline(always)]
     fn not(self) -> BitBoard {
         BitBoard::from(!self.0)
     }
@@ -226,17 +192,7 @@ impl Not for BitBoard {
 
 impl fmt::Display for BitBoard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for rank in 0..8 {
-            for file in 0..8 {
-                let sq: u8 = rank * 8 + file;
-                if self.test(sq) {
-                    write!(f, "1 ")?;
-                } else {
-                    write!(f, "0 ")?;
-                }
-            }
-            write!(f, "\n")?
-        }
+        write!(f, "{}", self.to_string())?;
         Ok(())
     }
 }

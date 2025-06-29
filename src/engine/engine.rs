@@ -8,9 +8,7 @@ use crate::utils;
 const NAME: &str = "BitboardX";
 const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 2;
-const VERSION_PATCH: u32 = 3;
-
-// need an extra layer to track 50 move rule, and threefold repetition
+const VERSION_PATCH: u32 = 4; // magic bitboard
 
 pub struct Engine {
     pub state: GameState,

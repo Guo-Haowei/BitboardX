@@ -78,6 +78,11 @@ pub fn sort_moves(
             score += get_piece_value(promo_piece) + 5_000; // promotion bonus
         }
 
+        if move_type == MoveType::Castling {
+            // castling is a special move, give it a bonus
+            score += 5_00;
+        }
+
         // penalize moving a piece to a square that is attacked by an opponent piece
         if pos.state.attack_mask[opponent.as_usize()].test(dst_sq.as_u8()) {
             score -= src_piece_value / 2;
