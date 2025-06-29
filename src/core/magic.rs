@@ -30,6 +30,13 @@ fn load_magic(bin: &[u8]) -> Vec<MagicEntry> {
 static MAGIC_TABLE_ROOK: Lazy<Vec<MagicEntry>> = Lazy::new(|| load_magic(MAGIC_BIN_ROOK));
 static MAGIC_TABLE_BISHOP: Lazy<Vec<MagicEntry>> = Lazy::new(|| load_magic(MAGIC_BIN_BISHOP));
 
+pub fn warm_up_magic_tables() {
+    // This function is used to ensure that the magic tables are loaded
+    // and initialized before any other operations that might use them.
+    let _ = &MAGIC_TABLE_ROOK;
+    let _ = &MAGIC_TABLE_BISHOP;
+}
+
 pub fn get_rook_attack_mask(blockers: BitBoard, square: Square) -> BitBoard {
     let magic_entry = &MAGIC_TABLE_ROOK[square.as_u8() as usize];
     let relevant_blockers = blockers & BitBoard::from(magic_entry.mask);
