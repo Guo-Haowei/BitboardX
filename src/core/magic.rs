@@ -37,6 +37,7 @@ pub fn warm_up_magic_tables() {
     let _ = &MAGIC_TABLE_BISHOP;
 }
 
+#[inline]
 pub fn get_rook_attack_mask(blockers: BitBoard, square: Square) -> BitBoard {
     let magic_entry = &MAGIC_TABLE_ROOK[square.as_u8() as usize];
     let relevant_blockers = blockers & BitBoard::from(magic_entry.mask);
@@ -46,6 +47,7 @@ pub fn get_rook_attack_mask(blockers: BitBoard, square: Square) -> BitBoard {
     BitBoard::from(magic_entry.attack_table[index as usize])
 }
 
+#[inline]
 pub fn get_bishop_attack_mask(blockers: BitBoard, square: Square) -> BitBoard {
     let magic_entry = &MAGIC_TABLE_BISHOP[square.as_u8() as usize];
     let relevant_blockers = blockers & BitBoard::from(magic_entry.mask);

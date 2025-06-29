@@ -45,7 +45,6 @@ pub struct UndoState {
     pub halfmove_clock: u32,
     pub fullmove_number: u32,
 
-    // @TODO: store more data here if needed
     pub captured_piece: Piece,
     pub occupancies: [BitBoard; 3],
     pub attack_mask: [BitBoard; Color::COUNT],
