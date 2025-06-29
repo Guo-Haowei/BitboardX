@@ -150,7 +150,7 @@ impl BitBoard {
         for rank in (0..8).rev() {
             for file in 0..8 {
                 let sq: u8 = rank * 8 + file;
-                s.push(if self.test(sq) { '1' } else { '0' });
+                s.push(if self.test(sq) { 'X' } else { '.' });
                 if file < 7 {
                     s.push(' ');
                 }
@@ -226,17 +226,7 @@ impl Not for BitBoard {
 
 impl fmt::Display for BitBoard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for rank in 0..8 {
-            for file in 0..8 {
-                let sq: u8 = rank * 8 + file;
-                if self.test(sq) {
-                    write!(f, "1 ")?;
-                } else {
-                    write!(f, "0 ")?;
-                }
-            }
-            write!(f, "\n")?
-        }
+        write!(f, "{}", self.to_string())?;
         Ok(())
     }
 }

@@ -2,8 +2,6 @@ use super::types::*;
 use crate::core::position::{CheckerList, Position};
 use crate::core::types::bitboard::*;
 
-// pub use PAWN_EN_PASSANT_MASKS;
-
 /// Legal move generation
 pub fn legal_moves(pos: &mut Position) -> MoveList {
     let pseudo_moves = pseudo_legal_moves(pos);
@@ -17,13 +15,22 @@ pub fn legal_moves(pos: &mut Position) -> MoveList {
     moves
 }
 
+/// Pseudo-legal move generation
+pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
+    pseudo_legal_moves_impl::<MV_MASK_MOVE>(pos)
+}
+
+pub fn pseudo_legal_capture_moves(pos: &Position) -> MoveList {
+    pseudo_legal_moves_impl::<MV_MASK_CAPTURE>(pos)
+}
+
 pub fn is_pseudo_move_legal(pos: &mut Position, mv: Move) -> bool {
     let (undo_state, ok) = pos.make_move(mv);
     pos.unmake_move(mv, &undo_state);
     ok
 }
 
-// @TODO: get rid of this evntually, use magic bitboards instead
+// @TODO: magic bitboard instead
 const SHIFT_FUNCS: [fn(&BitBoard) -> BitBoard; 8] = [
     BitBoard::shift_north,
     BitBoard::shift_south,
@@ -38,15 +45,6 @@ const SHIFT_FUNCS: [fn(&BitBoard) -> BitBoard; 8] = [
 const MV_MASK_MOVE: u8 = 0;
 const MV_MASK_CAPTURE: u8 = 1;
 const MV_MASK_ATTACK: u8 = 2;
-
-/// Pseudo-legal move generation
-pub fn pseudo_legal_moves(pos: &Position) -> MoveList {
-    pseudo_legal_moves_impl::<MV_MASK_MOVE>(pos)
-}
-
-pub fn pseudo_legal_capture_moves(pos: &Position) -> MoveList {
-    pseudo_legal_moves_impl::<MV_MASK_CAPTURE>(pos)
-}
 
 fn resolve_check(dst_sq: Square, checker_sq: Square, king_sq: Square) -> bool {
     let capture_attacker = dst_sq == checker_sq;
@@ -345,7 +343,7 @@ fn king_mask<const COLOR: u8, const MASK_TYPE: u8>(sq: Square, pos: &Position) -
     moves
 }
 
-pub fn pseudo_legal_move_king<const COLOR: u8, const MASK_TYPE: u8>(
+fn pseudo_legal_move_king<const COLOR: u8, const MASK_TYPE: u8>(
     move_list: &mut MoveList,
     sq: Square,
     pos: &Position,
