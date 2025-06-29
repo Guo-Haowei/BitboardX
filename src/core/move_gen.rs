@@ -1,4 +1,5 @@
 use super::types::*;
+use crate::core::magic::*;
 use crate::core::position::{CheckerList, Position};
 use crate::core::types::bitboard::*;
 
@@ -29,18 +30,6 @@ pub fn is_pseudo_move_legal(pos: &mut Position, mv: Move) -> bool {
     pos.unmake_move(mv, &undo_state);
     ok
 }
-
-// @TODO: magic bitboard instead
-const SHIFT_FUNCS: [fn(&BitBoard) -> BitBoard; 8] = [
-    BitBoard::shift_north,
-    BitBoard::shift_south,
-    BitBoard::shift_east,
-    BitBoard::shift_west,
-    BitBoard::shift_ne,
-    BitBoard::shift_nw,
-    BitBoard::shift_se,
-    BitBoard::shift_sw,
-];
 
 const MV_MASK_MOVE: u8 = 0;
 const MV_MASK_CAPTURE: u8 = 1;
@@ -232,42 +221,7 @@ fn pawn_mask<const COLOR: u8, const FILTER_TYPE: u8>(sq: Square, pos: &Position)
     BitBoard::from(single_push_mask | double_push_mask) | attacks
 }
 
-fn sliding_mask<const START: u8, const END: u8, const MASK: u8>(
-    sq: Square,
-    my_occupancy: BitBoard,
-    enemy_occupancy: BitBoard,
-    // color: Color,
-) -> BitBoard {
-    let mut masks = BitBoard::new();
-    let bb = sq.to_bitboard();
-
-    let any_occupied = my_occupancy | enemy_occupancy;
-
-    for i in START..END {
-        let mut next_bb = SHIFT_FUNCS[i as usize](&bb);
-
-        while next_bb.any() {
-            if (next_bb & any_occupied).any() {
-                masks |= next_bb;
-                break;
-            }
-
-            masks |= next_bb;
-
-            next_bb = SHIFT_FUNCS[i as usize](&next_bb);
-        }
-    }
-
-    match MASK {
-        MV_MASK_MOVE => masks & !my_occupancy,
-        MV_MASK_ATTACK => masks,
-        MV_MASK_CAPTURE => masks & enemy_occupancy,
-        _ => unreachable!(),
-    }
-}
-
 fn rook_mask<const MASK: u8>(sq: Square, mine: BitBoard, enemy: BitBoard) -> BitBoard {
-    use crate::core::magic::get_rook_attack_mask;
     let mask = get_rook_attack_mask(mine | enemy, sq);
 
     match MASK {
@@ -279,11 +233,25 @@ fn rook_mask<const MASK: u8>(sq: Square, mine: BitBoard, enemy: BitBoard) -> Bit
 }
 
 fn bishop_mask<const MASK: u8>(sq: Square, mine: BitBoard, enemy: BitBoard) -> BitBoard {
-    sliding_mask::<4, 8, MASK>(sq, mine, enemy)
+    let mask = get_bishop_attack_mask(mine | enemy, sq);
+
+    match MASK {
+        MV_MASK_MOVE => mask & !mine,
+        MV_MASK_ATTACK => mask,
+        MV_MASK_CAPTURE => mask & enemy,
+        _ => unreachable!(),
+    }
 }
 
 fn queen_mask<const MASK: u8>(sq: Square, mine: BitBoard, enemy: BitBoard) -> BitBoard {
-    sliding_mask::<0, 8, MASK>(sq, mine, enemy)
+    let mask = get_bishop_attack_mask(mine | enemy, sq) | get_rook_attack_mask(mine | enemy, sq);
+
+    match MASK {
+        MV_MASK_MOVE => mask & !mine,
+        MV_MASK_ATTACK => mask,
+        MV_MASK_CAPTURE => mask & enemy,
+        _ => unreachable!(),
+    }
 }
 
 /// Computes the legal knight moves from a given square on a bitboard.

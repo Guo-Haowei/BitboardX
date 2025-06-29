@@ -101,38 +101,6 @@ impl BitBoard {
         BitBoard(val)
     }
 
-    pub fn shift_east(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_H).shift(BitBoard::E)
-    }
-
-    pub fn shift_west(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_A).shift(BitBoard::W)
-    }
-
-    pub fn shift_north(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_8).shift(BitBoard::N)
-    }
-
-    pub fn shift_south(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_1).shift(BitBoard::S)
-    }
-
-    pub fn shift_ne(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_H & !BitBoard::MASK_8).shift(BitBoard::NE)
-    }
-
-    pub fn shift_nw(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_A & !BitBoard::MASK_8).shift(BitBoard::NW)
-    }
-
-    pub fn shift_se(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_H & !BitBoard::MASK_1).shift(BitBoard::SE)
-    }
-
-    pub fn shift_sw(&self) -> BitBoard {
-        BitBoard(self.0 & !BitBoard::MASK_A & !BitBoard::MASK_1).shift(BitBoard::SW)
-    }
-
     pub fn count(&self) -> u32 {
         self.0.count_ones()
     }
