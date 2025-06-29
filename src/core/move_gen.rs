@@ -267,7 +267,15 @@ fn sliding_mask<const START: u8, const END: u8, const MASK: u8>(
 }
 
 fn rook_mask<const MASK: u8>(sq: Square, mine: BitBoard, enemy: BitBoard) -> BitBoard {
-    sliding_mask::<0, 4, MASK>(sq, mine, enemy)
+    use crate::core::magic::get_rook_attack_mask;
+    let mask = get_rook_attack_mask(mine | enemy, sq);
+
+    match MASK {
+        MV_MASK_MOVE => mask & !mine,
+        MV_MASK_ATTACK => mask,
+        MV_MASK_CAPTURE => mask & enemy,
+        _ => unreachable!(),
+    }
 }
 
 fn bishop_mask<const MASK: u8>(sq: Square, mine: BitBoard, enemy: BitBoard) -> BitBoard {
