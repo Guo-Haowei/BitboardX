@@ -1,10 +1,79 @@
+use once_cell::sync::Lazy;
+use std::io::Cursor;
+use std::io::{self, Read, Write};
+
 use crate::core::types::{BitBoard, File, Rank, Square};
 
-struct Magic {
-    mask: BitBoard,
-    magic: BitBoard,
+#[derive(Debug)]
+pub struct MagicEntry {
+    mask: u64,
+    magic: u64,
     shift: u32,
-    attack_table: Vec<BitBoard>,
+    attack_table: Vec<u64>,
+}
+
+static MAGIC_BIN_ROOK: &[u8] = include_bytes!("magic/rook_magic.bin");
+
+static MAGIC_TABLE_ROOK: Lazy<Vec<MagicEntry>> = Lazy::new(|| {
+    let mut entries = Vec::with_capacity(64);
+
+    let mut cursor = Cursor::new(MAGIC_BIN_ROOK);
+    while let Ok(entry) = MagicEntry::deserialize(&mut cursor) {
+        entries.push(entry);
+    }
+
+    assert_eq!(entries.len(), 64, "Expected 64 magic entries, found {}", entries.len());
+    entries
+});
+
+pub fn get_rook_attack_mask(blockers: BitBoard, square: Square) -> BitBoard {
+    let magic_entry = &MAGIC_TABLE_ROOK[square.as_u8() as usize];
+    let relevant_blockers = blockers & BitBoard::from(magic_entry.mask);
+
+    let index = (relevant_blockers.get().wrapping_mul(magic_entry.magic)) >> magic_entry.shift;
+
+    BitBoard::from(magic_entry.attack_table[index as usize])
+}
+
+impl MagicEntry {
+    pub fn serialize<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(&self.mask.to_le_bytes())?;
+        writer.write_all(&self.magic.to_le_bytes())?;
+        writer.write_all(&self.shift.to_le_bytes())?;
+
+        let len = self.attack_table.len() as u32;
+        writer.write_all(&len.to_le_bytes())?;
+
+        for &val in &self.attack_table {
+            writer.write_all(&val.to_le_bytes())?;
+        }
+        Ok(())
+    }
+
+    // Deserialize from reader
+    pub fn deserialize<R: Read>(reader: &mut R) -> io::Result<Self> {
+        let mut buf = [0u8; 8];
+
+        reader.read_exact(&mut buf)?;
+        let mask = u64::from_le_bytes(buf);
+        reader.read_exact(&mut buf)?;
+        let magic = u64::from_le_bytes(buf);
+
+        let mut buf = [0u8; 4];
+        reader.read_exact(&mut buf)?;
+        let shift = u32::from_le_bytes(buf);
+        reader.read_exact(&mut buf)?;
+        let len = u32::from_le_bytes(buf);
+
+        let mut buf = [0u8; 8];
+        let mut attack_table = Vec::with_capacity(len as usize);
+        for _ in 0..len {
+            reader.read_exact(&mut buf)?;
+            attack_table.push(u64::from_le_bytes(buf));
+        }
+
+        Ok(Self { mask, magic, shift, attack_table })
+    }
 }
 
 /// Generate mask excluding edges on rank and file for rook
@@ -20,7 +89,7 @@ struct Magic {
 /// 0 0 0 1 0 0 0 0 | 3
 /// 0 0 0 1 0 0 0 0 | 2
 /// 0 0 0 0 0 0 0 0 | 1
-const fn relevant_blocker_mask_rook(square: Square) -> BitBoard {
+const fn relevant_mask_rook(square: Square) -> BitBoard {
     let mut mask = BitBoard::new();
 
     let (file, rank) = square.file_rank();
@@ -44,14 +113,9 @@ const fn relevant_blocker_mask_rook(square: Square) -> BitBoard {
     mask
 }
 
-fn generate_blocker_combination_helper(
-    mask: u64,
-    so_far: u64,
-    depth: u8,
-    combinations: &mut Vec<BitBoard>,
-) {
+fn find_blocker_combination_helper(mask: u64, so_far: u64, depth: u8, combinations: &mut Vec<u64>) {
     if depth == 0 {
-        combinations.push(BitBoard::from(so_far));
+        combinations.push(so_far);
         return;
     }
 
@@ -60,68 +124,125 @@ fn generate_blocker_combination_helper(
     let mask = mask & (mask - 1);
 
     // either include the square or not
-    generate_blocker_combination_helper(mask, so_far, depth - 1, combinations);
-    generate_blocker_combination_helper(mask, so_far | sq_mask, depth - 1, combinations);
+    find_blocker_combination_helper(mask, so_far, depth - 1, combinations);
+    find_blocker_combination_helper(mask, so_far | sq_mask, depth - 1, combinations);
 }
 
-fn generate_blocker_combination(mask: BitBoard) -> Vec<BitBoard> {
-    let count = mask.count() as u8;
+fn find_blocker_combination(mask: u64) -> Vec<u64> {
+    let count = mask.count_ones() as u8;
     let combination_count = 1 << count; // 2^count combinations
 
     let mut combinations = Vec::with_capacity(combination_count);
 
-    generate_blocker_combination_helper(mask.get(), 0, count, &mut combinations);
+    find_blocker_combination_helper(mask, 0, count, &mut combinations);
 
     debug_assert!(combinations.len() == combination_count);
     combinations
 }
 
-// fn sliding_attacks_rook(square: usize, blockers: BitBoard) -> BitBoard {
-//     // Generate rook attacks on given blockers
-// }
+const fn bake_attack_mask_rook(square: Square, blocker: u64) -> u64 {
+    let blocker = BitBoard::from(blocker);
+    let mut mask = BitBoard::new();
+    let (file, rank) = square.file_rank();
 
-// fn find_magic_number(
-//     square: usize,
-//     relevant_bits: usize,
-//     attacks_for_blockers: &Vec<(BitBoard, BitBoard)>,
-// ) -> BitBoard {
-//     // Try random candidates and check collisions for indexing
-// }
+    // slide left
+    let mut f = file.0 as i8 - 1;
+    while f >= 0 {
+        let sq = Square::make(File(f as u8), rank);
+        mask.set(sq.as_u8());
+        if blocker.test(sq.as_u8()) {
+            break;
+        }
+        f -= 1;
+    }
+    // slide right
+    let mut f = file.0 as i8 + 1;
+    while f < 8 {
+        let sq = Square::make(File(f as u8), rank);
+        mask.set(sq.as_u8());
+        if blocker.test(sq.as_u8()) {
+            break;
+        }
+        f += 1;
+    }
+    // slide down
+    let mut r = rank.0 as i8 - 1;
+    while r >= 0 {
+        let sq = Square::make(file, Rank(r as u8));
+        mask.set(sq.as_u8());
+        if blocker.test(sq.as_u8()) {
+            break;
+        }
+        r -= 1;
+    }
+    // slide up
+    let mut r = rank.0 as i8 + 1;
+    while r < 8 {
+        let sq = Square::make(file, Rank(r as u8));
+        mask.set(sq.as_u8());
+        if blocker.test(sq.as_u8()) {
+            break;
+        }
+        r += 1;
+    }
 
-// fn generate_magic_for_square(square: usize) -> Magic {
-//     let mask = relevant_blocker_mask_rook(square);
-//     let blocker_subsets = generate_blocker_subsets(mask);
+    mask.get()
+}
 
-//     // Precompute attacks for all blocker subsets
-//     let attacks_for_blockers: Vec<(BitBoard, BitBoard)> = blocker_subsets
-//         .iter()
-//         .map(|&blockers| (*blockers, sliding_attacks_rook(square, blockers)))
-//         .collect();
+fn find_magic(
+    relevant_mask: u64,
+    blockers: &[u64],
+    attacks: &[u64],
+) -> Option<(u64, u32, Vec<u64>)> {
+    use rand::Rng;
+    let relevant_bits = relevant_mask.count_ones() as u32;
+    let shift = 64 - relevant_bits;
 
-//     let relevant_bits = mask.count_ones() as usize;
+    let mut rng = rand::rng();
 
-//     let magic = find_magic_number(square, relevant_bits, &attacks_for_blockers);
+    for _ in 0..1_000_000 {
+        let magic = rng.random::<u64>() & rng.random::<u64>() & rng.random::<u64>();
+        if magic.count_ones() < 6 {
+            continue;
+        }
 
-//     let shift = 64 - relevant_bits as u32;
+        let size = 1 << relevant_bits;
+        let mut table = vec![None; size];
+        let mut success = true;
 
-//     // Build attack table indexed by magic indexing
-//     let mut attack_table = vec![0; 1 << relevant_bits];
-//     for (blockers, attack) in &attacks_for_blockers {
-//         let index = ((*blockers & mask).wrapping_mul(magic)) >> shift;
-//         attack_table[index as usize] = *attack;
-//     }
+        for (&blocker, &attack) in blockers.iter().zip(attacks.iter()) {
+            let index = ((blocker & relevant_mask).wrapping_mul(magic) >> shift) as usize;
+            match table[index] {
+                None => table[index] = Some(attack),
+                Some(existing) if existing == attack => continue,
+                Some(_) => {
+                    success = false;
+                    break;
+                }
+            }
+        }
 
-//     Magic { mask, magic, shift, attack_table }
-// }
+        if success {
+            let attack_table = table.into_iter().map(|x| x.unwrap()).collect();
+            return Some((magic, shift, attack_table));
+        }
+    }
+
+    None
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::position::Position;
+
     use std::collections::HashSet;
+    use std::fs::File;
+    use std::io::BufWriter;
 
     #[test]
     fn test_rook_relevant_blocker_mask() {
-        let mask = relevant_blocker_mask_rook(Square::A1);
+        let mask = relevant_mask_rook(Square::A1);
 
         assert_eq!(
             mask.to_string(),
@@ -136,7 +257,7 @@ X . . . . . . .
 "#
         );
 
-        let mask = relevant_blocker_mask_rook(Square::D4);
+        let mask = relevant_mask_rook(Square::D4);
         assert_eq!(
             mask.to_string(),
             r#". . . . . . . .
@@ -153,19 +274,86 @@ X . . . . . . .
 
     #[test]
     fn test_blocker_combination_generation() {
-        let mask = relevant_blocker_mask_rook(Square::D4);
-        let combinations = generate_blocker_combination(mask);
+        let mask = relevant_mask_rook(Square::D4);
+        let combinations = find_blocker_combination(mask.get());
 
-        let set: HashSet<u64> = combinations.iter().map(|item| item.get()).collect();
+        let set: HashSet<u64> = combinations.iter().copied().collect();
         assert_eq!(set.len(), combinations.len(), "Combinations should be unique");
     }
 
-    // #[test]
-    // fn test_magic_bitboard() {
-    //     for sq in 0..64 {
-    //         let magic = generate_magic_for_square(sq);
-    //         // Save or print magic.mask, magic.magic, magic.shift, magic.attack_table
-    //     }
-    //     assert!(false);
-    // }
+    #[test]
+    fn test_bake_attacker_mask_rook() {
+        /*
+        . . . . . . . .
+        . . . X . . . .
+        . . . . . . . .
+        . . . . . . . .
+        . . . O . . . . // rook on D4
+        . . . . . . . .
+        . . . . . . . .
+        . . . . . . . .
+        */
+        let relevant_mask = relevant_mask_rook(Square::D4);
+        let combinations = find_blocker_combination(relevant_mask.get());
+        let blocker = combinations[1];
+        let attack_mask = bake_attack_mask_rook(Square::D4, blocker);
+        assert_eq!(
+            BitBoard::from(attack_mask).to_string(),
+            r#". . . . . . . .
+. . . X . . . .
+. . . X . . . .
+. . . X . . . .
+X X X . X X X X
+. . . X . . . .
+. . . X . . . .
+. . . X . . . .
+"#
+        );
+        // let blocker = BitBoard::from(0b
+    }
+
+    // Bake a magic entry for rook piece
+    fn bake_magic_entry_rook(square: Square) -> MagicEntry {
+        let mask = relevant_mask_rook(square).get();
+        let blockers = find_blocker_combination(mask);
+        let attacks: Vec<u64> =
+            blockers.iter().map(|&b| bake_attack_mask_rook(square, b)).collect();
+
+        let (magic, shift, table) = find_magic(mask, &blockers, &attacks).expect("No magic found");
+
+        MagicEntry { magic, shift, mask, attack_table: table }
+    }
+
+    #[test]
+    fn bake_magic_entries() {
+        if false {
+            let file = File::create("rook_magic.bin").expect("Failed to create file");
+            let mut writer = BufWriter::new(file);
+            for sq in 0..64 {
+                let entry = bake_magic_entry_rook(Square::new(sq));
+
+                entry.serialize(&mut writer).expect("Failed to serialize");
+            }
+        }
+    }
+
+    #[test]
+    fn test_magic_table_rook() {
+        let fen = "8/2p5/3p4/KP5r/5R1k/8/4P1P1/8 w - - 0 1";
+        let position = Position::from_fen(fen).unwrap();
+        let square = Square::H5;
+        let attack_mask = get_rook_attack_mask(position.state.occupancies[2], square);
+        assert_eq!(
+            attack_mask.to_string(),
+            r#". . . . . . . X
+. . . . . . . X
+. . . . . . . X
+. X X X X X X .
+. . . . . . . X
+. . . . . . . .
+. . . . . . . .
+. . . . . . . .
+"#
+        );
+    }
 }
