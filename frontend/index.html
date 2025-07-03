@@ -1,76 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
     <link rel="stylesheet" href="./styles.css" />
 
     <title>BitboardX</title>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="chess-app">
-        <!-- Header with player info -->
-        <div class="header">
-            <div class="player you">
-                <img class="avatar" src="https://lichess1.org/assets/piece/cburnett/wK.svg" alt="White" />
-                <div class="info">
-                    <div class="name">You</div>
-                    <div class="timer" id="you-timer">0:26</div>
-                </div>
-            </div>
-            <div class="player opp">
-                <img class="avatar" src="https://lichess1.org/assets/piece/cburnett/bK.svg" alt="Black" />
-                <div class="info">
-                    <div class="name">Claire</div>
-                    <div class="timer" id="opp-timer">0:00</div>
-                </div>
-            </div>
+      <!-- Header with player info -->
+      <div class="header">
+        <div class="player you">
+          <img
+            class="avatar"
+            src="https://lichess1.org/assets/piece/cburnett/wK.svg"
+            alt="White"
+          />
+          <div class="info">
+            <div class="name">You</div>
+            <div class="timer" id="you-timer">0:00</div>
+          </div>
         </div>
+        <div class="player opp">
+          <img
+            class="avatar"
+            src="https://lichess1.org/assets/piece/cburnett/bK.svg"
+            alt="Black"
+          />
+          <div class="info">
+            <div class="name">Bot</div>
+            <div class="timer" id="opp-timer">0:00</div>
+          </div>
+        </div>
+      </div>
 
-        <!-- Chess board -->
-        <div class="board-container">
-            <canvas id="chess-board" width="320" height="320"></canvas>
-        </div>
+      <!-- Chess board -->
+      <div class="board-container">
+        <canvas id="chess-board" width="320" height="320"></canvas>
+      </div>
 
-        <!-- Controls -->
-        <div class="controls">
-            <button id="resume-button">Resume</button>
-            <button id="undo-button">Undo</button>
-        </div>
+      <!-- Controls -->
+      <div class="controls">
+        <button id="resume-button">Resume</button>
+        <button id="undo-button">Undo</button>
+      </div>
 
-        <div class="controls secondary">
-            <button disabled>Replay</button>
-            <button disabled>Board Style</button>
-        </div>
+      <div class="controls secondary">
+        <button disabled>Replay</button>
+        <button disabled>Board Style</button>
+      </div>
 
-        <!-- Move History -->
-        <div class="move-history">
-            <div class="move-text" contenteditable="true">
-                1. e4 e5 2. Nf3 Nc6 3. Bb5 a6
-            </div>
+      <!-- Move History -->
+      <div class="move-history">
+        <div class="move-text" contenteditable="true">
+          TODO: Add move history here: 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6
         </div>
+      </div>
 
-        <div class="player-section">
-            <legend>White</legend>
-            <label> <input type="radio" name="white-player" value="human" checked /> Human </label>
-            <label> <input type="radio" name="white-player" value="bot" /> Bot </label>
-        </div>
-        <p></p>
-        <div class="player-section">
-            <legend>Black</legend>
-            <label> <input type="radio" name="black-player" value="human" /> Human </label>
-            <label> <input type="radio" name="black-player" value="bot" checked /> Bot </label>
-        </div>
-        <p></p>
-        <input type="text" id="fen-input" style="width: 300px;" placeholder="please enter FEN here" />
-        <p></p>
-        <button id="start-button">Go!</button>
+      <div class="player-section">
+        <legend>White</legend>
+        <label>
+          <input type="radio" name="white-player" value="human" checked /> Human
+        </label>
+        <label>
+          <input type="radio" name="white-player" value="bot" /> Bot
+        </label>
+      </div>
+      <p></p>
+      <div class="player-section">
+        <legend>Black</legend>
+        <label>
+          <input type="radio" name="black-player" value="human" /> Human
+        </label>
+        <label>
+          <input type="radio" name="black-player" value="bot" checked /> Bot
+        </label>
+      </div>
+      <p></p>
+      <input
+        type="text"
+        id="fen-input"
+        style="width: 300px"
+        placeholder="please enter FEN here"
+      />
+      <p></p>
+      <button id="start-button">Go!</button>
     </div>
 
     <script type="module" src="./src/main.ts"></script>
-</body>
-
+  </body>
 </html>
