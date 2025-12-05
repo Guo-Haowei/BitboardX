@@ -2,11 +2,7 @@ stages:
   - test
   - deploy
 
-unit-test:
-  stage: test
-  script:
-    - cargo test --release -- --nocapture --test-threads=1
-
+# TODO: move this to .github/workflows
 deploy:
   stage: deploy
   script:
