@@ -1,0 +1,11 @@
+name: CI
+run-name: ${{ github.actor }} is testing out GitHub Actions
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run tests
+        uses: actions/checkout@v5
+      - run: cargo test --release -- --nocapture
+      - run: echo "This job's status is ${{ job.status }}."

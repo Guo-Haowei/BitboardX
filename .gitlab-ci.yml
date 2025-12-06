@@ -1,5 +1,4 @@
 stages:
-  - test
   - deploy
 
 # TODO: move this to .github/workflows
