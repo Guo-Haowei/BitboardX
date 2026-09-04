@@ -17,9 +17,24 @@ The project includes two main components:
 
 ---
 
-## TODO
+## Backend
 
-- [ ] Implement **Null Move Pruning** to speed up the search by pruning obvious losing moves
-- [ ] Add **Late Move Reductions (LMR)** to reduce search depth for less promising moves
-- [ ] Improve the **Evaluation Function** with more nuanced heuristics
-- [ ] Integrate **NNUE (Neural Network Unified Evaluator)** for advanced evaluation and better playing strength
+### Build and Run
+
+```bash
+$ cargo run   # run UCI
+$ cargo build # build
+$ cargo test  # test
+```
+
+## Frontend
+
+### Build and Run
+
+```bash
+$ wasm-pack build --target web # build wasm
+$ cd frontend/
+$ npm install
+$ npm run dev
+$ npm run build
+```
