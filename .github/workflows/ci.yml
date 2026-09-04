@@ -1,6 +1,11 @@
 name: CI
 run-name: ${{ github.actor }} is testing out GitHub Actions
-on: [push]
+on:
+  push:
+    paths:
+      - "**/*.rs"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
 jobs:
   test:
     runs-on: ubuntu-latest
