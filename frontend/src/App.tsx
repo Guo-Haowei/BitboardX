@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as Chess from "./chess";
+import ChessBoard from "./components/ChessBoard";
 
 type PlayerType = "human" | "bot";
 
@@ -97,15 +98,7 @@ export default function App() {
       </div>
 
       {/* Chess board */}
-      <div className="board-container">
-        <canvas
-          ref={canvasRef}
-          id="chess-board"
-          width={320}
-          height={320}
-          tabIndex={0}
-        />
-      </div>
+      <ChessBoard canvasRef={canvasRef} />
 
       {/* Controls */}
       <div className="controls">
