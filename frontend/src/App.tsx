@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as Chess from "./chess";
 import ChessBoard from "./components/ChessBoard";
-
-type PlayerType = "human" | "bot";
+import PlayerSelector, { PlayerType } from "./components/PlayerSelector";
 
 type ChessController = Awaited<
   ReturnType<typeof Chess.initialize>
@@ -117,61 +116,9 @@ export default function App() {
         </button>
       </div>
 
-      {/* White player selection */}
-      <div className="player-section">
-        <legend>White</legend>
-
-        <label>
-          <input
-            type="radio"
-            name="white-player"
-            value="human"
-            checked={whitePlayer === "human"}
-            onChange={() => setWhitePlayer("human")}
-          />
-          Human
-        </label>
-
-        <label>
-          <input
-            type="radio"
-            name="white-player"
-            value="bot"
-            checked={whitePlayer === "bot"}
-            onChange={() => setWhitePlayer("bot")}
-          />
-          Bot
-        </label>
-      </div>
-
+      <PlayerSelector color="White" value={whitePlayer} onChange={setWhitePlayer} />
       <p />
-
-      {/* Black player selection */}
-      <div className="player-section">
-        <legend>Black</legend>
-
-        <label>
-          <input
-            type="radio"
-            name="black-player"
-            value="human"
-            checked={blackPlayer === "human"}
-            onChange={() => setBlackPlayer("human")}
-          />
-          Human
-        </label>
-
-        <label>
-          <input
-            type="radio"
-            name="black-player"
-            value="bot"
-            checked={blackPlayer === "bot"}
-            onChange={() => setBlackPlayer("bot")}
-          />
-          Bot
-        </label>
-      </div>
+      <PlayerSelector color="Black" value={blackPlayer} onChange={setBlackPlayer} />
 
       <p />
 
