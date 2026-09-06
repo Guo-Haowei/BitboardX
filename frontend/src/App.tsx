@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as Chess from "./chess";
-
-type PlayerType = "human" | "bot";
+import ChessBoard from "./components/ChessBoard";
+import PlayerSelector, { PlayerType } from "./components/PlayerSelector";
 
 type ChessController = Awaited<
   ReturnType<typeof Chess.initialize>
@@ -97,15 +97,7 @@ export default function App() {
       </div>
 
       {/* Chess board */}
-      <div className="board-container">
-        <canvas
-          ref={canvasRef}
-          id="chess-board"
-          width={320}
-          height={320}
-          tabIndex={0}
-        />
-      </div>
+      <ChessBoard canvasRef={canvasRef} />
 
       {/* Controls */}
       <div className="controls">
@@ -124,61 +116,9 @@ export default function App() {
         </button>
       </div>
 
-      {/* White player selection */}
-      <div className="player-section">
-        <legend>White</legend>
-
-        <label>
-          <input
-            type="radio"
-            name="white-player"
-            value="human"
-            checked={whitePlayer === "human"}
-            onChange={() => setWhitePlayer("human")}
-          />
-          Human
-        </label>
-
-        <label>
-          <input
-            type="radio"
-            name="white-player"
-            value="bot"
-            checked={whitePlayer === "bot"}
-            onChange={() => setWhitePlayer("bot")}
-          />
-          Bot
-        </label>
-      </div>
-
+      <PlayerSelector color="White" value={whitePlayer} onChange={setWhitePlayer} />
       <p />
-
-      {/* Black player selection */}
-      <div className="player-section">
-        <legend>Black</legend>
-
-        <label>
-          <input
-            type="radio"
-            name="black-player"
-            value="human"
-            checked={blackPlayer === "human"}
-            onChange={() => setBlackPlayer("human")}
-          />
-          Human
-        </label>
-
-        <label>
-          <input
-            type="radio"
-            name="black-player"
-            value="bot"
-            checked={blackPlayer === "bot"}
-            onChange={() => setBlackPlayer("bot")}
-          />
-          Bot
-        </label>
-      </div>
+      <PlayerSelector color="Black" value={blackPlayer} onChange={setBlackPlayer} />
 
       <p />
 
