@@ -32,6 +32,7 @@ $ cargo test  # test
 ### Build and Run
 
 ```bash
+$ cargo install wasm-pack
 $ wasm-pack build --target web # build wasm
 $ cd frontend/
 $ npm install
